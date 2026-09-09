@@ -13,6 +13,10 @@ type Props = {
   params: Promise<{ locale: string }>;
 };
 
+// Interim freshness: revalidate DB-driven content hourly. Full on-demand
+// revalidation (revalidatePath/Tag from admin writes) lands in Phase 9-12.
+export const revalidate = 3600;
+
 export default async function HomePage({ params }: Props) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) {

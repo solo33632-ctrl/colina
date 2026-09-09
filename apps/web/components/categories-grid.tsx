@@ -1,16 +1,13 @@
 import { getTranslations } from 'next-intl/server';
 import type { MachineCategory } from '@colina/db';
-import { Card, Container } from '@colina/ui';
-import { ImageWithFallback } from './image-with-fallback';
-import { Link } from '@/i18n/navigation';
+import { Container } from '@colina/ui';
+import { CategoryCard } from './category-card';
 
 type CategoriesGridProps = {
   categories: MachineCategory[];
   locale: 'ar' | 'en';
 };
 
-// Category cards link to `/categories/[slug]` — that route lands in
-// Phase 5, so the links 404 until then (expected, see Phase 4 summary).
 export async function CategoriesGrid({
   categories,
   locale,
@@ -31,33 +28,11 @@ export async function CategoriesGrid({
           <p className="mt-8 text-center text-stone-500">{t('empty')}</p>
         ) : (
           <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.map((category) => {
-              const name = locale === 'ar' ? category.nameAr : category.nameEn;
-              const description =
-                locale === 'ar'
-                  ? category.descriptionAr
-                  : category.descriptionEn;
-              return (
-                <li key={category.id}>
-                  <Link
-                    href={`/categories/${category.slug}`}
-                    className="block h-full rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-                  >
-                    <Card className="h-full overflow-hidden p-0">
-                      <ImageWithFallback src={category.image} alt={name} />
-                      <div className="p-6 text-start">
-                        <h3 className="text-lg font-semibold text-stone-900">
-                          {name}
-                        </h3>
-                        <p className="mt-1 text-sm text-stone-600">
-                          {description}
-                        </p>
-                      </div>
-                    </Card>
-                  </Link>
-                </li>
-              );
-            })}
+            {categories.map((category) => (
+              <li key={category.id}>
+                <CategoryCard category={category} locale={locale} />
+              </li>
+            ))}
           </ul>
         )}
       </Container>

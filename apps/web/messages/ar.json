@@ -20,6 +20,19 @@
     "subheading": "تصفح عائلات الآلات لدينا.",
     "empty": "لا توجد فئات بعد — عُد قريباً."
   },
+  "CategoryPage": {
+    "backToCategories": "كل الفئات",
+    "machinesHeading": "آلات هذه الفئة",
+    "machinesEmpty": "لا توجد آلات في هذه الفئة بعد."
+  },
+  "MachinePage": {
+    "categoryLabel": "الفئة",
+    "descriptionHeading": "الوصف",
+    "specsHeading": "المواصفات",
+    "galleryHeading": "معرض الصور",
+    "datasheetLabel": "تحميل ورقة البيانات (PDF)",
+    "relatedHeading": "آلات ذات صلة"
+  },
   "WhyUs": {
     "heading": "لماذا كولينا",
     "subheading": "نقاط قوة مؤقتة — النص النهائي يصل لاحقاً.",

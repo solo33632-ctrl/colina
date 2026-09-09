@@ -23,4 +23,9 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Shared row types for read-only Server Components (Phase 4+).
-export type { MachineCategory, Partner } from './prisma/generated/client';
+export type {
+  Machine,
+  MachineCategory,
+  MachineImage,
+  Partner,
+} from './prisma/generated/client';

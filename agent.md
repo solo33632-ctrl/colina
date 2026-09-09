@@ -43,6 +43,12 @@ securely, and in a way the next phase can build on top of.
   user-facing text goes through translation files — never hardcode Arabic or
   English strings inside components.
 - Data access: Prisma only. No raw SQL string concatenation, ever.
+- Freshness: any Server Component page that reads content from the database
+  must set a `revalidate` value (or equivalent fetch-cache config) so public
+  content refreshes without a rebuild; any admin mutation added in later
+  phases must call `revalidatePath`/`revalidateTag` for every public page
+  whose content it affects, so admin edits don't silently wait for a full
+  rebuild to appear.
 - Auth (admin only): Auth.js (NextAuth), credentials provider, passwords
   hashed with argon2, sessions via secure httpOnly cookies.
 - Validation: Zod schema for every form and every API input — validated on

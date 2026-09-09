@@ -20,6 +20,19 @@
     "subheading": "Browse our machine families.",
     "empty": "No categories yet — check back soon."
   },
+  "CategoryPage": {
+    "backToCategories": "All categories",
+    "machinesHeading": "Machines in this category",
+    "machinesEmpty": "No machines in this category yet."
+  },
+  "MachinePage": {
+    "categoryLabel": "Category",
+    "descriptionHeading": "Description",
+    "specsHeading": "Specifications",
+    "galleryHeading": "Gallery",
+    "datasheetLabel": "Download datasheet (PDF)",
+    "relatedHeading": "Related machines"
+  },
   "WhyUs": {
     "heading": "Why Colina",
     "subheading": "Placeholder strengths — final copy arrives later.",

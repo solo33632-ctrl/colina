@@ -1,0 +1,184 @@
+// Colina — Prisma schema (Phase 2).
+//
+// Conventions (per phase brief):
+// - Every model: cuid `id`, `createdAt`, `updatedAt`.
+// - Visitor-facing text is stored as separate `*Ar` / `*En` columns
+//   (matches the next-intl ar/en setup). No generic translations table.
+// - Lead data (ContactMessage / MaintenanceRequest) is stored as submitted,
+//   single columns — it is user input, not site copy.
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+// Shared status for both lead inboxes (ContactMessage + MaintenanceRequest).
+// One enum on purpose: Phase 12 manages both in the same "leads inbox" UI.
+enum LeadStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  EDITOR
+}
+
+model MachineCategory {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  nameAr        String
+  nameEn        String
+  slug          String    @unique
+  descriptionAr String    @db.Text
+  descriptionEn String    @db.Text
+  image         String?
+  machines      Machine[]
+}
+
+model Machine {
+  id                 String          @id @default(cuid())
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  nameAr             String
+  nameEn             String
+  slug               String          @unique
+  categoryId         String
+  category           MachineCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  shortDescriptionAr String          @db.Text
+  shortDescriptionEn String          @db.Text
+  descriptionAr      String          @db.Text
+  descriptionEn      String          @db.Text
+  specsAr            String          @db.Text
+  specsEn            String          @db.Text
+  datasheetUrl       String?
+  images             MachineImage[]
+  // Related machines: implicit self-referential many-to-many
+  // ("RelatedMachines" join table, managed by Prisma).
+  // Chosen over an explicit join model because it needs no extra model
+  // file and covers the Phase 5 "related machines" grid with a single
+  // `include: { relatedMachines: true }`. The link is directional:
+  // seed both directions when the relation should read as symmetric.
+  relatedMachines    Machine[]       @relation("RelatedMachines")
+  relatedTo          Machine[]       @relation("RelatedMachines")
+
+  @@index([categoryId])
+}
+
+model MachineImage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  machineId String
+  machine   Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  url       String
+  // Display order in the gallery, lowest first. Named `position` (not
+  // `order`) because ORDER is a reserved word in PostgreSQL.
+  position  Int      @default(0)
+
+  @@index([machineId])
+}
+
+model MaintenanceService {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  titleAr       String
+  titleEn       String
+  slug          String   @unique
+  descriptionAr String   @db.Text
+  descriptionEn String   @db.Text
+  scopeAr       String   @db.Text
+  scopeEn       String   @db.Text
+  icon          String
+}
+
+model MaintenanceRequest {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  name         String
+  company      String?
+  phone        String
+  email        String?
+  machineModel String?
+  message      String     @db.Text
+  status       LeadStatus @default(NEW)
+}
+
+model Partner {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  nameAr    String
+  nameEn    String
+  logo      String
+}
+
+model Agent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  countryAr String
+  countryEn String
+  cityAr    String?
+  cityEn    String?
+  addressAr String?
+  addressEn String?
+  phone     String?
+  email     String?
+}
+
+model NewsPost {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  titleAr     String
+  titleEn     String
+  slug        String   @unique
+  bodyAr      String   @db.Text
+  bodyEn      String   @db.Text
+  image       String?
+  publishedAt DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  name      String
+  email     String?
+  phone     String?
+  message   String     @db.Text
+  status    LeadStatus @default(NEW)
+}
+
+model AdminUser {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  email        String     @unique
+  // Argon2 hash lands here in Phase 9 (auth). Phase 2 stores only a
+  // clearly-marked placeholder — no auth logic yet.
+  passwordHash String
+  role         AdminRole  @default(EDITOR)
+  auditLogs    AuditLog[]
+}
+
+model AuditLog {
+  id          String     @id @default(cuid())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  adminUserId String?
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  action      String
+  entity      String
+
+  @@index([adminUserId])
+}

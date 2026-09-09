@@ -2,13 +2,23 @@
   "name": "@colina/db",
   "version": "0.1.0",
   "private": true,
-  "description": "Shared Prisma schema + client (placeholder — Prisma added in Phase 2)",
+  "description": "Shared Prisma schema + client, PostgreSQL",
   "main": "./index.ts",
   "types": "./index.ts",
   "scripts": {
     "lint": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/pg": "^8.15.6",
+    "dotenv": "^17.3.0",
+    "prisma": "^7.10.0",
+    "tsx": "^4.21.0",
     "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "pg": "^8.16.3"
   }
 }

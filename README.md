@@ -46,6 +46,17 @@ npm run dev:admin
 # or: npm run dev --workspace=@colina/admin
 ```
 
+## Database (`packages/db`)
+
+```bash
+cp .env.example .env   # set DATABASE_URL (never commit .env)
+cd packages/db
+npx prisma migrate dev # apply migrations (runs the seed afterwards)
+npx prisma db seed     # re-run seed any time (idempotent upserts)
+```
+
+See `packages/db/README.md` for details.
+
 ## Build / lint / format
 
 ```bash

@@ -7,6 +7,9 @@ out/
 dist/
 build/
 
+# Prisma generated client (reproducible via `npx prisma generate`)
+packages/db/prisma/generated/
+
 # Env (never commit)
 .env
 .env.local

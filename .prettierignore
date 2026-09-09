@@ -8,6 +8,9 @@ coverage
 .DS_Store
 next-env.d.ts
 
+# Prisma generated client (machine output, has its own headers)
+packages/db/prisma/generated
+
 # Env files (never commit real values)
 .env
 .env.local

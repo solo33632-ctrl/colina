@@ -1,10 +1,24 @@
-// Placeholder for the shared Prisma client.
-//
-// Phase 2 will add:
-// - prisma/schema.prisma (all content types from plan.md)
-// - generated client export
-// - seed script with placeholder data
-//
-// Do not import from this package yet.
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from './prisma/generated/client';
 
-export {};
+// Shared typed Prisma client singleton (standard Next.js + Prisma pattern).
+//
+// A fresh `PrismaClient` per import exhausts PostgreSQL connections under
+// Next.js dev (HMR re-evaluates modules), so the instance is cached on
+// `globalThis` in non-production and reused across reloads. Auth, validation,
+// and rate limiting land in later phases — this module only owns the client.
+//
+// Requires `DATABASE_URL` (see `.env.example`). Never commit real values.
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+};
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}

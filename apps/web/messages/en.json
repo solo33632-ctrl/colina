@@ -10,9 +10,45 @@
     "services": "Services",
     "contact": "Contact"
   },
-  "HomePage": {
-    "comingSoon": "Colina — coming soon",
-    "description": "We build production lines for the food industry. Our new website is on its way."
+  "Hero": {
+    "title": "Food production lines, built to last",
+    "subtitle": "Colina designs and manufactures production lines for the food industry — with after-sales maintenance that keeps you running.",
+    "cta": "Get in touch"
+  },
+  "Categories": {
+    "heading": "Product categories",
+    "subheading": "Browse our machine families.",
+    "empty": "No categories yet — check back soon."
+  },
+  "WhyUs": {
+    "heading": "Why Colina",
+    "subheading": "Placeholder strengths — final copy arrives later.",
+    "feature1Title": "Decades of experience",
+    "feature1Text": "Placeholder: years building food-industry machinery.",
+    "feature2Title": "After-sales support",
+    "feature2Text": "Placeholder: maintenance and spare parts.",
+    "feature3Title": "Custom engineering",
+    "feature3Text": "Placeholder: lines tailored to your plant.",
+    "feature4Title": "Built for quality",
+    "feature4Text": "Placeholder: robust machines, food-safe design."
+  },
+  "Partners": {
+    "heading": "Our partners",
+    "subheading": "Placeholder partner strip.",
+    "empty": "No partners yet."
+  },
+  "Contact": {
+    "heading": "Contact us",
+    "subheading": "Placeholder contact form — submissions are wired up in Phase 8.",
+    "nameLabel": "Name",
+    "emailLabel": "Email",
+    "phoneLabel": "Phone",
+    "messageLabel": "Message",
+    "submitLabel": "Send message",
+    "nameError": "Please enter your name (at least 2 characters).",
+    "emailError": "Please enter a valid email address.",
+    "phoneError": "Please enter a valid phone number.",
+    "messageError": "Please enter your message (at least 10 characters)."
   },
   "Header": {
     "skipToContent": "Skip to content"
@@ -26,7 +62,7 @@
     "english": "English"
   },
   "Metadata": {
-    "title": "Colina — coming soon",
-    "description": "Colina placeholder site. Full site coming in later phases."
+    "title": "Colina — food production lines & maintenance",
+    "description": "Colina builds production lines for the food industry."
   }
 }

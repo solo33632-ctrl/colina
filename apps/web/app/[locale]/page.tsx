@@ -1,7 +1,12 @@
 import { hasLocale } from 'next-intl';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { Card, Container } from '@colina/ui';
+import { prisma } from '@colina/db';
+import { CategoriesGrid } from '@/components/categories-grid';
+import { ContactSection } from '@/components/contact-section';
+import { HeroSection } from '@/components/hero-section';
+import { PartnersStrip } from '@/components/partners-strip';
+import { WhyUsSection } from '@/components/why-us-section';
 import { routing } from '@/i18n/routing';
 
 type Props = {
@@ -17,13 +22,20 @@ export default async function HomePage({ params }: Props) {
   // Enable static rendering (see `i18n/request.ts` for why this call exists).
   setRequestLocale(locale);
 
-  const t = await getTranslations('HomePage');
+  // Read-only content queries in a Server Component — no API route needed.
+  // (Phase 8's backend API covers form submissions/writes, not reads.)
+  const [categories, partners] = await Promise.all([
+    prisma.machineCategory.findMany({ orderBy: { createdAt: 'asc' } }),
+    prisma.partner.findMany({ orderBy: { createdAt: 'asc' } }),
+  ]);
 
   return (
     <main>
-      <Container className="py-16">
-        <Card title={t('comingSoon')} description={t('description')} />
-      </Container>
+      <HeroSection />
+      <CategoriesGrid categories={categories} locale={locale} />
+      <WhyUsSection />
+      <PartnersStrip partners={partners} locale={locale} />
+      <ContactSection />
     </main>
   );
 }

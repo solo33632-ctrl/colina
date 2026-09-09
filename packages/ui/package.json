@@ -1,0 +1,19 @@
+{
+  "name": "@colina/ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared presentational components (TailwindCSS, no runtime dependencies)",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "react": "19.2.8",
+    "typescript": "5.9.3"
+  }
+}

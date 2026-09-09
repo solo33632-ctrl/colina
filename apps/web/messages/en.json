@@ -1,0 +1,32 @@
+{
+  "Site": {
+    "name": "Colina",
+    "tagline": "Food production lines & maintenance"
+  },
+  "Nav": {
+    "main": "Main navigation",
+    "home": "Home",
+    "machines": "Machines",
+    "services": "Services",
+    "contact": "Contact"
+  },
+  "HomePage": {
+    "comingSoon": "Colina — coming soon",
+    "description": "We build production lines for the food industry. Our new website is on its way."
+  },
+  "Header": {
+    "skipToContent": "Skip to content"
+  },
+  "Footer": {
+    "rights": "All rights reserved."
+  },
+  "LanguageSwitcher": {
+    "label": "Language",
+    "arabic": "العربية",
+    "english": "English"
+  },
+  "Metadata": {
+    "title": "Colina — coming soon",
+    "description": "Colina placeholder site. Full site coming in later phases."
+  }
+}

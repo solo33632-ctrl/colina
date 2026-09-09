@@ -1,16 +1,7 @@
-import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'Colina — coming soon',
-  description: 'Colina placeholder site. Full site coming in later phases.',
-};
-
+// Root layout stays minimal: locale, direction, fonts and the document
+// shell live in `app/[locale]/layout.tsx` (official next-intl pattern).
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
+  return children;
 }

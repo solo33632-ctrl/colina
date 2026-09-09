@@ -1,7 +1,14 @@
+import { Card, Container } from '@colina/ui';
+
 export default function AdminHomePage() {
   return (
-    <main className="flex min-h-screen items-center justify-center">
-      <h1 className="text-2xl font-semibold">Colina Admin</h1>
+    <main>
+      <Container className="py-16">
+        <Card
+          title="Colina Admin"
+          description="Internal admin panel. Content management arrives in later phases."
+        />
+      </Container>
     </main>
   );
 }

@@ -1,0 +1,21 @@
+node_modules
+.next
+out
+dist
+build
+coverage
+*.log
+.DS_Store
+next-env.d.ts
+
+# Env files (never commit real values)
+.env
+.env.local
+.env.*.local
+
+# Human-owned planning docs — do not reformat
+agent.md
+plan.md
+
+# Prisma (added in Phase 2)
+# prisma/migrations/dev.db*

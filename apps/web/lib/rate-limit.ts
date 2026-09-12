@@ -32,9 +32,15 @@ export function rateLimitCheck(key: string, now = Date.now()): number {
   return 0;
 }
 
-// Best-effort client IP for throttling only (never for auth): behind
-// Vercel/proxies the leftmost X-Forwarded-For entry is the client. A
-// spoofed header only earns the attacker their own bucket.
+// Best-effort client IP for throttling only (never for auth).
+//
+// X-Forwarded-For is only meaningful behind a reverse proxy that
+// OVERWRITES it (e.g. Vercel, which guarantees the leftmost entry).
+// On unprotected hosting this header is fully attacker-controlled and
+// the limiter is trivially bypassable by rotating it — flag for the real
+// fix in Phase 16 (trust only the platform's guaranteed client-IP
+// header). A spoofed value otherwise just earns the attacker their own
+// bucket, which is harmless for throttling purposes.
 export function getClientIp(req: Request): string {
   const forwarded = req.headers.get('x-forwarded-for');
   const fromForwarded = forwarded?.split(',')[0]?.trim();

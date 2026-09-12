@@ -22,10 +22,13 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
 
-// Shared row types for read-only Server Components (Phase 4+).
+// Shared row types for read-only Server Components (Phase 4+) and the
+// admin auth layer (Phase 9+).
 export type {
+  AdminUser,
   Machine,
   MachineCategory,
   MachineImage,
   Partner,
 } from './prisma/generated/client';
+export type { AdminRole } from './prisma/generated/client';

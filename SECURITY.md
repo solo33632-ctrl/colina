@@ -56,9 +56,43 @@ platform-specific binary — the standard napi-rs/esbuild pattern):
   (`build-from-source.js`) but it only runs `node-gyp rebuild` when
   `npm_config_build_from_source=true`, otherwise a no-op; prebuilt
   binary is used (transitive via `next-intl`).
+- `argon2@0.45.1` — `cross-env ZERO_AR_DATE=1 node-gyp-build`, the
+  standard prebuilt-native-binary loader (prebuilds ship for linux-x64,
+  verified loading + hash/verify round-trip on Node 24). Direct dep of
+  `@colina/admin` for password hashing.
 
 ## Baseline
 
 - End of Phase 1 correction: `npm audit` — 0 vulnerabilities.
 - End of Phase 2: `npm audit` — 4 high (the two packages above;
   `mysql2` counts two advisories), everything else clean.
+
+## Dependency notes
+
+- `nodemailer` vs `next-auth` peer (resolved in Phase 9): `next-auth@4.24.15`
+  declares an _optional_ peer `nodemailer@^7.0.7` (for its Email provider,
+  which this project doesn't use), while `npx audit` flags 10 high
+  advisories across `nodemailer<=9.1.0` (SMTP/CRLF injection, TLS, SSRF —
+  GHSA-c7w3, GHSA-vvjj, GHSA-268h, GHSA-wqvq, GHSA-r7g4, GHSA-p6gq,
+  GHSA-8m3c, GHSA-wmmp, GHSA-2x7j, GHSA-cc9r). Pinning admin to v7 would
+  have carried all ten, so both apps use `nodemailer@10.0.9` (single
+  deduped copy) with an explicit root `overrides` entry
+  (`next-auth@4.24.15 → nodemailer@10.0.9`, visible as "overridden" in
+  `npm ls`). Runtime-safe: the peer belongs to an unused provider and
+  v10's `sendMail` API is compatible. Revisit if next-auth v4 updates its
+  peer range (Phase 13).
+
+## Known interim weaknesses (not dependency exceptions — fix scheduled)
+
+- **In-memory rate limiter** (`apps/web/lib/rate-limit.ts`): resets on
+  restart, single-instance only. Move to a shared store (Redis/Upstash)
+  in Phase 16. Fix scheduled: Phase 16 (hosting decision).
+- **`X-Forwarded-For` trust** (`getClientIp` in the same module): only
+  meaningful behind a reverse proxy that overwrites it (e.g. Vercel). On
+  unprotected hosting the header is attacker-controlled and the limiter is
+  fully bypassable by rotating it. Fix scheduled: Phase 16 — trust only
+  the platform's guaranteed client-IP header.
+- **Origin check without `NEXT_PUBLIC_WEB_URL`**: fail-closed in
+  production (refuse), fail-open with a warning only in non-production
+  (`apps/web/lib/request-origin.ts`). No fix needed — just ensure the var
+  is always set in production (Phase 16 checklist).

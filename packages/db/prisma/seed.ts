@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { randomBytes } from 'node:crypto';
+import argon2 from 'argon2';
 import { prisma } from '../index';
 
 // Phase 2 placeholder seed — original sample copy (not client content).
@@ -280,14 +282,24 @@ async function main() {
     },
   });
 
-  // Placeholder hash only — Phase 9 replaces this with a real argon2 hash
-  // and implements credentials auth. Never a real credential.
+  // Seed admin password: read from the environment so no plaintext —
+  // real or fake — is ever committed. Without SEED_ADMIN_PASSWORD a
+  // random one is generated, hashed with argon2id, and printed ONCE
+  // (never stored). Re-seeding resets the password and prints again.
+  const seedPassword =
+    process.env.SEED_ADMIN_PASSWORD ?? randomBytes(24).toString('base64url');
+  if (!process.env.SEED_ADMIN_PASSWORD) {
+    console.log(
+      'SEED_ADMIN_PASSWORD is not set — generated random admin password (shown once, never stored):'
+    );
+    console.log(`admin@example.com / ${seedPassword}`);
+  }
   const admin = await prisma.adminUser.upsert({
     where: { email: 'admin@example.com' },
-    update: {},
+    update: { passwordHash: await argon2.hash(seedPassword) },
     create: {
       email: 'admin@example.com',
-      passwordHash: 'PENDING_PHASE_9_REPLACE_WITH_ARGON2_HASH',
+      passwordHash: await argon2.hash(seedPassword),
       role: 'SUPER_ADMIN',
     },
   });

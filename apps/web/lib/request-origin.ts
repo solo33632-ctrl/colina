@@ -5,8 +5,15 @@
 export function isSameOrigin(req: Request): boolean {
   const expected = process.env.NEXT_PUBLIC_WEB_URL;
   if (!expected) {
-    // Dev without the env var: cannot validate, warn loudly instead of
-    // silently blocking every submission (production always sets it).
+    // Fail closed in production (a misconfigured deploy must refuse form
+    // submissions, not silently disable the check); fail open with a loud
+    // warning only in non-production development.
+    if (process.env.NODE_ENV === 'production') {
+      console.error(
+        '[origin-check] NEXT_PUBLIC_WEB_URL is not set — refusing request.'
+      );
+      return false;
+    }
     console.warn(
       '[origin-check] NEXT_PUBLIC_WEB_URL is not set — skipping origin check.'
     );

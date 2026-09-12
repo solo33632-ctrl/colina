@@ -22,3 +22,12 @@ npx prisma validate      # validate the schema without a database
 `DATABASE_URL` must also be set for `prisma format`/`generate` (Prisma 7
 reads it from `prisma.config.ts` even for offline commands) — any value
 works there; only `migrate`/`seed` need a live database.
+
+## Seed admin password (Phase 9)
+
+`prisma/seed.ts` sets `admin@example.com` from `SEED_ADMIN_PASSWORD`
+(documented in `.env.example`). The value is hashed with argon2id before
+storage and the plaintext is never written anywhere — if the variable is
+unset, the seed generates a random password, hashes it, and prints the
+plaintext **once** to the console. Every seed run resets the password, so
+re-seeding a shared database locks out the old one by design.

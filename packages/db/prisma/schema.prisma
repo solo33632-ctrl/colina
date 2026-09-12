@@ -160,15 +160,18 @@ model ContactMessage {
 }
 
 model AdminUser {
-  id           String     @id @default(cuid())
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  email        String     @unique
-  // Argon2 hash lands here in Phase 9 (auth). Phase 2 stores only a
-  // clearly-marked placeholder — no auth logic yet.
-  passwordHash String
-  role         AdminRole  @default(EDITOR)
-  auditLogs    AuditLog[]
+  id                          String     @id @default(cuid())
+  createdAt                   DateTime   @default(now())
+  updatedAt                   DateTime   @updatedAt
+  email                       String     @unique
+  // Argon2id hash (see Phase 9). Never plaintext, never logged.
+  passwordHash                String
+  role                        AdminRole  @default(EDITOR)
+  // Password reset (Phase 9): SHA-256 hash of the single-use raw token —
+  // the raw token itself is never stored. Null = no reset in flight.
+  passwordResetTokenHash      String?
+  passwordResetTokenExpiresAt DateTime?
+  auditLogs                   AuditLog[]
 }
 
 model AuditLog {

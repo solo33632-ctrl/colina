@@ -27,6 +27,11 @@
   "engines": {
     "node": ">=20.9.0"
   },
+  "overrides": {
+    "next-auth@4.24.15": {
+      "nodemailer": "10.0.9"
+    }
+  },
   "allowScripts": {
     "prisma@7.10.0": true,
     "@prisma/engines@7.10.0": true,
@@ -34,6 +39,7 @@
     "esbuild@0.27.2": true,
     "unrs-resolver@1.12.2": true,
     "@parcel/watcher@2.6.0": true,
-    "@swc/core@1.16.2": true
+    "@swc/core@1.16.2": true,
+    "argon2@0.45.1": true
   }
 }

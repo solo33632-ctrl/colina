@@ -6,11 +6,7 @@ import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@colina/ui';
-
-const inputClasses =
-  'w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600';
-
-const errorClasses = 'mt-1 text-sm text-red-700';
+import { Field, inputClasses } from './form-fields';
 
 // Client-side validation only. Server-side validation, rate limiting,
 // Prisma writes and email notifications arrive in Phase 8.
@@ -49,13 +45,11 @@ export function ContactForm() {
       noValidate
       className="mx-auto mt-8 grid max-w-xl gap-5 text-start"
     >
-      <div>
-        <label
-          htmlFor="contact-name"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('nameLabel')}
-        </label>
+      <Field
+        id="contact-name"
+        label={t('nameLabel')}
+        error={errors.name?.message}
+      >
         <input
           id="contact-name"
           type="text"
@@ -63,19 +57,12 @@ export function ContactForm() {
           className={inputClasses}
           {...register('name')}
         />
-        {errors.name ? (
-          <p role="alert" className={errorClasses}>
-            {errors.name.message}
-          </p>
-        ) : null}
-      </div>
-      <div>
-        <label
-          htmlFor="contact-email"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('emailLabel')}
-        </label>
+      </Field>
+      <Field
+        id="contact-email"
+        label={t('emailLabel')}
+        error={errors.email?.message}
+      >
         <input
           id="contact-email"
           type="email"
@@ -83,19 +70,12 @@ export function ContactForm() {
           className={inputClasses}
           {...register('email')}
         />
-        {errors.email ? (
-          <p role="alert" className={errorClasses}>
-            {errors.email.message}
-          </p>
-        ) : null}
-      </div>
-      <div>
-        <label
-          htmlFor="contact-phone"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('phoneLabel')}
-        </label>
+      </Field>
+      <Field
+        id="contact-phone"
+        label={t('phoneLabel')}
+        error={errors.phone?.message}
+      >
         <input
           id="contact-phone"
           type="tel"
@@ -103,31 +83,19 @@ export function ContactForm() {
           className={inputClasses}
           {...register('phone')}
         />
-        {errors.phone ? (
-          <p role="alert" className={errorClasses}>
-            {errors.phone.message}
-          </p>
-        ) : null}
-      </div>
-      <div>
-        <label
-          htmlFor="contact-message"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('messageLabel')}
-        </label>
+      </Field>
+      <Field
+        id="contact-message"
+        label={t('messageLabel')}
+        error={errors.message?.message}
+      >
         <textarea
           id="contact-message"
           rows={4}
           className={inputClasses}
           {...register('message')}
         />
-        {errors.message ? (
-          <p role="alert" className={errorClasses}>
-            {errors.message.message}
-          </p>
-        ) : null}
-      </div>
+      </Field>
       <div>
         <Button type="submit" disabled={isSubmitting}>
           {t('submitLabel')}

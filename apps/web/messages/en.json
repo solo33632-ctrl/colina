@@ -8,6 +8,7 @@
     "home": "Home",
     "machines": "Machines",
     "services": "Services",
+    "about": "About",
     "contact": "Contact"
   },
   "Hero": {
@@ -88,7 +89,9 @@
     "skipToContent": "Skip to content"
   },
   "Footer": {
-    "rights": "All rights reserved."
+    "rights": "All rights reserved.",
+    "linksLabel": "Quick links",
+    "privacy": "Privacy Policy"
   },
   "LanguageSwitcher": {
     "label": "Language",
@@ -98,5 +101,38 @@
   "Metadata": {
     "title": "Colina — food production lines & maintenance",
     "description": "Colina builds production lines for the food industry."
+  },
+  "AboutPage": {
+    "heading": "About Colina",
+    "intro1": "Placeholder: Colina manufactures production lines and machinery for the food industry.",
+    "intro2": "Placeholder: this page will tell the company story once Phase 0 content arrives.",
+    "missionTitle": "Our mission",
+    "missionText": "Placeholder mission statement."
+  },
+  "PartnersPage": {
+    "heading": "Our partners",
+    "subheading": "Placeholder partner listing.",
+    "empty": "No partners yet."
+  },
+  "ContactPage": {
+    "heading": "Contact us",
+    "subheading": "Placeholder contact page — submissions are wired up in Phase 8.",
+    "mapTitle": "Map (illustrative)",
+    "mapNote": "Illustrative map centered on Cairo — the real address arrives with Phase 0 content."
+  },
+  "PrivacyPage": {
+    "heading": "Privacy Policy",
+    "draftTitle": "DRAFT — not legal advice",
+    "draftText": "This privacy policy is a placeholder draft. It has not been reviewed by a lawyer and must be reviewed before the site goes live.",
+    "collectedTitle": "What we collect",
+    "collectedText": "Placeholder: the contact and maintenance-request forms collect the details you type in (name, company, phone, email, machine/model, message) so Colina can respond to your inquiry.",
+    "cookiesTitle": "Cookies",
+    "cookiesText": "Placeholder: the site stores a locale-preference cookie (NEXT_LOCALE) to remember your language. No other cookies are set.",
+    "trackersTitle": "No ad trackers",
+    "trackersText": "Placeholder: per this project's policy, the site uses no third-party advertising trackers or analytics scripts.",
+    "contactTitle": "Contact",
+    "contactText": "Placeholder: privacy contact details (TBD).",
+    "changesTitle": "Changes",
+    "changesText": "Placeholder: this draft will be replaced with a reviewed policy before launch."
   }
 }

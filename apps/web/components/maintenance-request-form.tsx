@@ -6,11 +6,7 @@ import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@colina/ui';
-
-const inputClasses =
-  'w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600';
-
-const errorClasses = 'mt-1 text-sm text-red-700';
+import { Field, inputClasses } from './form-fields';
 
 // Client-side validation only. Server-side validation, rate limiting,
 // Prisma writes and email notifications arrive in Phase 8.
@@ -67,13 +63,11 @@ export function MaintenanceRequestForm() {
       noValidate
       className="mx-auto mt-8 grid max-w-xl gap-5 text-start"
     >
-      <div>
-        <label
-          htmlFor="maint-name"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('nameLabel')}
-        </label>
+      <Field
+        id="maint-name"
+        label={t('nameLabel')}
+        error={errors.name?.message}
+      >
         <input
           id="maint-name"
           type="text"
@@ -81,19 +75,12 @@ export function MaintenanceRequestForm() {
           className={inputClasses}
           {...register('name')}
         />
-        {errors.name ? (
-          <p role="alert" className={errorClasses}>
-            {errors.name.message}
-          </p>
-        ) : null}
-      </div>
-      <div>
-        <label
-          htmlFor="maint-company"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('companyLabel')}
-        </label>
+      </Field>
+      <Field
+        id="maint-company"
+        label={t('companyLabel')}
+        error={errors.company?.message}
+      >
         <input
           id="maint-company"
           type="text"
@@ -101,19 +88,12 @@ export function MaintenanceRequestForm() {
           className={inputClasses}
           {...register('company')}
         />
-        {errors.company ? (
-          <p role="alert" className={errorClasses}>
-            {errors.company.message}
-          </p>
-        ) : null}
-      </div>
-      <div>
-        <label
-          htmlFor="maint-phone"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('phoneLabel')}
-        </label>
+      </Field>
+      <Field
+        id="maint-phone"
+        label={t('phoneLabel')}
+        error={errors.phone?.message}
+      >
         <input
           id="maint-phone"
           type="tel"
@@ -121,19 +101,12 @@ export function MaintenanceRequestForm() {
           className={inputClasses}
           {...register('phone')}
         />
-        {errors.phone ? (
-          <p role="alert" className={errorClasses}>
-            {errors.phone.message}
-          </p>
-        ) : null}
-      </div>
-      <div>
-        <label
-          htmlFor="maint-email"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('emailLabel')}
-        </label>
+      </Field>
+      <Field
+        id="maint-email"
+        label={t('emailLabel')}
+        error={errors.email?.message}
+      >
         <input
           id="maint-email"
           type="email"
@@ -141,50 +114,31 @@ export function MaintenanceRequestForm() {
           className={inputClasses}
           {...register('email')}
         />
-        {errors.email ? (
-          <p role="alert" className={errorClasses}>
-            {errors.email.message}
-          </p>
-        ) : null}
-      </div>
-      <div>
-        <label
-          htmlFor="maint-machine-model"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('machineModelLabel')}
-        </label>
+      </Field>
+      <Field
+        id="maint-machine-model"
+        label={t('machineModelLabel')}
+        error={errors.machineModel?.message}
+      >
         <input
           id="maint-machine-model"
           type="text"
           className={inputClasses}
           {...register('machineModel')}
         />
-        {errors.machineModel ? (
-          <p role="alert" className={errorClasses}>
-            {errors.machineModel.message}
-          </p>
-        ) : null}
-      </div>
-      <div>
-        <label
-          htmlFor="maint-message"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
-          {t('messageLabel')}
-        </label>
+      </Field>
+      <Field
+        id="maint-message"
+        label={t('messageLabel')}
+        error={errors.message?.message}
+      >
         <textarea
           id="maint-message"
           rows={4}
           className={inputClasses}
           {...register('message')}
         />
-        {errors.message ? (
-          <p role="alert" className={errorClasses}>
-            {errors.message.message}
-          </p>
-        ) : null}
-      </div>
+      </Field>
       <div>
         <Button type="submit" disabled={isSubmitting}>
           {t('submitLabel')}

@@ -1,7 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import type { Partner } from '@colina/db';
 import { Container } from '@colina/ui';
-import { ImageWithFallback } from './image-with-fallback';
+import { PartnerCard } from './partner-card';
 
 type PartnersStripProps = {
   partners: Partner[];
@@ -24,22 +24,12 @@ export async function PartnersStrip({ partners, locale }: PartnersStripProps) {
         {partners.length === 0 ? (
           <p className="mt-8 text-center text-stone-500">{t('empty')}</p>
         ) : (
-          <ul className="mt-8 flex flex-wrap items-center justify-center gap-6">
-            {partners.map((partner) => {
-              const name = locale === 'ar' ? partner.nameAr : partner.nameEn;
-              return (
-                <li
-                  key={partner.id}
-                  className="w-36 overflow-hidden rounded-xl border border-stone-200 bg-white"
-                >
-                  <ImageWithFallback
-                    src={partner.logo}
-                    alt={name}
-                    fallbackClassName="flex aspect-video items-center justify-center bg-stone-100"
-                  />
-                </li>
-              );
-            })}
+          <ul className="mt-8 flex flex-wrap items-start justify-center gap-6">
+            {partners.map((partner) => (
+              <li key={partner.id}>
+                <PartnerCard partner={partner} locale={locale} />
+              </li>
+            ))}
           </ul>
         )}
       </Container>

@@ -2,43 +2,39 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { Button } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import {
+  HONEYPOT_FIELD,
+  maintenanceRequestInputSchema,
+  type MaintenanceRequestInput,
+} from '@/lib/schemas';
 
-// Client-side validation only. Server-side validation, rate limiting,
-// Prisma writes and email notifications arrive in Phase 8.
+// Client-side validation mirrors the server (same rules via the shared
+// factory). Submission itself is handled by `/api/maintenance-request`.
 export function MaintenanceRequestForm() {
   const t = useTranslations('MaintenanceForm');
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const schema = useMemo(
     () =>
-      z.object({
-        name: z.string().min(2, { error: t('nameError') }),
-        company: z.string().optional(),
-        phone: z.string().min(6, { error: t('phoneError') }),
-        // Optional email: empty (or absent) passes, anything else must be
-        // a valid address. The message lives on the inner email schema
-        // because a failed union surfaces the branch issue, not the
-        // union-level error.
-        email: z
-          .union([z.literal(''), z.email({ error: t('emailError') })], {
-            error: t('emailError'),
-          })
-          .optional(),
-        machineModel: z.string().optional(),
-        message: z.string().min(10, { error: t('messageError') }),
+      maintenanceRequestInputSchema({
+        name: t('nameError'),
+        email: t('emailError'),
+        phone: t('phoneError'),
+        message: t('messageError'),
       }),
     [t]
   );
 
-  type FormValues = z.infer<typeof schema>;
+  type FormValues = MaintenanceRequestInput;
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -49,12 +45,27 @@ export function MaintenanceRequestForm() {
       email: '',
       machineModel: '',
       message: '',
+      [HONEYPOT_FIELD]: '',
     },
   });
 
-  async function onSubmit() {
-    // TODO(Phase 8): POST to the maintenance-request API route instead of
-    // this stub.
+  async function onSubmit(values: FormValues) {
+    setStatus('idle');
+    try {
+      const res = await fetch('/api/maintenance-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+      if (!res.ok) {
+        setStatus('error');
+        return;
+      }
+      reset();
+      setStatus('success');
+    } catch {
+      setStatus('error');
+    }
   }
 
   return (
@@ -139,6 +150,24 @@ export function MaintenanceRequestForm() {
           {...register('message')}
         />
       </Field>
+      {/* Honeypot: off-screen (not display:none), skipped by keyboard and
+          screen readers. Bots that fill it get a fake success server-side. */}
+      <div
+        aria-hidden="true"
+        className="absolute -left-[9999px] h-px w-px overflow-hidden opacity-0"
+      >
+        <input tabIndex={-1} autoComplete="off" {...register(HONEYPOT_FIELD)} />
+      </div>
+      {status === 'success' ? (
+        <p role="status" className="text-sm font-medium text-brand-800">
+          {t('submitSuccess')}
+        </p>
+      ) : null}
+      {status === 'error' ? (
+        <p role="alert" className="text-sm font-medium text-red-700">
+          {t('submitError')}
+        </p>
+      ) : null}
       <div>
         <Button type="submit" disabled={isSubmitting}>
           {t('submitLabel')}

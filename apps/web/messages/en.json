@@ -33,6 +33,27 @@
     "datasheetLabel": "Download datasheet (PDF)",
     "relatedHeading": "Related machines"
   },
+  "ServicesPage": {
+    "heading": "Maintenance services",
+    "subheading": "After-sales care that keeps your line running.",
+    "empty": "No services yet — check back soon.",
+    "scopeLabel": "Scope"
+  },
+  "MaintenanceForm": {
+    "heading": "Request maintenance",
+    "subheading": "Placeholder request form — submissions are wired up in Phase 8.",
+    "nameLabel": "Name",
+    "companyLabel": "Company (optional)",
+    "emailLabel": "Email (optional)",
+    "phoneLabel": "Phone",
+    "machineModelLabel": "Machine / model (optional)",
+    "messageLabel": "Describe the issue",
+    "submitLabel": "Send request",
+    "nameError": "Please enter your name (at least 2 characters).",
+    "emailError": "Please enter a valid email address, or leave it empty.",
+    "phoneError": "Please enter a valid phone number.",
+    "messageError": "Please describe the issue (at least 10 characters)."
+  },
   "WhyUs": {
     "heading": "Why Colina",
     "subheading": "Placeholder strengths — final copy arrives later.",

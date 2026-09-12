@@ -22,7 +22,7 @@ export async function AdminHeader() {
         {session ? (
           <>
             <nav aria-label="Admin sections">
-              <ul className="flex items-center gap-4">
+              <ul className="flex flex-wrap items-center gap-4">
                 <li>
                   <Link
                     href="/categories"
@@ -37,6 +37,38 @@ export async function AdminHeader() {
                     className="rounded text-sm text-stone-600 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                   >
                     Machines
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/partners"
+                    className="rounded text-sm text-stone-600 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                  >
+                    Partners
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/services"
+                    className="rounded text-sm text-stone-600 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                  >
+                    Services
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/news"
+                    className="rounded text-sm text-stone-600 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                  >
+                    News
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/agents"
+                    className="rounded text-sm text-stone-600 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                  >
+                    Agents
                   </Link>
                 </li>
               </ul>

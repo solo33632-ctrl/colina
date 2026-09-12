@@ -105,3 +105,96 @@ export function machineInputSchema(messages: MachineFieldMessages) {
 }
 
 export type MachineInput = z.infer<ReturnType<typeof machineInputSchema>>;
+
+export type PartnerFieldMessages = {
+  nameAr: string;
+  nameEn: string;
+  logo: string;
+};
+
+export function partnerInputSchema(messages: PartnerFieldMessages) {
+  return z.object({
+    nameAr: z.string().min(2, { error: messages.nameAr }),
+    nameEn: z.string().min(2, { error: messages.nameEn }),
+    // Plain URL text for now (same interim pattern as category images —
+    // real uploads arrive once Phase 16 picks a storage backend).
+    logo: z.string().min(1, { error: messages.logo }),
+  });
+}
+
+export type PartnerInput = z.infer<ReturnType<typeof partnerInputSchema>>;
+
+export type ServiceFieldMessages = {
+  slug: string;
+  titleAr: string;
+  titleEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  scopeAr: string;
+  scopeEn: string;
+  icon: string;
+};
+
+export function serviceInputSchema(messages: ServiceFieldMessages) {
+  return z.object({
+    slug: slugRule(messages.slug),
+    titleAr: z.string().min(2, { error: messages.titleAr }),
+    titleEn: z.string().min(2, { error: messages.titleEn }),
+    descriptionAr: z.string().min(10, { error: messages.descriptionAr }),
+    descriptionEn: z.string().min(10, { error: messages.descriptionEn }),
+    scopeAr: z.string().min(10, { error: messages.scopeAr }),
+    scopeEn: z.string().min(10, { error: messages.scopeEn }),
+    // Plain text field, no icon picker (icons render as initial tiles on
+    // the public site until final content/iconography lands).
+    icon: z.string().min(1, { error: messages.icon }),
+  });
+}
+
+export type ServiceInput = z.infer<ReturnType<typeof serviceInputSchema>>;
+
+export type NewsFieldMessages = {
+  slug: string;
+  titleAr: string;
+  titleEn: string;
+  bodyAr: string;
+  bodyEn: string;
+  publishedAt: string;
+};
+
+export function newsInputSchema(messages: NewsFieldMessages) {
+  return z.object({
+    slug: slugRule(messages.slug),
+    titleAr: z.string().min(2, { error: messages.titleAr }),
+    titleEn: z.string().min(2, { error: messages.titleEn }),
+    bodyAr: z.string().min(10, { error: messages.bodyAr }),
+    bodyEn: z.string().min(10, { error: messages.bodyEn }),
+    image: z.string().optional(),
+    // YYYY-MM-DD from a date input; converted to DateTime server-side.
+    publishedAt: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, { error: messages.publishedAt })
+      .optional(),
+  });
+}
+
+export type NewsInput = z.infer<ReturnType<typeof newsInputSchema>>;
+
+export type AgentFieldMessages = {
+  countryAr: string;
+  countryEn: string;
+};
+
+export function agentInputSchema(messages: AgentFieldMessages) {
+  return z.object({
+    countryAr: z.string().min(2, { error: messages.countryAr }),
+    countryEn: z.string().min(2, { error: messages.countryEn }),
+    cityAr: z.string().optional(),
+    cityEn: z.string().optional(),
+    addressAr: z.string().optional(),
+    addressEn: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().optional(),
+  });
+}
+
+export type AgentInput = z.infer<ReturnType<typeof agentInputSchema>>;

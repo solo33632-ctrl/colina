@@ -12,6 +12,18 @@ export async function requireAdmin() {
   return session;
 }
 
+// First role gate in the project (Phase 12): the audit log is
+// SUPER_ADMIN-only. Returns the session for super-admins, null for
+// everyone else (including plain authenticated editors) — callers render
+// an explanatory "not authorized" page, never a bare 403.
+export async function requireSuperAdmin() {
+  const session = await requireAdmin();
+  if (!session || session.user.role !== 'SUPER_ADMIN') {
+    return null;
+  }
+  return session;
+}
+
 export type AdminSession = NonNullable<
   Awaited<ReturnType<typeof requireAdmin>>
 >;

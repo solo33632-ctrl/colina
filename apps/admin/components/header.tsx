@@ -71,6 +71,24 @@ export async function AdminHeader() {
                     Agents
                   </Link>
                 </li>
+                <li>
+                  <Link
+                    href="/leads"
+                    className="rounded text-sm text-stone-600 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                  >
+                    Leads
+                  </Link>
+                </li>
+                {session.user.role === 'SUPER_ADMIN' ? (
+                  <li>
+                    <Link
+                      href="/audit-log"
+                      className="rounded text-sm text-stone-600 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                    >
+                      Audit Log
+                    </Link>
+                  </li>
+                ) : null}
               </ul>
             </nav>
             <div className="ms-auto">

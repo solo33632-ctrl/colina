@@ -37,3 +37,71 @@ export function resetPasswordInputSchema(messages: {
       .min(ADMIN_PASSWORD_MIN_LENGTH, { error: messages.password }),
   });
 }
+
+const slugRule = (message: string) =>
+  z
+    .string()
+    .min(2, { error: message })
+    .regex(/^[a-z0-9-]+$/, { error: message });
+
+export type CategoryFieldMessages = {
+  nameAr: string;
+  nameEn: string;
+  slug: string;
+  descriptionAr: string;
+  descriptionEn: string;
+};
+
+export function categoryInputSchema(messages: CategoryFieldMessages) {
+  return z.object({
+    nameAr: z.string().min(2, { error: messages.nameAr }),
+    nameEn: z.string().min(2, { error: messages.nameEn }),
+    slug: slugRule(messages.slug),
+    descriptionAr: z.string().min(10, { error: messages.descriptionAr }),
+    descriptionEn: z.string().min(10, { error: messages.descriptionEn }),
+    // Plain URL text for now (no shared filesystem/storage yet — replace
+    // with a real upload experience once Phase 16 picks a backend).
+    image: z.string().optional(),
+  });
+}
+
+export type CategoryInput = z.infer<ReturnType<typeof categoryInputSchema>>;
+
+export type MachineFieldMessages = CategoryFieldMessages & {
+  categoryId: string;
+  shortDescriptionAr: string;
+  shortDescriptionEn: string;
+  specsAr: string;
+  specsEn: string;
+  imageUrl: string;
+  imagePosition: string;
+};
+
+export function machineInputSchema(messages: MachineFieldMessages) {
+  return z.object({
+    nameAr: z.string().min(2, { error: messages.nameAr }),
+    nameEn: z.string().min(2, { error: messages.nameEn }),
+    slug: slugRule(messages.slug),
+    categoryId: z.string().min(1, { error: messages.categoryId }),
+    shortDescriptionAr: z
+      .string()
+      .min(10, { error: messages.shortDescriptionAr }),
+    shortDescriptionEn: z
+      .string()
+      .min(10, { error: messages.shortDescriptionEn }),
+    descriptionAr: z.string().min(10, { error: messages.descriptionAr }),
+    descriptionEn: z.string().min(10, { error: messages.descriptionEn }),
+    specsAr: z.string().min(1, { error: messages.specsAr }),
+    specsEn: z.string().min(1, { error: messages.specsEn }),
+    datasheetUrl: z.string().optional(),
+    images: z.array(
+      z.object({
+        url: z.string().min(1, { error: messages.imageUrl }),
+        position: z.number().int().min(0, { error: messages.imagePosition }),
+      })
+    ),
+    relatedIds: z.array(z.string().min(1)),
+  });
+}
+
+export type MachineInput = z.infer<ReturnType<typeof machineInputSchema>>;

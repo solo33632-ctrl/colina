@@ -6,6 +6,7 @@ import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { CategoryCard } from '@/components/category-card';
 import { routing } from '@/i18n/routing';
+import { localeAlternates } from '@/lib/seo';
 
 // Interim freshness: revalidate DB-driven content hourly (see agent.md).
 export const revalidate = 3600;
@@ -23,6 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: t('heading'),
     description: t('subheading'),
+    alternates: await localeAlternates('/categories', locale),
   };
 }
 

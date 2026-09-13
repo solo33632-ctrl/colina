@@ -7,6 +7,7 @@ import { Container } from '@colina/ui';
 import { MachineCard } from '@/components/machine-card';
 import { Link } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
+import { localeAlternates } from '@/lib/seo';
 
 // Interim freshness: revalidate DB-driven content hourly (see agent.md).
 export const revalidate = 3600;
@@ -37,6 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: locale === 'ar' ? category.nameAr : category.nameEn,
     description:
       locale === 'ar' ? category.descriptionAr : category.descriptionEn,
+    alternates: await localeAlternates(`/categories/${slug}`, locale),
   };
 }
 

@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { routing } from '@/i18n/routing';
+import { localeAlternates } from '@/lib/seo';
 import '../globals.css';
 
 // Arabic UI face: full Arabic coverage, 100–700 weights, engineered for
@@ -51,6 +52,7 @@ export async function generateMetadata({
   return {
     title: t('title'),
     description: t('description'),
+    alternates: await localeAlternates('/', locale),
   };
 }
 

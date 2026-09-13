@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { Container } from '@colina/ui';
 import { ContactForm } from '@/components/contact-form';
 import { routing } from '@/i18n/routing';
+import { localeAlternates } from '@/lib/seo';
 
 // Static page reusing the shared ContactForm — submission wiring is Phase 8.
 // No DB read, so no `revalidate` needed.
@@ -21,6 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: t('heading'),
     description: t('subheading'),
+    alternates: await localeAlternates('/contact', locale),
   };
 }
 

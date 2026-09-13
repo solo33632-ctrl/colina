@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { Card, Container } from '@colina/ui';
 import { routing } from '@/i18n/routing';
+import { localeAlternates } from '@/lib/seo';
 
 // Static placeholder copy — no DB read, so no `revalidate` needed.
 // Real copy arrives with Phase 0 content.
@@ -20,6 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: t('heading'),
     description: t('intro1'),
+    alternates: await localeAlternates('/about', locale),
   };
 }
 

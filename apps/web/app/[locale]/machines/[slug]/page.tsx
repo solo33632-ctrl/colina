@@ -8,6 +8,7 @@ import { ImageWithFallback } from '@/components/image-with-fallback';
 import { MachineCard } from '@/components/machine-card';
 import { Link } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
+import { absoluteImageUrl, localeAlternates, serializeJsonLd } from '@/lib/seo';
 
 // Interim freshness: revalidate DB-driven content hourly (see agent.md).
 export const revalidate = 3600;
@@ -38,6 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: locale === 'ar' ? machine.nameAr : machine.nameEn,
     description:
       locale === 'ar' ? machine.shortDescriptionAr : machine.shortDescriptionEn,
+    alternates: await localeAlternates(`/machines/${slug}`, locale),
   };
 }
 
@@ -77,8 +79,29 @@ export default async function MachineDetailPage({ params }: Props) {
   const categoryName =
     locale === 'ar' ? machine.category.nameAr : machine.category.nameEn;
 
+  // Product structured data WITHOUT offers/reviews: these are B2B machines
+  // sold by quote (no prices, no ratings). Google's product rich results
+  // require valid Offer data — inventing prices would be spam, so the
+  // markup stays offer-less (valid schema.org, no rich-result claim).
+  const { canonical } = await localeAlternates(`/machines/${slug}`, locale);
+  const firstImage = absoluteImageUrl(machine.images[0]?.url ?? null);
+  const productJsonLd = serializeJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name,
+    description: shortDescription,
+    ...(firstImage ? { image: firstImage } : {}),
+    category: categoryName,
+    brand: { '@type': 'Brand', name: 'Colina' },
+    url: canonical,
+  });
+
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: productJsonLd }}
+      />
       <Container className="py-16">
         <p className="text-sm text-stone-500">
           {t('categoryLabel')}:{' '}

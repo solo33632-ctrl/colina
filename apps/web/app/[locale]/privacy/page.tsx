@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { Card, Container } from '@colina/ui';
 import { routing } from '@/i18n/routing';
+import { localeAlternates } from '@/lib/seo';
 
 // Placeholder draft only — must be reviewed by a lawyer before go-live.
 // No DB read, so no `revalidate` needed.
@@ -28,6 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: t('heading'),
     description: t('draftText'),
+    alternates: await localeAlternates('/privacy', locale),
   };
 }
 

@@ -38,7 +38,9 @@ export async function SiteFooter() {
         <p className="mt-4 text-center text-sm text-stone-500">
           © {new Date().getFullYear()} {site('name')} — {t('rights')}
         </p>
-        <p className="mt-1 text-center text-xs text-stone-400">
+        {/* text-stone-500 (not 400): 12px de-emphasized text still needs
+            4.5:1 contrast — Lighthouse flagged stone-400 (2.52:1). */}
+        <p className="mt-1 text-center text-xs text-stone-500">
           {site('tagline')}
         </p>
       </Container>

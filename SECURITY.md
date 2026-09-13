@@ -9,6 +9,17 @@ Rules for adding entries: package + version range, GHSA link(s), why the
 fix wasn't applied, why exposure is considered acceptable, and the
 re-audit trigger.
 
+## Phase 13 re-audit outcome (2026-09-12)
+
+- `prisma@latest` is still a release candidate (`8.0.0-rc.14`);
+  `@prisma/client@latest` is `7.10.0` (already used). No stable release
+  fixes the `deepmerge-ts`/`mysql2` transitive ranges — both exceptions
+  below stand unchanged.
+- `next-auth` is still `4.24.15` with the same `nodemailer@^7.0.7`
+  optional peer — the v10 override stays.
+- Fresh `npm audit`: exactly the 4 accepted highs, nothing new across
+  12 phases of dependency additions.
+
 ## Accepted exceptions
 
 ### 1. `deepmerge-ts <8.0.0` via Prisma CLI (accepted in Phase 2)
@@ -96,3 +107,20 @@ platform-specific binary — the standard napi-rs/esbuild pattern):
   production (refuse), fail-open with a warning only in non-production
   (`apps/web/lib/request-origin.ts`). No fix needed — just ensure the var
   is always set in production (Phase 16 checklist).
+
+## Backup / export strategy (planned — needs real hosting, Phase 16)
+
+No real database exists yet (only throwaway local clusters), so this is
+a checklist for Phase 16, not an implementation:
+
+- Automated daily `pg_dump` (custom format) of the production Postgres
+  (Neon/Supabase per plan.md), retained 30 days, stored encrypted in an
+  account separate from the database host.
+- Point-in-time recovery enabled on the provider as the primary path;
+  dumps are the portable fallback (provider exit, region loss).
+- Quarterly restore drill to a scratch database (an untested backup is
+  not a backup) + `prisma migrate` replay check from zero.
+- Media (Phase 16 storage backend) needs its own versioned-bucket /
+  lifecycle policy — DB dumps don't cover uploaded files.
+- Document who can trigger a restore and the expected RTO/RPO before
+  go-live.

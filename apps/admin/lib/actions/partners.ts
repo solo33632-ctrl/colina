@@ -10,7 +10,7 @@ import { partnerInputSchema } from '../schemas';
 const SERVER_MESSAGES = {
   nameAr: 'Arabic name must be at least 2 characters.',
   nameEn: 'English name must be at least 2 characters.',
-  logo: 'Logo URL must not be empty.',
+  logo: 'Logo must be an absolute http(s) URL.',
 };
 
 export async function createPartner(

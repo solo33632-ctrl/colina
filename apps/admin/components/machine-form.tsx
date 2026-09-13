@@ -40,8 +40,9 @@ const MESSAGES = {
   descriptionEn: 'English description must be at least 10 characters.',
   specsAr: 'Arabic specs must not be empty.',
   specsEn: 'English specs must not be empty.',
-  imageUrl: 'Image URL must not be empty.',
+  imageUrl: 'Image URL must be an absolute http(s) URL.',
   imagePosition: 'Image position must be 0 or higher.',
+  datasheetUrl: 'Datasheet URL must be an absolute http(s) URL or empty.',
 };
 
 export function MachineForm({

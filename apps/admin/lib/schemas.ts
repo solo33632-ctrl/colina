@@ -44,12 +44,46 @@ const slugRule = (message: string) =>
     .min(2, { error: message })
     .regex(/^[a-z0-9-]+$/, { error: message });
 
-export type CategoryFieldMessages = {
+// Stored URLs render into <img src> / <a href> on the public site, so only
+// absolute http(s) URLs are accepted — javascript:, data:, etc. are
+// rejected at validation time (XSS / protocol-smuggling hardening,
+// Phase 13). Pre-existing relative seed paths predate this rule and are
+// grandfathered data, not new input.
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+export function optionalHttpUrl(message: string) {
+  return z
+    .string()
+    .optional()
+    .refine(
+      (value) => value === undefined || value === '' || isHttpUrl(value),
+      {
+        error: message,
+      }
+    );
+}
+
+export function requiredHttpUrl(message: string) {
+  return z.string().refine((value) => isHttpUrl(value), { error: message });
+}
+
+type CategoryBaseMessages = {
   nameAr: string;
   nameEn: string;
   slug: string;
   descriptionAr: string;
   descriptionEn: string;
+};
+
+export type CategoryFieldMessages = CategoryBaseMessages & {
+  image: string;
 };
 
 export function categoryInputSchema(messages: CategoryFieldMessages) {
@@ -61,13 +95,13 @@ export function categoryInputSchema(messages: CategoryFieldMessages) {
     descriptionEn: z.string().min(10, { error: messages.descriptionEn }),
     // Plain URL text for now (no shared filesystem/storage yet — replace
     // with a real upload experience once Phase 16 picks a backend).
-    image: z.string().optional(),
+    image: optionalHttpUrl(messages.image),
   });
 }
 
 export type CategoryInput = z.infer<ReturnType<typeof categoryInputSchema>>;
 
-export type MachineFieldMessages = CategoryFieldMessages & {
+export type MachineFieldMessages = CategoryBaseMessages & {
   categoryId: string;
   shortDescriptionAr: string;
   shortDescriptionEn: string;
@@ -75,6 +109,7 @@ export type MachineFieldMessages = CategoryFieldMessages & {
   specsEn: string;
   imageUrl: string;
   imagePosition: string;
+  datasheetUrl: string;
 };
 
 export function machineInputSchema(messages: MachineFieldMessages) {
@@ -93,10 +128,10 @@ export function machineInputSchema(messages: MachineFieldMessages) {
     descriptionEn: z.string().min(10, { error: messages.descriptionEn }),
     specsAr: z.string().min(1, { error: messages.specsAr }),
     specsEn: z.string().min(1, { error: messages.specsEn }),
-    datasheetUrl: z.string().optional(),
+    datasheetUrl: optionalHttpUrl(messages.datasheetUrl),
     images: z.array(
       z.object({
-        url: z.string().min(1, { error: messages.imageUrl }),
+        url: requiredHttpUrl(messages.imageUrl),
         position: z.number().int().min(0, { error: messages.imagePosition }),
       })
     ),
@@ -118,7 +153,7 @@ export function partnerInputSchema(messages: PartnerFieldMessages) {
     nameEn: z.string().min(2, { error: messages.nameEn }),
     // Plain URL text for now (same interim pattern as category images —
     // real uploads arrive once Phase 16 picks a storage backend).
-    logo: z.string().min(1, { error: messages.logo }),
+    logo: requiredHttpUrl(messages.logo),
   });
 }
 
@@ -158,6 +193,7 @@ export type NewsFieldMessages = {
   titleEn: string;
   bodyAr: string;
   bodyEn: string;
+  image: string;
   publishedAt: string;
 };
 
@@ -168,7 +204,7 @@ export function newsInputSchema(messages: NewsFieldMessages) {
     titleEn: z.string().min(2, { error: messages.titleEn }),
     bodyAr: z.string().min(10, { error: messages.bodyAr }),
     bodyEn: z.string().min(10, { error: messages.bodyEn }),
-    image: z.string().optional(),
+    image: optionalHttpUrl(messages.image),
     // YYYY-MM-DD from a date input; converted to DateTime server-side.
     publishedAt: z
       .string()

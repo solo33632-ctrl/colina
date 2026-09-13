@@ -21,6 +21,7 @@ const MESSAGES = {
   titleEn: 'English title must be at least 2 characters.',
   bodyAr: 'Arabic body must be at least 10 characters.',
   bodyEn: 'English body must be at least 10 characters.',
+  image: 'Image must be an absolute http(s) URL or empty.',
   publishedAt: 'Published date must be a valid YYYY-MM-DD date.',
 };
 

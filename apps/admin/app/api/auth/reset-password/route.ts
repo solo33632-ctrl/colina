@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import argon2 from 'argon2';
 import { prisma } from '@colina/db';
+import {
+  getClientIp,
+  PASSWORD_RESET_RATE_LIMIT,
+  rateLimitCheck,
+} from '@/lib/rate-limit';
 import { resetPasswordInputSchema } from '@/lib/schemas';
 
 export async function POST(req: NextRequest) {
@@ -12,6 +17,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { ok: false, error: 'invalid_json' },
       { status: 400 }
+    );
+  }
+
+  // Same tight bucket as forgot-password: tokens are unguessable (256-bit)
+  // so this is volumetric-abuse protection, not brute-force defense.
+  const retryAfter = rateLimitCheck(
+    `reset:${getClientIp(req.headers)}`,
+    PASSWORD_RESET_RATE_LIMIT
+  );
+  if (retryAfter > 0) {
+    return NextResponse.json(
+      { ok: false, error: 'rate_limited' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } }
     );
   }
 

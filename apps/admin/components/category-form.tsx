@@ -21,6 +21,7 @@ const MESSAGES = {
   slug: 'Slug must be at least 2 lowercase letters, numbers or dashes.',
   descriptionAr: 'Arabic description must be at least 10 characters.',
   descriptionEn: 'English description must be at least 10 characters.',
+  image: 'Image must be an absolute http(s) URL or empty.',
 };
 
 export function CategoryForm({

@@ -6,7 +6,7 @@
   "main": "./index.ts",
   "types": "./index.ts",
   "scripts": {
-    "generate": "prisma generate",
+    "generate": "npx prisma generate",
     "lint": "tsc --noEmit"
   },
   "devDependencies": {

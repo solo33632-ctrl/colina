@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "npm run generate --workspace=@colina/db",
     "dev:web": "npm run dev --workspace=@colina/web",
     "dev:admin": "npm run dev --workspace=@colina/admin",
     "build": "npm run build --workspaces --if-present",

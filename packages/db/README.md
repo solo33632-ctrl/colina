@@ -15,9 +15,21 @@ cp .env.example .env
 # edit DATABASE_URL, then from packages/db:
 npx prisma migrate dev   # apply migrations (runs the seed afterwards)
 npx prisma db seed       # re-run the seed any time (idempotent upserts)
-npx prisma generate      # regenerate the client after schema changes
 npx prisma validate      # validate the schema without a database
 ```
+
+The generated client (`prisma/generated/`, gitignored) regenerates
+automatically via the root `postinstall` hook on every `npm install` —
+including clean clones and Vercel builds. Run `npx prisma generate`
+manually only after editing `schema.prisma` mid-session, when
+`node_modules` isn't being reinstalled.
+
+Prerequisite: `DATABASE_URL` must be set (even to the `.env.example`
+placeholder) before `npm install`, because Prisma 7 resolves it from
+`prisma.config.ts` even for offline generation — without it,
+postinstall fails loudly instead of silently leaving a broken client.
+On Vercel this means the variable must exist in the project environment,
+not just at runtime.
 
 `DATABASE_URL` must also be set for `prisma format`/`generate` (Prisma 7
 reads it from `prisma.config.ts` even for offline commands) — any value

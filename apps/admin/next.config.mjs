@@ -1,10 +1,15 @@
 // Same policy as apps/web except `frame-src 'none'`: the admin panel
 // embeds no iframes at all, so nothing needs framing permission. See
 // apps/web/next.config.mjs for the CSP rationale (unsafe-inline scripts,
-// no upgrade-insecure-requests).
+// dev-only unsafe-eval for React dev-mode debugging, no
+// upgrade-insecure-requests). Production builds never ship 'unsafe-eval'.
+const scriptSrc =
+  process.env.NODE_ENV === 'production'
+    ? "'self' 'unsafe-inline'"
+    : "'self' 'unsafe-inline' 'unsafe-eval'";
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src ${scriptSrc}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",

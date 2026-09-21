@@ -93,8 +93,8 @@ export function categoryInputSchema(messages: CategoryFieldMessages) {
     slug: slugRule(messages.slug),
     descriptionAr: z.string().min(10, { error: messages.descriptionAr }),
     descriptionEn: z.string().min(10, { error: messages.descriptionEn }),
-    // Plain URL text for now (no shared filesystem/storage yet — replace
-    // with a real upload experience once Phase 16 picks a backend).
+    // Cloudinary uploads store their delivered secure URL here; pasted
+    // URLs follow the same absolute-http(s) rule.
     image: optionalHttpUrl(messages.image),
   });
 }
@@ -151,8 +151,8 @@ export function partnerInputSchema(messages: PartnerFieldMessages) {
   return z.object({
     nameAr: z.string().min(2, { error: messages.nameAr }),
     nameEn: z.string().min(2, { error: messages.nameEn }),
-    // Plain URL text for now (same interim pattern as category images —
-    // real uploads arrive once Phase 16 picks a storage backend).
+    // Uploaded logos land here as Cloudinary secure URLs (same rule as
+    // pasted URLs).
     logo: requiredHttpUrl(messages.logo),
   });
 }

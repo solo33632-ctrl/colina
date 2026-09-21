@@ -3,9 +3,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import { UploadField } from './upload-field';
 import { createNews, updateNews } from '@/lib/actions/news';
 import { newsInputSchema, type NewsInput } from '@/lib/schemas';
 
@@ -33,8 +34,11 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
 
   const {
     register,
+    control,
     handleSubmit,
     setError,
+    setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<NewsInput>({
     resolver: zodResolver(schema),
@@ -48,6 +52,8 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
       publishedAt: new Date().toISOString().slice(0, 10),
     },
   });
+
+  const imageValue = useWatch({ control, name: 'image' });
 
   async function onSubmit(values: NewsInput) {
     setFormError(null);
@@ -145,20 +151,23 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
         </Field>
         <Field
           id="news-image"
-          label="Image URL (optional)"
+          label="Image (optional)"
           error={errors.image?.message}
         >
-          <input
+          <UploadField
             id="news-image"
-            type="text"
-            autoComplete="off"
-            placeholder="https://… (real uploads arrive in Phase 16)"
-            className={inputClasses}
-            {...register('image')}
+            kind="image"
+            value={imageValue ?? ''}
+            onUploaded={(url) => {
+              setValue('image', url, {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
+              clearErrors('image');
+            }}
+            urlInputProps={register('image')}
           />
         </Field>
-        {/* TODO(Phase 16): replace the URL text input with a real upload
-            experience once a storage backend is picked. */}
         <Field
           id="news-published"
           label="Published date"

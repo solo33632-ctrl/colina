@@ -12,6 +12,7 @@
     "@colina/ui": "*",
     "@hookform/resolvers": "^5.9.1",
     "argon2": "^0.45.1",
+    "cloudinary": "^2.11.0",
     "next": "16.3.4",
     "next-auth": "^4.24.15",
     "nodemailer": "^10.0.9",

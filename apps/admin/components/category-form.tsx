@@ -3,9 +3,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import { UploadField } from './upload-field';
 import { createCategory, updateCategory } from '@/lib/actions/categories';
 import { categoryInputSchema, type CategoryInput } from '@/lib/schemas';
 
@@ -36,8 +37,11 @@ export function CategoryForm({
 
   const {
     register,
+    control,
     handleSubmit,
     setError,
+    setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<CategoryInput>({
     resolver: zodResolver(schema),
@@ -50,6 +54,8 @@ export function CategoryForm({
       image: '',
     },
   });
+
+  const imageValue = useWatch({ control, name: 'image' });
 
   async function onSubmit(values: CategoryInput) {
     setFormError(null);
@@ -147,22 +153,23 @@ export function CategoryForm({
         </Field>
         <Field
           id="cat-image"
-          label="Image URL (optional)"
+          label="Image (optional)"
           error={errors.image?.message}
         >
-          <input
+          <UploadField
             id="cat-image"
-            type="text"
-            autoComplete="off"
-            placeholder="https://… (real uploads arrive in Phase 16)"
-            className={inputClasses}
-            {...register('image')}
+            kind="image"
+            value={imageValue ?? ''}
+            onUploaded={(url) => {
+              setValue('image', url, {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
+              clearErrors('image');
+            }}
+            urlInputProps={register('image')}
           />
         </Field>
-        {/* TODO(Phase 16): replace the URL text input with a real upload
-            experience once a storage backend is picked (S3 / Cloudinary /
-            Supabase Storage). Admin and web deploy separately with no
-            shared filesystem, so a local upload now would be throwaway. */}
         {formError ? (
           <p role="alert" className="text-sm font-medium text-red-700">
             {formError}

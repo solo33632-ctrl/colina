@@ -3,9 +3,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import { UploadField } from './upload-field';
 import { createPartner, updatePartner } from '@/lib/actions/partners';
 import { partnerInputSchema, type PartnerInput } from '@/lib/schemas';
 
@@ -33,13 +34,18 @@ export function PartnerForm({
 
   const {
     register,
+    control,
     handleSubmit,
     setError,
+    setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<PartnerInput>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues ?? { nameAr: '', nameEn: '', logo: '' },
   });
+
+  const logoValue = useWatch({ control, name: 'logo' });
 
   async function onSubmit(values: PartnerInput) {
     setFormError(null);
@@ -99,19 +105,21 @@ export function PartnerForm({
             {...register('nameAr')}
           />
         </Field>
-        <Field id="partner-logo" label="Logo URL" error={errors.logo?.message}>
-          <input
+        <Field id="partner-logo" label="Logo" error={errors.logo?.message}>
+          <UploadField
             id="partner-logo"
-            type="text"
-            autoComplete="off"
-            placeholder="https://… (real uploads arrive in Phase 16)"
-            className={inputClasses}
-            {...register('logo')}
+            kind="image"
+            value={logoValue ?? ''}
+            onUploaded={(url) => {
+              setValue('logo', url, {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
+              clearErrors('logo');
+            }}
+            urlInputProps={register('logo')}
           />
         </Field>
-        {/* TODO(Phase 16): replace the URL text input with a real upload
-            experience once a storage backend is picked (S3 / Cloudinary /
-            Supabase Storage). */}
         {formError ? (
           <p role="alert" className="text-sm font-medium text-red-700">
             {formError}

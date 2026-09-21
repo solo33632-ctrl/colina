@@ -3,9 +3,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import { UploadField } from './upload-field';
 import { createMachine, updateMachine } from '@/lib/actions/machines';
 import { machineInputSchema, type MachineInput } from '@/lib/schemas';
 
@@ -62,6 +63,8 @@ export function MachineForm({
     control,
     handleSubmit,
     setError,
+    setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<MachineInput>({
     resolver: zodResolver(schema),
@@ -87,6 +90,9 @@ export function MachineForm({
     append: appendImage,
     remove: removeImage,
   } = useFieldArray({ control, name: 'images' });
+
+  const datasheetValue = useWatch({ control, name: 'datasheetUrl' });
+  const imagesValue = useWatch({ control, name: 'images' });
 
   // Related-machine candidates exclude the machine being edited (no
   // self-links); the server drops them defensively too.
@@ -264,22 +270,23 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-datasheet"
-          label="Datasheet URL (optional)"
+          label="Datasheet (optional, PDF)"
           error={errors.datasheetUrl?.message}
         >
-          <input
+          <UploadField
             id="machine-datasheet"
-            type="text"
-            autoComplete="off"
-            placeholder="https://… (real uploads arrive in Phase 16)"
-            className={inputClasses}
-            {...register('datasheetUrl')}
+            kind="datasheet"
+            value={datasheetValue ?? ''}
+            onUploaded={(url) => {
+              setValue('datasheetUrl', url, {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
+              clearErrors('datasheetUrl');
+            }}
+            urlInputProps={register('datasheetUrl')}
           />
         </Field>
-        {/* TODO(Phase 16): replace URL text inputs with a real upload
-            experience once a storage backend is picked (S3 / Cloudinary /
-            Supabase Storage). No shared filesystem exists between the two
-            deployments, so a local upload now would be throwaway. */}
         <fieldset>
           <legend className="mb-1 block text-sm font-medium text-stone-700">
             Images (ordered by position)
@@ -287,13 +294,21 @@ export function MachineForm({
           <ul className="grid gap-3">
             {imageFields.map((field, index) => (
               <li key={field.id} className="flex items-start gap-2">
-                <input
-                  type="text"
-                  placeholder="Image URL"
-                  aria-label={`Image ${index + 1} URL`}
-                  className={inputClasses}
-                  {...register(`images.${index}.url`)}
-                />
+                <div className="min-w-0 flex-1">
+                  <UploadField
+                    id={`machine-image-${index}`}
+                    kind="image"
+                    value={imagesValue?.[index]?.url ?? ''}
+                    onUploaded={(url) => {
+                      setValue(`images.${index}.url`, url, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                      clearErrors(`images.${index}.url`);
+                    }}
+                    urlInputProps={register(`images.${index}.url`)}
+                  />
+                </div>
                 <input
                   type="number"
                   min={0}
@@ -304,6 +319,7 @@ export function MachineForm({
                   })}
                 />
                 <Button
+                  type="button"
                   variant="secondary"
                   size="sm"
                   onClick={() => removeImage(index)}
@@ -320,6 +336,7 @@ export function MachineForm({
           ) : null}
           <div className="mt-2">
             <Button
+              type="button"
               variant="secondary"
               size="sm"
               onClick={() =>

@@ -1,13 +1,21 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { DeleteButton } from '@/components/delete-button';
 import { PartnerForm } from '@/components/partner-form';
 import { deletePartner } from '@/lib/actions/partners';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'Edit partner — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'Partners', 'form.editTitle');
+}
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,6 +23,7 @@ type Props = {
 
 export default async function EditPartnerPage({ params }: Props) {
   const { id } = await params;
+  const t = await getTranslations('Partners');
   const partner = await prisma.partner.findUnique({ where: { id } });
   if (!partner) {
     notFound();
@@ -33,8 +42,8 @@ export default async function EditPartnerPage({ params }: Props) {
           }}
         />
         <DeleteButton
-          label="Delete partner"
-          confirmMessage="Delete this partner? This cannot be undone."
+          label={t('delete.button')}
+          confirmMessage={t('delete.confirm')}
           redirectTo="/partners"
           onDelete={() => deletePartner(partner.id)}
         />

@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -8,6 +9,7 @@ import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { UploadField } from './upload-field';
 import { createNews, updateNews } from '@/lib/actions/news';
+import { newsMessages } from '@/lib/actions/validation-messages';
 import { newsInputSchema, type NewsInput } from '@/lib/schemas';
 
 type NewsFormProps = {
@@ -16,21 +18,14 @@ type NewsFormProps = {
   defaultValues?: NewsInput;
 };
 
-const MESSAGES = {
-  slug: 'Slug must be at least 2 lowercase letters, numbers or dashes.',
-  titleAr: 'Arabic title must be at least 2 characters.',
-  titleEn: 'English title must be at least 2 characters.',
-  bodyAr: 'Arabic body must be at least 10 characters.',
-  bodyEn: 'English body must be at least 10 characters.',
-  image: 'Image must be an absolute http(s) URL or empty.',
-  publishedAt: 'Published date must be a valid YYYY-MM-DD date.',
-};
-
 export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
+  const t = useTranslations('News');
+  const common = useTranslations('Common');
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
-  const schema = useMemo(() => newsInputSchema(MESSAGES), []);
+  // Same message namespace the Server Action validates against.
+  const schema = useMemo(() => newsInputSchema(newsMessages(t)), [t]);
 
   const {
     register,
@@ -76,15 +71,17 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
     }
     setFormError(
       result.error === 'slug_taken'
-        ? 'That slug is already used by another post.'
+        ? t('slugTaken')
         : result.error === 'unauthorized'
-          ? 'Your session expired. Log in again.'
+          ? common('errors.sessionExpired')
           : 'Saving failed. Try again.'
     );
   }
 
   return (
-    <Card title={mode === 'create' ? 'New post' : 'Edit post'}>
+    <Card
+      title={mode === 'create' ? t('form.createTitle') : t('form.editTitle')}
+    >
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
@@ -92,7 +89,7 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
       >
         <Field
           id="news-title-en"
-          label="Title (English)"
+          label={t('form.titleEn')}
           error={errors.titleEn?.message}
         >
           <input
@@ -104,7 +101,7 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
         </Field>
         <Field
           id="news-title-ar"
-          label="Title (Arabic)"
+          label={t('form.titleAr')}
           error={errors.titleAr?.message}
         >
           <input
@@ -115,7 +112,11 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
             {...register('titleAr')}
           />
         </Field>
-        <Field id="news-slug" label="Slug" error={errors.slug?.message}>
+        <Field
+          id="news-slug"
+          label={t('form.slug')}
+          error={errors.slug?.message}
+        >
           <input
             id="news-slug"
             type="text"
@@ -126,7 +127,7 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
         </Field>
         <Field
           id="news-body-en"
-          label="Body (English)"
+          label={t('form.bodyEn')}
           error={errors.bodyEn?.message}
         >
           <textarea
@@ -138,7 +139,7 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
         </Field>
         <Field
           id="news-body-ar"
-          label="Body (Arabic)"
+          label={t('form.bodyAr')}
           error={errors.bodyAr?.message}
         >
           <textarea
@@ -151,7 +152,7 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
         </Field>
         <Field
           id="news-image"
-          label="Image (optional)"
+          label={t('form.image')}
           error={errors.image?.message}
         >
           <UploadField
@@ -170,7 +171,7 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
         </Field>
         <Field
           id="news-published"
-          label="Published date"
+          label={t('form.publishedAt')}
           error={errors.publishedAt?.message}
         >
           <input
@@ -187,7 +188,7 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
         ) : null}
         <div>
           <Button type="submit" disabled={isSubmitting}>
-            {mode === 'create' ? 'Create post' : 'Save changes'}
+            {mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')}
           </Button>
         </div>
       </form>

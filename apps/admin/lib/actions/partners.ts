@@ -1,17 +1,18 @@
 'use server';
 
 import { prisma } from '@colina/db';
+import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
 import { revalidateWebPaths } from '../revalidate-web';
+import { partnerMessages } from './validation-messages';
 import { partnerInputSchema } from '../schemas';
 
-// Generic English messages for the action contract (see Phase 10
-// categories.ts for the convention).
-const SERVER_MESSAGES = {
-  nameAr: 'Arabic name must be at least 2 characters.',
-  nameEn: 'English name must be at least 2 characters.',
-  logo: 'Logo must be an absolute http(s) URL.',
-};
+// Validation messages come from the message files, in the admin's current
+// language (see `validation-messages.ts`).
+async function parse(input: unknown) {
+  const t = await getTranslations('Partners');
+  return partnerInputSchema(partnerMessages(t)).safeParse(input);
+}
 
 export async function createPartner(
   input: unknown
@@ -21,7 +22,7 @@ export async function createPartner(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = partnerInputSchema(SERVER_MESSAGES).safeParse(input);
+  const parsed = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -70,7 +71,7 @@ export async function updatePartner(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = partnerInputSchema(SERVER_MESSAGES).safeParse(input);
+  const parsed = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,

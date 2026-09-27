@@ -1,12 +1,14 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { createService, updateService } from '@/lib/actions/services';
+import { serviceMessages } from '@/lib/actions/validation-messages';
 import { serviceInputSchema, type ServiceInput } from '@/lib/schemas';
 
 type ServiceFormProps = {
@@ -15,26 +17,18 @@ type ServiceFormProps = {
   defaultValues?: ServiceInput;
 };
 
-const MESSAGES = {
-  slug: 'Slug must be at least 2 lowercase letters, numbers or dashes.',
-  titleAr: 'Arabic title must be at least 2 characters.',
-  titleEn: 'English title must be at least 2 characters.',
-  descriptionAr: 'Arabic description must be at least 10 characters.',
-  descriptionEn: 'English description must be at least 10 characters.',
-  scopeAr: 'Arabic scope must be at least 10 characters.',
-  scopeEn: 'English scope must be at least 10 characters.',
-  icon: 'Icon must not be empty.',
-};
-
 export function ServiceForm({
   mode,
   serviceId,
   defaultValues,
 }: ServiceFormProps) {
+  const t = useTranslations('Services');
+  const common = useTranslations('Common');
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
-  const schema = useMemo(() => serviceInputSchema(MESSAGES), []);
+  // Same message namespace the Server Action validates against.
+  const schema = useMemo(() => serviceInputSchema(serviceMessages(t)), [t]);
 
   const {
     register,
@@ -76,15 +70,17 @@ export function ServiceForm({
     }
     setFormError(
       result.error === 'slug_taken'
-        ? 'That slug is already used by another service.'
+        ? t('slugTaken')
         : result.error === 'unauthorized'
-          ? 'Your session expired. Log in again.'
+          ? common('errors.sessionExpired')
           : 'Saving failed. Try again.'
     );
   }
 
   return (
-    <Card title={mode === 'create' ? 'New service' : 'Edit service'}>
+    <Card
+      title={mode === 'create' ? t('form.createTitle') : t('form.editTitle')}
+    >
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
@@ -92,7 +88,7 @@ export function ServiceForm({
       >
         <Field
           id="service-title-en"
-          label="Title (English)"
+          label={t('form.titleEn')}
           error={errors.titleEn?.message}
         >
           <input
@@ -104,7 +100,7 @@ export function ServiceForm({
         </Field>
         <Field
           id="service-title-ar"
-          label="Title (Arabic)"
+          label={t('form.titleAr')}
           error={errors.titleAr?.message}
         >
           <input
@@ -115,7 +111,11 @@ export function ServiceForm({
             {...register('titleAr')}
           />
         </Field>
-        <Field id="service-slug" label="Slug" error={errors.slug?.message}>
+        <Field
+          id="service-slug"
+          label={t('form.slug')}
+          error={errors.slug?.message}
+        >
           <input
             id="service-slug"
             type="text"
@@ -126,7 +126,7 @@ export function ServiceForm({
         </Field>
         <Field
           id="service-desc-en"
-          label="Description (English)"
+          label={t('form.descriptionEn')}
           error={errors.descriptionEn?.message}
         >
           <textarea
@@ -138,7 +138,7 @@ export function ServiceForm({
         </Field>
         <Field
           id="service-desc-ar"
-          label="Description (Arabic)"
+          label={t('form.descriptionAr')}
           error={errors.descriptionAr?.message}
         >
           <textarea
@@ -151,7 +151,7 @@ export function ServiceForm({
         </Field>
         <Field
           id="service-scope-en"
-          label="Scope (English)"
+          label={t('form.scopeEn')}
           error={errors.scopeEn?.message}
         >
           <textarea
@@ -163,7 +163,7 @@ export function ServiceForm({
         </Field>
         <Field
           id="service-scope-ar"
-          label="Scope (Arabic)"
+          label={t('form.scopeAr')}
           error={errors.scopeAr?.message}
         >
           <textarea
@@ -174,12 +174,16 @@ export function ServiceForm({
             {...register('scopeAr')}
           />
         </Field>
-        <Field id="service-icon" label="Icon name" error={errors.icon?.message}>
+        <Field
+          id="service-icon"
+          label={t('form.icon')}
+          error={errors.icon?.message}
+        >
           <input
             id="service-icon"
             type="text"
             autoComplete="off"
-            placeholder="e.g. wrench (plain text, no picker yet)"
+            placeholder={t('form.iconPlaceholder')}
             className={inputClasses}
             {...register('icon')}
           />
@@ -191,7 +195,7 @@ export function ServiceForm({
         ) : null}
         <div>
           <Button type="submit" disabled={isSubmitting}>
-            {mode === 'create' ? 'Create service' : 'Save changes'}
+            {mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')}
           </Button>
         </div>
       </form>

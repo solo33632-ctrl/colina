@@ -1,9 +1,16 @@
+import type { Metadata } from 'next';
 import { Container } from '@colina/ui';
 import { NewsForm } from '@/components/news-form';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'New post — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'News', 'form.createTitle');
+}
 
 export default function NewNewsPage() {
   return (

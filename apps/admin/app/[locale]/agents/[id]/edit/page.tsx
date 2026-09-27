@@ -1,13 +1,21 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { AgentForm } from '@/components/agent-form';
 import { DeleteButton } from '@/components/delete-button';
 import { deleteAgent } from '@/lib/actions/agents';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'Edit agent — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'Agents', 'form.editTitle');
+}
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,6 +23,7 @@ type Props = {
 
 export default async function EditAgentPage({ params }: Props) {
   const { id } = await params;
+  const t = await getTranslations('Agents');
   const agent = await prisma.agent.findUnique({ where: { id } });
   if (!agent) {
     notFound();
@@ -38,8 +47,8 @@ export default async function EditAgentPage({ params }: Props) {
           }}
         />
         <DeleteButton
-          label="Delete agent"
-          confirmMessage="Delete this agent? This cannot be undone."
+          label={t('delete.button')}
+          confirmMessage={t('delete.confirm')}
           redirectTo="/agents"
           onDelete={() => deleteAgent(agent.id)}
         />

@@ -1,13 +1,21 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { DeleteButton } from '@/components/delete-button';
 import { NewsForm } from '@/components/news-form';
 import { deleteNews } from '@/lib/actions/news';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'Edit post — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'News', 'form.editTitle');
+}
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,6 +23,7 @@ type Props = {
 
 export default async function EditNewsPage({ params }: Props) {
   const { id } = await params;
+  const t = await getTranslations('News');
   const post = await prisma.newsPost.findUnique({ where: { id } });
   if (!post) {
     notFound();
@@ -37,8 +46,8 @@ export default async function EditNewsPage({ params }: Props) {
           }}
         />
         <DeleteButton
-          label="Delete post"
-          confirmMessage="Delete this post? This cannot be undone."
+          label={t('delete.button')}
+          confirmMessage={t('delete.confirm')}
           redirectTo="/news"
           onDelete={() => deleteNews(post.id)}
         />

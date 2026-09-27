@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -8,6 +9,7 @@ import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { UploadField } from './upload-field';
 import { createPartner, updatePartner } from '@/lib/actions/partners';
+import { partnerMessages } from '@/lib/actions/validation-messages';
 import { partnerInputSchema, type PartnerInput } from '@/lib/schemas';
 
 type PartnerFormProps = {
@@ -16,21 +18,18 @@ type PartnerFormProps = {
   defaultValues?: PartnerInput;
 };
 
-const MESSAGES = {
-  nameAr: 'Arabic name must be at least 2 characters.',
-  nameEn: 'English name must be at least 2 characters.',
-  logo: 'Logo must be an absolute http(s) URL.',
-};
-
 export function PartnerForm({
   mode,
   partnerId,
   defaultValues,
 }: PartnerFormProps) {
+  const t = useTranslations('Partners');
+  const common = useTranslations('Common');
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
-  const schema = useMemo(() => partnerInputSchema(MESSAGES), []);
+  // Same message namespace the Server Action validates against.
+  const schema = useMemo(() => partnerInputSchema(partnerMessages(t)), [t]);
 
   const {
     register,
@@ -68,13 +67,15 @@ export function PartnerForm({
     }
     setFormError(
       result.error === 'unauthorized'
-        ? 'Your session expired. Log in again.'
+        ? common('errors.sessionExpired')
         : 'Saving failed. Try again.'
     );
   }
 
   return (
-    <Card title={mode === 'create' ? 'New partner' : 'Edit partner'}>
+    <Card
+      title={mode === 'create' ? t('form.createTitle') : t('form.editTitle')}
+    >
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
@@ -82,7 +83,7 @@ export function PartnerForm({
       >
         <Field
           id="partner-name-en"
-          label="Name (English)"
+          label={t('form.nameEn')}
           error={errors.nameEn?.message}
         >
           <input
@@ -94,7 +95,7 @@ export function PartnerForm({
         </Field>
         <Field
           id="partner-name-ar"
-          label="Name (Arabic)"
+          label={t('form.nameAr')}
           error={errors.nameAr?.message}
         >
           <input
@@ -105,7 +106,11 @@ export function PartnerForm({
             {...register('nameAr')}
           />
         </Field>
-        <Field id="partner-logo" label="Logo" error={errors.logo?.message}>
+        <Field
+          id="partner-logo"
+          label={t('form.logo')}
+          error={errors.logo?.message}
+        >
           <UploadField
             id="partner-logo"
             kind="image"
@@ -127,7 +132,7 @@ export function PartnerForm({
         ) : null}
         <div>
           <Button type="submit" disabled={isSubmitting}>
-            {mode === 'create' ? 'Create partner' : 'Save changes'}
+            {mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')}
           </Button>
         </div>
       </form>

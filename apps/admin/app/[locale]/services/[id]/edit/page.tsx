@@ -1,13 +1,21 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { DeleteButton } from '@/components/delete-button';
 import { ServiceForm } from '@/components/service-form';
 import { deleteService } from '@/lib/actions/services';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'Edit service — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'Services', 'form.editTitle');
+}
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,6 +23,7 @@ type Props = {
 
 export default async function EditServicePage({ params }: Props) {
   const { id } = await params;
+  const t = await getTranslations('Services');
   const service = await prisma.maintenanceService.findUnique({
     where: { id },
   });
@@ -40,8 +49,8 @@ export default async function EditServicePage({ params }: Props) {
           }}
         />
         <DeleteButton
-          label="Delete service"
-          confirmMessage="Delete this service? This cannot be undone."
+          label={t('delete.button')}
+          confirmMessage={t('delete.confirm')}
           redirectTo="/services"
           onDelete={() => deleteService(service.id)}
         />

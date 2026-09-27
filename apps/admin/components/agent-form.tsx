@@ -1,12 +1,14 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { createAgent, updateAgent } from '@/lib/actions/agents';
+import { agentMessages } from '@/lib/actions/validation-messages';
 import { agentInputSchema, type AgentInput } from '@/lib/schemas';
 
 type AgentFormProps = {
@@ -15,16 +17,14 @@ type AgentFormProps = {
   defaultValues?: AgentInput;
 };
 
-const MESSAGES = {
-  countryAr: 'Arabic country must be at least 2 characters.',
-  countryEn: 'English country must be at least 2 characters.',
-};
-
 export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
+  const t = useTranslations('Agents');
+  const common = useTranslations('Common');
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
-  const schema = useMemo(() => agentInputSchema(MESSAGES), []);
+  // Same message namespace the Server Action validates against.
+  const schema = useMemo(() => agentInputSchema(agentMessages(t)), [t]);
 
   const {
     register,
@@ -66,13 +66,15 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
     }
     setFormError(
       result.error === 'unauthorized'
-        ? 'Your session expired. Log in again.'
+        ? common('errors.sessionExpired')
         : 'Saving failed. Try again.'
     );
   }
 
   return (
-    <Card title={mode === 'create' ? 'New agent' : 'Edit agent'}>
+    <Card
+      title={mode === 'create' ? t('form.createTitle') : t('form.editTitle')}
+    >
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
@@ -80,7 +82,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
       >
         <Field
           id="agent-country-en"
-          label="Country (English)"
+          label={t('form.countryEn')}
           error={errors.countryEn?.message}
         >
           <input
@@ -92,7 +94,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
         </Field>
         <Field
           id="agent-country-ar"
-          label="Country (Arabic)"
+          label={t('form.countryAr')}
           error={errors.countryAr?.message}
         >
           <input
@@ -103,7 +105,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
             {...register('countryAr')}
           />
         </Field>
-        <Field id="agent-city-en" label="City (English, optional)">
+        <Field id="agent-city-en" label={t('form.cityEn')}>
           <input
             id="agent-city-en"
             type="text"
@@ -111,7 +113,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
             {...register('cityEn')}
           />
         </Field>
-        <Field id="agent-city-ar" label="City (Arabic, optional)">
+        <Field id="agent-city-ar" label={t('form.cityAr')}>
           <input
             id="agent-city-ar"
             type="text"
@@ -120,7 +122,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
             {...register('cityAr')}
           />
         </Field>
-        <Field id="agent-address-en" label="Address (English, optional)">
+        <Field id="agent-address-en" label={t('form.addressEn')}>
           <input
             id="agent-address-en"
             type="text"
@@ -128,7 +130,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
             {...register('addressEn')}
           />
         </Field>
-        <Field id="agent-address-ar" label="Address (Arabic, optional)">
+        <Field id="agent-address-ar" label={t('form.addressAr')}>
           <input
             id="agent-address-ar"
             type="text"
@@ -137,7 +139,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
             {...register('addressAr')}
           />
         </Field>
-        <Field id="agent-phone" label="Phone (optional)">
+        <Field id="agent-phone" label={t('form.phone')}>
           <input
             id="agent-phone"
             type="tel"
@@ -146,7 +148,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
             {...register('phone')}
           />
         </Field>
-        <Field id="agent-email" label="Email (optional)">
+        <Field id="agent-email" label={t('form.email')}>
           <input
             id="agent-email"
             type="email"
@@ -162,7 +164,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
         ) : null}
         <div>
           <Button type="submit" disabled={isSubmitting}>
-            {mode === 'create' ? 'Create agent' : 'Save changes'}
+            {mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')}
           </Button>
         </div>
       </form>

@@ -1,21 +1,18 @@
 'use server';
 
 import { prisma } from '@colina/db';
+import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
 import { revalidateWebPaths } from '../revalidate-web';
+import { newsMessages } from './validation-messages';
 import { newsInputSchema } from '../schemas';
 
-// Generic English messages for the action contract (see Phase 10
-// categories.ts for the convention).
-const SERVER_MESSAGES = {
-  slug: 'Slug must be at least 2 lowercase letters, numbers or dashes.',
-  titleAr: 'Arabic title must be at least 2 characters.',
-  titleEn: 'English title must be at least 2 characters.',
-  bodyAr: 'Arabic body must be at least 10 characters.',
-  bodyEn: 'English body must be at least 10 characters.',
-  image: 'Image must be an absolute http(s) URL or empty.',
-  publishedAt: 'Published date must be a valid YYYY-MM-DD date.',
-};
+// Validation messages come from the message files, in the admin's current
+// language (see `validation-messages.ts`).
+async function parse(input: unknown) {
+  const t = await getTranslations('News');
+  return newsInputSchema(newsMessages(t)).safeParse(input);
+}
 
 function isUniqueViolation(error: unknown): boolean {
   return (
@@ -42,7 +39,7 @@ export async function createNews(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = newsInputSchema(SERVER_MESSAGES).safeParse(input);
+  const parsed = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -101,7 +98,7 @@ export async function updateNews(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = newsInputSchema(SERVER_MESSAGES).safeParse(input);
+  const parsed = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,

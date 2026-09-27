@@ -1,16 +1,18 @@
 'use server';
 
 import { prisma } from '@colina/db';
+import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
 import { revalidateWebPaths } from '../revalidate-web';
+import { agentMessages } from './validation-messages';
 import { agentInputSchema } from '../schemas';
 
-// Generic English messages for the action contract (see Phase 10
-// categories.ts for the convention).
-const SERVER_MESSAGES = {
-  countryAr: 'Arabic country must be at least 2 characters.',
-  countryEn: 'English country must be at least 2 characters.',
-};
+// Validation messages come from the message files, in the admin's current
+// language (see `validation-messages.ts`).
+async function parse(input: unknown) {
+  const t = await getTranslations('Agents');
+  return agentInputSchema(agentMessages(t)).safeParse(input);
+}
 
 // Prisma optional text columns accept undefined (skip) — empty form
 // strings normalize to null so "cleared" reads as cleared, not "".
@@ -29,7 +31,7 @@ export async function createAgent(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = agentInputSchema(SERVER_MESSAGES).safeParse(input);
+  const parsed = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -84,7 +86,7 @@ export async function updateAgent(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = agentInputSchema(SERVER_MESSAGES).safeParse(input);
+  const parsed = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,

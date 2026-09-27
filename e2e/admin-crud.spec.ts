@@ -1,27 +1,31 @@
 import { test, expect } from '@playwright/test';
+import {
+  ADMIN_URL,
+  ADMIN_EMAIL,
+  ADMIN_PASSWORD,
+  copyFor,
+  loginState,
+} from './admin-session';
 
-const ADMIN_URL = process.env.ADMIN_URL ?? 'http://localhost:3121';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
+const en = copyFor('en');
 const STAMP = `e2e-${Date.now().toString(36)}`;
 
-// Full category CRUD through the actual UI: form fills, real submits,
-// real confirmation dialog, and the has_machines block with a machine
-// attached first. Runs serially with the other specs (see config).
+// Full category CRUD through the actual UI: form fills, real submits, real
+// confirmation dialog, and the has_machines block with a machine attached
+// first. Runs serially with the other specs (see config).
 test.describe('category CRUD flow', () => {
   test.skip(!ADMIN_PASSWORD, 'ADMIN_PASSWORD env is required');
 
-  test.beforeEach(async ({ page }) => {
-    await page.goto(`${ADMIN_URL}/en/login`);
-    await page.getByLabel('Email').fill(ADMIN_EMAIL);
-    await page.getByLabel('Password').fill(ADMIN_PASSWORD);
-    await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/en`);
-  });
-
+  // The session is memoised across the whole run (see admin-session.ts), so
+  // this spec shares the sign-in the login spec already made rather than
+  // spending another attempt on the login rate limit.
   test('create, verify in list, edit, block delete with machine, delete all', async ({
-    page,
+    browser,
   }) => {
+    const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
+    const context = await browser.newContext({ storageState: state });
+    const page = await context.newPage();
+
     const catName = `E2E Category ${STAMP}`;
     const catSlug = `e2e-category-${STAMP}`;
 
@@ -105,5 +109,7 @@ test.describe('category CRUD flow', () => {
     await page.getByRole('button', { name: 'Delete category' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);
     await expect(page.getByText(`${catName} Renamed`)).toBeHidden();
+
+    await context.close();
   });
 });

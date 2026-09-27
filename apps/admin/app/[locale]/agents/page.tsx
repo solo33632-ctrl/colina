@@ -31,7 +31,7 @@ export default async function AgentsPage() {
             href={await getPathname({ locale, href: '/agents/new' })}
             size="sm"
           >
-            New agent
+            {t('new')}
           </Button>
         </div>
         {agents.length === 0 ? (

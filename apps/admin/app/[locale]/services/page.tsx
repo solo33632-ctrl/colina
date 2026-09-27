@@ -31,7 +31,7 @@ export default async function ServicesPage() {
             href={await getPathname({ locale, href: '/services/new' })}
             size="sm"
           >
-            New service
+            {t('new')}
           </Button>
         </div>
         {services.length === 0 ? (

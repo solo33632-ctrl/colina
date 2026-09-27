@@ -31,7 +31,7 @@ export default async function PartnersPage() {
             href={await getPathname({ locale, href: '/partners/new' })}
             size="sm"
           >
-            New partner
+            {t('new')}
           </Button>
         </div>
         {partners.length === 0 ? (

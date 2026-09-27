@@ -32,7 +32,7 @@ export default async function NewsPage() {
             href={await getPathname({ locale, href: '/news/new' })}
             size="sm"
           >
-            New post
+            {t('new')}
           </Button>
         </div>
         {posts.length === 0 ? (

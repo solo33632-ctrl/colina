@@ -1,10 +1,20 @@
+import type { Metadata } from 'next';
 import { prisma } from '@colina/db';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Card, Container } from '@colina/ui';
+import { Link } from '@/i18n/navigation';
 import { requireSuperAdmin } from '@/lib/admin-action';
+import { intlLocale } from '@/lib/format';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'Audit log — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'AuditLog', 'heading');
+}
 
 const PAGE_SIZE = 20;
 
@@ -13,6 +23,10 @@ type Props = {
 };
 
 export default async function AuditLogPage({ searchParams }: Props) {
+  const locale = await getLocale();
+  const t = await getTranslations('AuditLog');
+  const common = await getTranslations('Common');
+
   // First role gate in the project: editors get an explanatory page,
   // not a bare 403 (proxy.ts only checks for a session, not the role).
   const session = await requireSuperAdmin();
@@ -21,8 +35,8 @@ export default async function AuditLogPage({ searchParams }: Props) {
       <main>
         <Container className="max-w-2xl py-16">
           <Card
-            title="Not authorized"
-            description="The audit log is restricted to super admins. Your editor account cannot view this page."
+            title={t('notAuthorizedTitle')}
+            description={t('notAuthorizedDescription')}
           />
         </Container>
       </main>
@@ -46,9 +60,9 @@ export default async function AuditLogPage({ searchParams }: Props) {
   return (
     <main>
       <Container className="py-10">
-        <h1 className="text-2xl font-bold text-stone-900">Audit log</h1>
+        <h1 className="text-2xl font-bold text-stone-900">{t('heading')}</h1>
         {entries.length === 0 ? (
-          <Card className="mt-6" description="No audit entries yet." />
+          <Card className="mt-6" description={t('empty')} />
         ) : (
           <>
             <ul className="mt-6 grid gap-4">
@@ -56,14 +70,18 @@ export default async function AuditLogPage({ searchParams }: Props) {
                 <li key={entry.id}>
                   <Card>
                     <p className="font-semibold text-stone-900">
+                      {/* Stored codes, deliberately verbatim: the action and
+                          entity are an audit trail, and an operator matching
+                          them against the database needs them exact. */}
                       {entry.action}{' '}
                       <span className="font-normal text-stone-500">
                         {entry.entity}
                       </span>
                     </p>
                     <p className="mt-1 text-sm text-stone-500">
-                      {entry.adminUser?.email ?? '(deleted admin)'} ·{' '}
-                      {entry.createdAt.toLocaleString('en-GB')}
+                      {entry.adminUser?.email ?? t('deletedAdmin')}
+                      {common('separator')}
+                      {entry.createdAt.toLocaleString(intlLocale(locale))}
                     </p>
                   </Card>
                 </li>
@@ -71,27 +89,30 @@ export default async function AuditLogPage({ searchParams }: Props) {
             </ul>
             {totalPages > 1 ? (
               <nav
-                aria-label="Audit log pages"
+                aria-label={t('pagesLabel')}
                 className="mt-6 flex items-center justify-center gap-4"
               >
                 {safePage > 1 ? (
-                  <a
+                  <Link
                     href={`/audit-log?page=${safePage - 1}`}
                     className="rounded text-sm font-medium text-brand-700 hover:text-brand-800"
                   >
-                    Previous
-                  </a>
+                    {common('previous')}
+                  </Link>
                 ) : null}
                 <span className="text-sm text-stone-500">
-                  Page {safePage} of {totalPages}
+                  {common('pageOf', {
+                    current: safePage,
+                    total: totalPages,
+                  })}
                 </span>
                 {safePage < totalPages ? (
-                  <a
+                  <Link
                     href={`/audit-log?page=${safePage + 1}`}
                     className="rounded text-sm font-medium text-brand-700 hover:text-brand-800"
                   >
-                    Next
-                  </a>
+                    {common('next')}
+                  </Link>
                 ) : null}
               </nav>
             ) : null}

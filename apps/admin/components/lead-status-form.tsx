@@ -1,11 +1,14 @@
 'use client';
 
-import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@colina/ui';
+import { useRouter } from '@/i18n/navigation';
 import { updateLeadStatus } from '@/lib/actions/leads';
+import { LEAD_STATUSES } from '@/lib/lead-status';
 
-const STATUSES = ['NEW', 'IN_PROGRESS', 'RESOLVED'] as const;
+// The option values are the stored codes; the visible text comes from
+// `Leads.statuses.*` (see `lib/lead-status.ts`).
 
 type LeadStatusFormProps = {
   kind: 'contact' | 'maintenance';
@@ -18,6 +21,8 @@ export function LeadStatusForm({
   leadId,
   currentStatus,
 }: LeadStatusFormProps) {
+  const t = useTranslations('Leads');
+  const common = useTranslations('Common');
   const router = useRouter();
   const [status, setStatus] = useState(currentStatus);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +40,8 @@ export function LeadStatusForm({
     }
     setError(
       result.error === 'unauthorized'
-        ? 'Your session expired. Log in again.'
-        : 'Updating failed. Try again.'
+        ? common('errors.sessionExpired')
+        : common('errors.updateFailed')
     );
   }
 
@@ -47,7 +52,7 @@ export function LeadStatusForm({
           htmlFor="lead-status"
           className="mb-1 block text-sm font-medium text-stone-700"
         >
-          Status
+          {t('statusLabel')}
         </label>
         <select
           id="lead-status"
@@ -55,15 +60,15 @@ export function LeadStatusForm({
           onChange={(event) => setStatus(event.target.value)}
           className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
         >
-          {STATUSES.map((option) => (
+          {LEAD_STATUSES.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {t(`statuses.${option}`)}
             </option>
           ))}
         </select>
       </div>
       <Button type="submit" size="sm" disabled={busy}>
-        Update status
+        {t('updateStatus')}
       </Button>
       {error ? (
         <p role="alert" className="text-sm font-medium text-red-700">

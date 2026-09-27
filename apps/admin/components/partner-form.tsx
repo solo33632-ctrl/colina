@@ -68,7 +68,7 @@ export function PartnerForm({
     setFormError(
       result.error === 'unauthorized'
         ? common('errors.sessionExpired')
-        : 'Saving failed. Try again.'
+        : common('errors.saveFailed')
     );
   }
 

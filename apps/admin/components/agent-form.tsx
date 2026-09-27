@@ -67,7 +67,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
     setFormError(
       result.error === 'unauthorized'
         ? common('errors.sessionExpired')
-        : 'Saving failed. Try again.'
+        : common('errors.saveFailed')
     );
   }
 

@@ -73,7 +73,7 @@ export function ServiceForm({
         ? t('slugTaken')
         : result.error === 'unauthorized'
           ? common('errors.sessionExpired')
-          : 'Saving failed. Try again.'
+          : common('errors.saveFailed')
     );
   }
 

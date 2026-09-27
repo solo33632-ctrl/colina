@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { Button } from '@colina/ui';
 import { inputClasses } from './form-fields';
 import { uploadDatasheet, uploadImage } from '@/lib/actions/uploads';
@@ -35,26 +36,12 @@ type UploadFieldProps = {
   urlInputProps: UseFormRegisterReturn;
 };
 
-function errorMessageFor(code: string, kind: UploadKind): string {
-  switch (code) {
-    case 'unauthorized':
-      return 'Your session expired. Log in again.';
-    case 'unconfigured':
-      return 'Uploads are not configured yet. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to the environment.';
-    case 'no_file':
-      return 'Choose a file to upload.';
-    case 'invalid_type':
-      return kind === 'image'
-        ? 'Only JPG, PNG or WEBP images are allowed.'
-        : 'Only PDF files are allowed.';
-    case 'too_large':
-      return kind === 'image'
-        ? 'Images must be 5 MB or smaller.'
-        : 'PDFs must be 15 MB or smaller.';
-    default:
-      return 'Upload failed. Try again.';
-  }
-}
+// Displayed limit, derived from the byte constants the action enforces so
+// the message can never disagree with the rule.
+const MAX_MB = {
+  image: MAX_IMAGE_BYTES / (1024 * 1024),
+  datasheet: MAX_PDF_BYTES / (1024 * 1024),
+} as const;
 
 export function UploadField({
   id,
@@ -63,6 +50,7 @@ export function UploadField({
   onUploaded,
   urlInputProps,
 }: UploadFieldProps) {
+  const t = useTranslations('Uploads');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -70,20 +58,43 @@ export function UploadField({
 
   const isImage = kind === 'image';
 
+  // Turns the action's machine-readable error code into a sentence, in the
+  // admin's language. The codes themselves stay untranslated.
+  function errorMessageFor(code: string): string {
+    switch (code) {
+      case 'unauthorized':
+        return t('errors.unauthorized');
+      case 'unconfigured':
+        return t('errors.unconfigured');
+      case 'no_file':
+        return t('errors.no_file');
+      case 'invalid_type':
+        return isImage
+          ? t('errors.invalidTypeImage')
+          : t('errors.invalidTypePdf');
+      case 'too_large':
+        return isImage
+          ? t('errors.tooLargeImage', { max: MAX_MB.image })
+          : t('errors.tooLargePdf', { max: MAX_MB.datasheet });
+      default:
+        return t('errors.uploadFailed');
+    }
+  }
+
   function clientRejection(file: File): string | null {
     if (isImage) {
       if (!IMAGE_MIME_TYPES.includes(file.type)) {
-        return 'Only JPG, PNG or WEBP images are allowed.';
+        return t('errors.invalidTypeImage');
       }
       if (file.size > MAX_IMAGE_BYTES) {
-        return 'Images must be 5 MB or smaller.';
+        return t('errors.tooLargeImage', { max: MAX_MB.image });
       }
     } else {
       if (file.type !== PDF_MIME_TYPE) {
-        return 'Only PDF files are allowed.';
+        return t('errors.invalidTypePdf');
       }
       if (file.size > MAX_PDF_BYTES) {
-        return 'PDFs must be 15 MB or smaller.';
+        return t('errors.tooLargePdf', { max: MAX_MB.datasheet });
       }
     }
     return null;
@@ -114,10 +125,10 @@ export function UploadField({
         onUploaded(result.url);
         setShowUrlInput(false);
       } else {
-        setUploadError(errorMessageFor(result.error, kind));
+        setUploadError(errorMessageFor(result.error));
       }
     } catch {
-      setUploadError('Upload failed. Try again.');
+      setUploadError(t('failed'));
     } finally {
       setUploading(false);
     }
@@ -142,14 +153,18 @@ export function UploadField({
           disabled={uploading}
           onClick={() => fileInputRef.current?.click()}
         >
-          {uploading ? 'Uploading…' : isImage ? 'Upload image' : 'Upload PDF'}
+          {uploading
+            ? t('uploading')
+            : isImage
+              ? t('uploadImage')
+              : t('uploadPdf')}
         </Button>
         <button
           type="button"
           onClick={() => setShowUrlInput((shown) => !shown)}
           className="text-sm text-brand-700 underline underline-offset-2 hover:text-brand-800"
         >
-          {showUrlInput ? 'Hide URL field' : 'Or paste a URL'}
+          {showUrlInput ? t('hideUrl') : t('pasteUrl')}
         </button>
       </div>
 
@@ -161,7 +176,7 @@ export function UploadField({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={value}
-            alt="Current image"
+            alt={t('currentImage')}
             className="h-24 w-40 rounded-lg border border-stone-200 bg-stone-50 object-contain"
           />
         ) : (
@@ -171,7 +186,7 @@ export function UploadField({
             rel="noreferrer"
             className="w-fit text-sm text-brand-700 underline underline-offset-2"
           >
-            View uploaded datasheet
+            {t('viewDatasheet')}
           </a>
         )
       ) : null}

@@ -74,7 +74,7 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
         ? t('slugTaken')
         : result.error === 'unauthorized'
           ? common('errors.sessionExpired')
-          : 'Saving failed. Try again.'
+          : common('errors.saveFailed')
     );
   }
 

@@ -1,19 +1,27 @@
+import type { Metadata } from 'next';
 import { prisma } from '@colina/db';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Button, Card, Container } from '@colina/ui';
+import { Link } from '@/i18n/navigation';
+import { intlLocale } from '@/lib/format';
+import { isLeadStatus, LEAD_STATUSES } from '@/lib/lead-status';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'Leads — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'Leads', 'heading');
+}
 
 const PAGE_SIZE = 20;
 
-const STATUSES = ['NEW', 'IN_PROGRESS', 'RESOLVED'] as const;
-type StatusFilter = (typeof STATUSES)[number] | 'ALL';
+type StatusFilter = (typeof LEAD_STATUSES)[number] | 'ALL';
 
 function parseStatus(value: string | undefined): StatusFilter {
-  return value === 'NEW' || value === 'IN_PROGRESS' || value === 'RESOLVED'
-    ? value
-    : 'ALL';
+  return value !== undefined && isLeadStatus(value) ? value : 'ALL';
 }
 
 function parsePage(value: string | undefined): number {
@@ -35,6 +43,9 @@ type LeadRow = {
 };
 
 export default async function LeadsPage({ searchParams }: Props) {
+  const locale = await getLocale();
+  const t = await getTranslations('Leads');
+  const common = await getTranslations('Common');
   const params = await searchParams;
   const statusFilter = parseStatus(params.status);
   const page = parsePage(params.page);
@@ -77,17 +88,24 @@ export default async function LeadsPage({ searchParams }: Props) {
   const safePage = Math.min(page, totalPages);
   const visible = leads.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  // A status read back from the enum column is always one of the known
+  // codes, so the guard holds and the raw value is only a defensive
+  // fallback that a schema change would surface rather than hide.
+  const statusLabel = (status: string) =>
+    isLeadStatus(status) ? t(`statuses.${status}`) : status;
+
   return (
     <main>
       <Container className="py-10">
-        <h1 className="text-2xl font-bold text-stone-900">Leads</h1>
+        <h1 className="text-2xl font-bold text-stone-900">{t('heading')}</h1>
+        {/* GET form: submitting to the current URL keeps the locale prefix. */}
         <form method="get" className="mt-6 flex items-end gap-3">
           <div>
             <label
               htmlFor="lead-status-filter"
               className="mb-1 block text-sm font-medium text-stone-700"
             >
-              Filter by status
+              {common('filterByStatus')}
             </label>
             <select
               id="lead-status-filter"
@@ -95,20 +113,20 @@ export default async function LeadsPage({ searchParams }: Props) {
               defaultValue={statusFilter}
               className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
             >
-              <option value="ALL">All</option>
-              {STATUSES.map((status) => (
+              <option value="ALL">{common('all')}</option>
+              {LEAD_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {statusLabel(status)}
                 </option>
               ))}
             </select>
           </div>
           <Button type="submit" variant="secondary" size="sm">
-            Filter
+            {common('filter')}
           </Button>
         </form>
         {visible.length === 0 ? (
-          <Card className="mt-6" description="No leads match this filter." />
+          <Card className="mt-6" description={t('empty')} />
         ) : (
           <>
             <ul className="mt-6 grid gap-4">
@@ -119,23 +137,26 @@ export default async function LeadsPage({ searchParams }: Props) {
                       <div>
                         <p className="font-semibold text-stone-900">
                           {lead.name}{' '}
-                          <span className="ml-2 inline-block rounded bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
-                            {lead.kind === 'contact'
-                              ? 'Contact'
-                              : 'Maintenance'}
+                          <span className="ms-2 inline-block rounded bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+                            {t(`kinds.${lead.kind}`)}
                           </span>
                         </p>
                         <p className="text-sm text-stone-500">
-                          {lead.summary} · {lead.status} ·{' '}
-                          {lead.createdAt.toLocaleDateString('en-GB')}
+                          {lead.summary}
+                          {common('separator')}
+                          {statusLabel(lead.status)}
+                          {common('separator')}
+                          {lead.createdAt.toLocaleDateString(
+                            intlLocale(locale)
+                          )}
                         </p>
                       </div>
-                      <a
+                      <Link
                         href={`/leads/${lead.kind}/${lead.id}`}
                         className="rounded text-sm font-medium text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                       >
-                        View
-                      </a>
+                        {common('view')}
+                      </Link>
                     </div>
                   </Card>
                 </li>
@@ -143,27 +164,30 @@ export default async function LeadsPage({ searchParams }: Props) {
             </ul>
             {totalPages > 1 ? (
               <nav
-                aria-label="Leads pages"
+                aria-label={t('pagesLabel')}
                 className="mt-6 flex items-center justify-center gap-4"
               >
                 {safePage > 1 ? (
-                  <a
+                  <Link
                     href={`/leads?status=${statusFilter}&page=${safePage - 1}`}
                     className="rounded text-sm font-medium text-brand-700 hover:text-brand-800"
                   >
-                    Previous
-                  </a>
+                    {common('previous')}
+                  </Link>
                 ) : null}
                 <span className="text-sm text-stone-500">
-                  Page {safePage} of {totalPages}
+                  {common('pageOf', {
+                    current: safePage,
+                    total: totalPages,
+                  })}
                 </span>
                 {safePage < totalPages ? (
-                  <a
+                  <Link
                     href={`/leads?status=${statusFilter}&page=${safePage + 1}`}
                     className="rounded text-sm font-medium text-brand-700 hover:text-brand-800"
                   >
-                    Next
-                  </a>
+                    {common('next')}
+                  </Link>
                 ) : null}
               </nav>
             ) : null}

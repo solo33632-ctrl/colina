@@ -1,27 +1,27 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { signIn } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { Button } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import { useRouter } from '@/i18n/navigation';
 import { loginInputSchema } from '@/lib/schemas';
 
-// Admin strings are hardcoded English per the Phase 3 admin-stays-English
-// decision — no message files on this app.
 export function LoginForm() {
+  const t = useTranslations('Auth');
   const router = useRouter();
   const [status, setStatus] = useState<'idle' | 'error'>('idle');
 
   const schema = useMemo(
     () =>
       loginInputSchema({
-        email: 'Enter a valid email address.',
-        password: 'Enter your password.',
+        email: t('validation.email'),
+        password: t('validation.password'),
       }),
-    []
+    [t]
   );
 
   type FormValues = { email: string; password: string };
@@ -47,6 +47,8 @@ export function LoginForm() {
       setStatus('error');
       return;
     }
+    // The locale-aware router keeps the admin in the language it was
+    // signed in from.
     router.push('/');
     router.refresh();
   }
@@ -57,7 +59,11 @@ export function LoginForm() {
       noValidate
       className="grid gap-5 text-start"
     >
-      <Field id="login-email" label="Email" error={errors.email?.message}>
+      <Field
+        id="login-email"
+        label={t('login.email')}
+        error={errors.email?.message}
+      >
         <input
           id="login-email"
           type="email"
@@ -68,7 +74,7 @@ export function LoginForm() {
       </Field>
       <Field
         id="login-password"
-        label="Password"
+        label={t('login.password')}
         error={errors.password?.message}
       >
         <input
@@ -81,12 +87,12 @@ export function LoginForm() {
       </Field>
       {status === 'error' ? (
         <p role="alert" className="text-sm font-medium text-red-700">
-          Invalid email or password.
+          {t('login.invalid')}
         </p>
       ) : null}
       <div>
         <Button type="submit" disabled={isSubmitting}>
-          Log in
+          {t('login.submit')}
         </Button>
       </div>
     </form>

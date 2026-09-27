@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import { Button } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { Link } from '@/i18n/navigation';
@@ -17,20 +18,23 @@ type ResetPasswordFormProps = {
 };
 
 export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
+  const t = useTranslations('Auth');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const schema = useMemo(
     () =>
       resetPasswordInputSchema({
-        token: 'This reset link is invalid or expired.',
-        password: `Password must be at least ${ADMIN_PASSWORD_MIN_LENGTH} characters.`,
+        token: t('validation.tokenInvalid'),
+        password: t('validation.passwordMin', {
+          min: ADMIN_PASSWORD_MIN_LENGTH,
+        }),
       })
         .extend({ confirmPassword: z.string() })
         .refine((values) => values.password === values.confirmPassword, {
-          error: 'Passwords do not match.',
+          error: t('reset.mismatch'),
           path: ['confirmPassword'],
         }),
-    []
+    [t]
   );
 
   type FormValues = z.infer<typeof schema>;
@@ -64,12 +68,12 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   if (status === 'success') {
     return (
       <p role="status" className="text-sm text-stone-600">
-        Your password was updated.{' '}
+        {t('reset.success')}{' '}
         <Link
           href="/login"
           className="font-medium text-brand-700 hover:text-brand-800"
         >
-          Log in
+          {t('reset.backToLogin')}
         </Link>
       </p>
     );
@@ -84,7 +88,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       <input type="hidden" {...register('token')} />
       <Field
         id="reset-password"
-        label="New password"
+        label={t('reset.newPassword')}
         error={errors.password?.message}
       >
         <input
@@ -97,7 +101,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       </Field>
       <Field
         id="reset-confirm-password"
-        label="Confirm new password"
+        label={t('reset.confirmPassword')}
         error={errors.confirmPassword?.message}
       >
         <input
@@ -110,12 +114,12 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       </Field>
       {status === 'error' ? (
         <p role="alert" className="text-sm font-medium text-red-700">
-          This reset link is invalid or expired. Request a new one.
+          {t('reset.invalidLinkShort')}
         </p>
       ) : null}
       <div>
         <Button type="submit" disabled={isSubmitting}>
-          Set new password
+          {t('reset.submit')}
         </Button>
       </div>
     </form>

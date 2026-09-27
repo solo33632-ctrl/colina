@@ -3,11 +3,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { Button } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { forgotPasswordInputSchema } from '@/lib/schemas';
 
 export function ForgotPasswordForm() {
+  const t = useTranslations('Auth');
+
   // Always the same message, found or not: the response must never leak
   // whether the email belongs to an admin account.
   const [sent, setSent] = useState(false);
@@ -15,9 +18,9 @@ export function ForgotPasswordForm() {
   const schema = useMemo(
     () =>
       forgotPasswordInputSchema({
-        email: 'Enter a valid email address.',
+        email: t('validation.email'),
       }),
-    []
+    [t]
   );
 
   type FormValues = { email: string };
@@ -47,8 +50,7 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <p role="status" className="text-sm text-stone-600">
-        If that email belongs to an admin account, a reset link is on its way.
-        It expires in one hour.
+        {t('forgot.sent')}
       </p>
     );
   }
@@ -59,7 +61,11 @@ export function ForgotPasswordForm() {
       noValidate
       className="grid gap-5 text-start"
     >
-      <Field id="forgot-email" label="Email" error={errors.email?.message}>
+      <Field
+        id="forgot-email"
+        label={t('forgot.email')}
+        error={errors.email?.message}
+      >
         <input
           id="forgot-email"
           type="email"
@@ -70,7 +76,7 @@ export function ForgotPasswordForm() {
       </Field>
       <div>
         <Button type="submit" disabled={isSubmitting}>
-          Send reset link
+          {t('forgot.submit')}
         </Button>
       </div>
     </form>

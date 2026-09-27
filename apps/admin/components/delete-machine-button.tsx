@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { useState } from 'react';
 import { Button } from '@colina/ui';
 import { deleteMachine } from '@/lib/actions/machines';

@@ -1,43 +1,48 @@
 import { prisma } from '@colina/db';
+import { getLocale } from 'next-intl/server';
+import { getPathname } from '@/i18n/navigation';
 import { Button, Card, Container } from '@colina/ui';
 
 export const metadata = {
-  title: 'News — Colina Admin',
+  title: 'Services — Colina Admin',
 };
 
-export default async function NewsPage() {
-  const posts = await prisma.newsPost.findMany({
-    orderBy: { publishedAt: 'desc' },
+export default async function ServicesPage() {
+  const locale = await getLocale();
+  const services = await prisma.maintenanceService.findMany({
+    orderBy: { createdAt: 'asc' },
   });
 
   return (
     <main>
       <Container className="py-10">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold text-stone-900">News</h1>
-          <Button href="/news/new" size="sm">
-            New post
+          <h1 className="text-2xl font-bold text-stone-900">
+            Maintenance services
+          </h1>
+          <Button
+            href={await getPathname({ locale, href: '/services/new' })}
+            size="sm"
+          >
+            New service
           </Button>
         </div>
-        {posts.length === 0 ? (
-          <Card className="mt-6" description="No posts yet." />
+        {services.length === 0 ? (
+          <Card className="mt-6" description="No services yet." />
         ) : (
           <ul className="mt-6 grid gap-4">
-            {posts.map((post) => (
-              <li key={post.id}>
+            {services.map((service) => (
+              <li key={service.id}>
                 <Card>
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="font-semibold text-stone-900">
-                        {post.titleEn}
+                        {service.titleEn}
                       </p>
-                      <p className="text-sm text-stone-500">
-                        {post.slug} ·{' '}
-                        {post.publishedAt.toLocaleDateString('en-GB')}
-                      </p>
+                      <p className="text-sm text-stone-500">{service.slug}</p>
                     </div>
                     <a
-                      href={`/news/${post.id}/edit`}
+                      href={`/services/${service.id}/edit`}
                       className="rounded text-sm font-medium text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                     >
                       Edit

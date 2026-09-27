@@ -1,12 +1,11 @@
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { Container } from '@colina/ui';
 import { getAdminSession } from '@/lib/auth';
+import { AdminLanguageSwitcher } from './language-switcher';
 import { LogoutButton } from './logout-button';
 
-// Admin header (app-specific — English only; confirm with Colina staff
-// whether the admin UI should become bilingual later). Shows section nav
-// plus a logout action only when a session exists (so the login page
-// stays clean).
+// Admin header: section nav, a logout action and the language switcher —
+// the last two only when a session exists, so the login page stays clean.
 export async function AdminHeader() {
   const session = await getAdminSession();
 
@@ -91,7 +90,8 @@ export async function AdminHeader() {
                 ) : null}
               </ul>
             </nav>
-            <div className="ms-auto">
+            <div className="ms-auto flex items-center gap-3">
+              <AdminLanguageSwitcher />
               <LogoutButton />
             </div>
           </>

@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
+import { hasLocale } from 'next-intl';
+import { notFound } from 'next/navigation';
 import { Card, Container } from '@colina/ui';
+import { Link, redirect } from '@/i18n/navigation';
+import { routing } from '@/i18n/routing';
 import { getAdminSession } from '@/lib/auth';
 import { LoginForm } from '@/components/login-form';
 
@@ -13,10 +16,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
+
   const session = await getAdminSession();
   if (session) {
-    redirect('/');
+    redirect({ href: '/', locale });
   }
 
   return (
@@ -28,12 +40,12 @@ export default async function LoginPage() {
           </div>
           <p className="mt-4 text-sm text-stone-600">
             Forgot your password?{' '}
-            <a
+            <Link
               href="/forgot-password"
               className="font-medium text-brand-700 hover:text-brand-800"
             >
               Reset it
-            </a>
+            </Link>
           </p>
         </Card>
       </Container>

@@ -1,4 +1,6 @@
 import { prisma } from '@colina/db';
+import { getLocale } from 'next-intl/server';
+import { getPathname } from '@/i18n/navigation';
 import { Button, Card, Container } from '@colina/ui';
 
 export const metadata = {
@@ -6,6 +8,7 @@ export const metadata = {
 };
 
 export default async function PartnersPage() {
+  const locale = await getLocale();
   const partners = await prisma.partner.findMany({
     orderBy: { createdAt: 'asc' },
   });
@@ -15,7 +18,10 @@ export default async function PartnersPage() {
       <Container className="py-10">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-stone-900">Partners</h1>
-          <Button href="/partners/new" size="sm">
+          <Button
+            href={await getPathname({ locale, href: '/partners/new' })}
+            size="sm"
+          >
             New partner
           </Button>
         </div>

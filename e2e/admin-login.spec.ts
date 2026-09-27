@@ -6,7 +6,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 
 test.describe('admin login', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${ADMIN_URL}/login`);
+    await page.goto(`${ADMIN_URL}/en/login`);
   });
 
   test('invalid credentials stay on /login with a generic error', async ({
@@ -24,7 +24,7 @@ test.describe('admin login', () => {
     await page.getByLabel('Email').fill(ADMIN_EMAIL);
     await page.getByLabel('Password').fill(ADMIN_PASSWORD);
     await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/en`);
     await expect(
       page.getByRole('heading', { name: 'Colina Admin' })
     ).toBeVisible();

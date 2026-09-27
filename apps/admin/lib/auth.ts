@@ -3,6 +3,7 @@ import type { NextAuthOptions } from 'next-auth';
 import { getServerSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@colina/db';
+import { routing } from '@/i18n/routing';
 import { getClientIp, LOGIN_RATE_LIMIT, rateLimitCheck } from './rate-limit';
 import { loginInputSchema } from './schemas';
 
@@ -66,7 +67,13 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   pages: {
-    signIn: '/login',
+    // NextAuth's own sign-in redirect. This is a single static string, so it
+    // cannot be locale-aware: it is only a last-resort fallback. The
+    // locale-correct redirect for an unauthenticated page request is built
+    // per-request in `proxy.ts`, and the login form navigates explicitly
+    // after a successful `signIn`. The default locale is the safest fallback
+    // because it is the app's primary UI language.
+    signIn: `/${routing.defaultLocale}/login`,
   },
   callbacks: {
     async jwt({ token, user }) {

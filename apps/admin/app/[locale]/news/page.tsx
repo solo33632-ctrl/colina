@@ -1,51 +1,53 @@
-import Link from 'next/link';
 import { prisma } from '@colina/db';
+import { getLocale } from 'next-intl/server';
+import { getPathname } from '@/i18n/navigation';
 import { Button, Card, Container } from '@colina/ui';
 
 export const metadata = {
-  title: 'Categories — Colina Admin',
+  title: 'News — Colina Admin',
 };
 
-export default async function CategoriesPage() {
-  const categories = await prisma.machineCategory.findMany({
-    orderBy: { createdAt: 'asc' },
-    include: { _count: { select: { machines: true } } },
+export default async function NewsPage() {
+  const locale = await getLocale();
+  const posts = await prisma.newsPost.findMany({
+    orderBy: { publishedAt: 'desc' },
   });
 
   return (
     <main>
       <Container className="py-10">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold text-stone-900">Categories</h1>
-          <Button href="/categories/new" size="sm">
-            New category
+          <h1 className="text-2xl font-bold text-stone-900">News</h1>
+          <Button
+            href={await getPathname({ locale, href: '/news/new' })}
+            size="sm"
+          >
+            New post
           </Button>
         </div>
-        {categories.length === 0 ? (
-          <Card className="mt-6" description="No categories yet." />
+        {posts.length === 0 ? (
+          <Card className="mt-6" description="No posts yet." />
         ) : (
           <ul className="mt-6 grid gap-4">
-            {categories.map((category) => (
-              <li key={category.id}>
+            {posts.map((post) => (
+              <li key={post.id}>
                 <Card>
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="font-semibold text-stone-900">
-                        {category.nameEn}
+                        {post.titleEn}
                       </p>
                       <p className="text-sm text-stone-500">
-                        {category.slug} · {category._count.machines}{' '}
-                        {category._count.machines === 1
-                          ? 'machine'
-                          : 'machines'}
+                        {post.slug} ·{' '}
+                        {post.publishedAt.toLocaleDateString('en-GB')}
                       </p>
                     </div>
-                    <Link
-                      href={`/categories/${category.id}/edit`}
+                    <a
+                      href={`/news/${post.id}/edit`}
                       className="rounded text-sm font-medium text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                     >
                       Edit
-                    </Link>
+                    </a>
                   </div>
                 </Card>
               </li>

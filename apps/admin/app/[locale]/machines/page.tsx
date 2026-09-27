@@ -1,4 +1,6 @@
 import { prisma } from '@colina/db';
+import { getLocale } from 'next-intl/server';
+import { getPathname } from '@/i18n/navigation';
 import { Button, Card, Container } from '@colina/ui';
 
 export const metadata = {
@@ -10,6 +12,7 @@ type Props = {
 };
 
 export default async function MachinesPage({ searchParams }: Props) {
+  const locale = await getLocale();
   const { category: categoryFilter } = await searchParams;
   const [categories, machines] = await Promise.all([
     prisma.machineCategory.findMany({ orderBy: { nameEn: 'asc' } }),
@@ -25,7 +28,10 @@ export default async function MachinesPage({ searchParams }: Props) {
       <Container className="py-10">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-stone-900">Machines</h1>
-          <Button href="/machines/new" size="sm">
+          <Button
+            href={await getPathname({ locale, href: '/machines/new' })}
+            size="sm"
+          >
             New machine
           </Button>
         </div>

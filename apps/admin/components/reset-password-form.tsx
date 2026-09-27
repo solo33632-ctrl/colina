@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import { Link } from '@/i18n/navigation';
 import {
   ADMIN_PASSWORD_MIN_LENGTH,
   resetPasswordInputSchema,
@@ -64,12 +65,12 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     return (
       <p role="status" className="text-sm text-stone-600">
         Your password was updated.{' '}
-        <a
+        <Link
           href="/login"
           className="font-medium text-brand-700 hover:text-brand-800"
         >
           Log in
-        </a>
+        </Link>
       </p>
     );
   }

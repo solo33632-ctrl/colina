@@ -1,0 +1,351 @@
+{
+  "Metadata": {
+    "title": "Colina Admin",
+    "description": "Colina internal admin panel.",
+    "sectionTemplate": "{section} — Colina Admin"
+  },
+  "Nav": {
+    "brand": "Colina Admin",
+    "sectionsLabel": "Admin sections",
+    "categories": "Categories",
+    "machines": "Machines",
+    "partners": "Partners",
+    "services": "Services",
+    "news": "News",
+    "agents": "Agents",
+    "leads": "Leads",
+    "auditLog": "Audit log"
+  },
+  "LanguageSwitcher": {
+    "label": "Language",
+    "arabic": "العربية",
+    "english": "English"
+  },
+  "Footer": {
+    "internalUse": "© {year} Colina Admin — internal use only."
+  },
+  "Common": {
+    "edit": "Edit",
+    "view": "View",
+    "saveChanges": "Save changes",
+    "create": "Create",
+    "delete": "Delete",
+    "deleteConfirm": "Delete {name}? This cannot be undone.",
+    "filter": "Filter",
+    "all": "All",
+    "previous": "Previous",
+    "next": "Next",
+    "pagesLabel": "Pagination",
+    "pageOf": "Page {current} of {total}",
+    "filterByCategory": "Filter by category",
+    "filterByStatus": "Filter by status",
+    "allCategories": "All categories",
+    "optional": "(optional)",
+    "separator": " · ",
+    "errors": {
+      "sessionExpired": "Your session expired. Log in again.",
+      "saveFailed": "Saving failed. Try again.",
+      "deleteFailed": "Deleting failed. Try again.",
+      "updateFailed": "Updating failed. Try again.",
+      "notFound": "That record no longer exists.",
+      "forbidden": "Your account does not have access to this page."
+    }
+  },
+  "Dashboard": {
+    "title": "Colina Admin",
+    "description": "Manage site content.",
+    "categories": "Categories ({count})",
+    "machines": "Machines ({count})",
+    "partners": "Partners ({count})",
+    "services": "Services ({count})",
+    "news": "News ({count})",
+    "agents": "Agents ({count})"
+  },
+  "Auth": {
+    "login": {
+      "title": "Admin login",
+      "description": "Colina internal admin login.",
+      "heading": "Admin login",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "invalid": "Invalid email or password.",
+      "forgotPrompt": "Forgot your password?",
+      "resetLink": "Reset it"
+    },
+    "logout": "Log out",
+    "forgot": {
+      "title": "Forgot password",
+      "description": "Request a Colina admin password reset link.",
+      "heading": "Forgot password",
+      "subheading": "Enter your admin email and we'll send a reset link.",
+      "email": "Email",
+      "submit": "Send reset link",
+      "sent": "If that email belongs to an admin account, a reset link is on its way. It expires in one hour."
+    },
+    "reset": {
+      "title": "Reset password",
+      "description": "Set a new Colina admin password.",
+      "heading": "Reset password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "Set new password",
+      "invalidLink": "This reset link is invalid or expired. Request a new one from the login page.",
+      "invalidLinkShort": "This reset link is invalid or expired. Request a new one.",
+      "mismatch": "Passwords do not match.",
+      "success": "Your password was updated.",
+      "backToLogin": "Log in"
+    },
+    "validation": {
+      "email": "Enter a valid email address.",
+      "password": "Enter your password.",
+      "tokenInvalid": "This reset link is invalid or expired.",
+      "passwordMin": "Password must be at least {min} characters."
+    }
+  },
+  "Uploads": {
+    "uploadImage": "Upload image",
+    "uploadPdf": "Upload PDF",
+    "uploading": "Uploading…",
+    "hideUrl": "Hide URL field",
+    "pasteUrl": "Or paste a URL",
+    "currentImage": "Current image",
+    "viewDatasheet": "View uploaded datasheet",
+    "failed": "Upload failed. Try again.",
+    "errors": {
+      "unauthorized": "Your session expired. Log in again.",
+      "unconfigured": "Uploads are not configured yet. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to the environment.",
+      "no_file": "Choose a file to upload.",
+      "invalidTypeImage": "Only JPG, PNG or WEBP images are allowed.",
+      "invalidTypePdf": "Only PDF files are allowed.",
+      "tooLargeImage": "Images must be {max} MB or smaller.",
+      "tooLargePdf": "PDFs must be {max} MB or smaller.",
+      "uploadFailed": "Upload failed. Try again."
+    }
+  },
+  "Categories": {
+    "heading": "Categories",
+    "new": "New category",
+    "empty": "No categories yet.",
+    "machineCount": "{count, plural, one {# machine} other {# machines}}",
+    "slugTaken": "That slug is already used by another category.",
+    "form": {
+      "createTitle": "New category",
+      "editTitle": "Edit category",
+      "nameEn": "Name (English)",
+      "nameAr": "Name (Arabic)",
+      "slug": "Slug",
+      "descriptionEn": "Description (English)",
+      "descriptionAr": "Description (Arabic)",
+      "image": "Image (optional)",
+      "submitCreate": "Create category",
+      "submitEdit": "Save changes"
+    },
+    "validation": {
+      "nameAr": "Arabic name must be at least 2 characters.",
+      "nameEn": "English name must be at least 2 characters.",
+      "slug": "Slug must be at least 2 lowercase letters, numbers or dashes.",
+      "descriptionAr": "Arabic description must be at least 10 characters.",
+      "descriptionEn": "English description must be at least 10 characters.",
+      "image": "Image must be an absolute http(s) URL or empty."
+    },
+    "delete": {
+      "hasMachines": "Cannot delete: this category still has {count, plural, one {# machine} other {# machines}}. Move or delete them first."
+    }
+  },
+  "Machines": {
+    "heading": "Machines",
+    "new": "New machine",
+    "empty": "No machines yet.",
+    "slugTaken": "That slug is already used by another machine.",
+    "form": {
+      "createTitle": "New machine",
+      "editTitle": "Edit machine",
+      "nameEn": "Name (English)",
+      "nameAr": "Name (Arabic)",
+      "slug": "Slug",
+      "category": "Category",
+      "chooseCategory": "Choose a category…",
+      "shortDescriptionEn": "Short description (English)",
+      "shortDescriptionAr": "Short description (Arabic)",
+      "descriptionEn": "Full description (English)",
+      "descriptionAr": "Full description (Arabic)",
+      "specsEn": "Specs (English)",
+      "specsAr": "Specs (Arabic)",
+      "datasheet": "Datasheet (optional, PDF)",
+      "imagesLegend": "Images (ordered by position)",
+      "imagePosition": "Image {number} position",
+      "removeImage": "Remove",
+      "addImage": "Add image",
+      "relatedLegend": "Related machines",
+      "noRelated": "No other machines exist yet.",
+      "submitCreate": "Create machine",
+      "submitEdit": "Save changes"
+    },
+    "validation": {
+      "nameAr": "Arabic name must be at least 2 characters.",
+      "nameEn": "English name must be at least 2 characters.",
+      "slug": "Slug must be at least 2 lowercase letters, numbers or dashes.",
+      "categoryId": "Choose a category.",
+      "shortDescriptionAr": "Arabic short description must be at least 10 characters.",
+      "shortDescriptionEn": "English short description must be at least 10 characters.",
+      "descriptionAr": "Arabic description must be at least 10 characters.",
+      "descriptionEn": "English description must be at least 10 characters.",
+      "specsAr": "Arabic specs must not be empty.",
+      "specsEn": "English specs must not be empty.",
+      "imageUrl": "Image URL must be an absolute http(s) URL.",
+      "imagePosition": "Image position must be 0 or higher.",
+      "datasheetUrl": "Datasheet URL must be an absolute http(s) URL or empty."
+    },
+    "delete": {
+      "confirm": "Delete this machine with all its images? This cannot be undone."
+    }
+  },
+  "Partners": {
+    "heading": "Partners",
+    "new": "New partner",
+    "empty": "No partners yet.",
+    "form": {
+      "createTitle": "New partner",
+      "editTitle": "Edit partner",
+      "nameEn": "Name (English)",
+      "nameAr": "Name (Arabic)",
+      "logo": "Logo",
+      "submitCreate": "Create partner",
+      "submitEdit": "Save changes"
+    },
+    "validation": {
+      "nameAr": "Arabic name must be at least 2 characters.",
+      "nameEn": "English name must be at least 2 characters.",
+      "logo": "Logo must be an absolute http(s) URL."
+    },
+    "delete": {
+      "confirm": "Delete this partner? This cannot be undone."
+    }
+  },
+  "Services": {
+    "heading": "Maintenance services",
+    "new": "New service",
+    "empty": "No services yet.",
+    "slugTaken": "That slug is already used by another service.",
+    "form": {
+      "createTitle": "New service",
+      "editTitle": "Edit service",
+      "titleEn": "Title (English)",
+      "titleAr": "Title (Arabic)",
+      "slug": "Slug",
+      "descriptionEn": "Description (English)",
+      "descriptionAr": "Description (Arabic)",
+      "scopeEn": "Scope (English)",
+      "scopeAr": "Scope (Arabic)",
+      "icon": "Icon name",
+      "iconPlaceholder": "e.g. wrench (plain text, no picker yet)",
+      "submitCreate": "Create service",
+      "submitEdit": "Save changes"
+    },
+    "validation": {
+      "slug": "Slug must be at least 2 lowercase letters, numbers or dashes.",
+      "titleAr": "Arabic title must be at least 2 characters.",
+      "titleEn": "English title must be at least 2 characters.",
+      "descriptionAr": "Arabic description must be at least 10 characters.",
+      "descriptionEn": "English description must be at least 10 characters.",
+      "scopeAr": "Arabic scope must be at least 10 characters.",
+      "scopeEn": "English scope must be at least 10 characters.",
+      "icon": "Icon must not be empty."
+    },
+    "delete": {
+      "confirm": "Delete this service? This cannot be undone."
+    }
+  },
+  "News": {
+    "heading": "News",
+    "new": "New post",
+    "empty": "No posts yet.",
+    "slugTaken": "That slug is already used by another post.",
+    "form": {
+      "createTitle": "New post",
+      "editTitle": "Edit post",
+      "titleEn": "Title (English)",
+      "titleAr": "Title (Arabic)",
+      "slug": "Slug",
+      "bodyEn": "Body (English)",
+      "bodyAr": "Body (Arabic)",
+      "image": "Image (optional)",
+      "publishedAt": "Published date",
+      "submitCreate": "Create post",
+      "submitEdit": "Save changes"
+    },
+    "validation": {
+      "slug": "Slug must be at least 2 lowercase letters, numbers or dashes.",
+      "titleAr": "Arabic title must be at least 2 characters.",
+      "titleEn": "English title must be at least 2 characters.",
+      "bodyAr": "Arabic body must be at least 10 characters.",
+      "bodyEn": "English body must be at least 10 characters.",
+      "image": "Image must be an absolute http(s) URL or empty.",
+      "publishedAt": "Published date must be a valid YYYY-MM-DD date."
+    },
+    "delete": {
+      "confirm": "Delete this post? This cannot be undone."
+    }
+  },
+  "Agents": {
+    "heading": "Agents",
+    "new": "New agent",
+    "empty": "No agents yet.",
+    "form": {
+      "createTitle": "New agent",
+      "editTitle": "Edit agent",
+      "countryEn": "Country (English)",
+      "countryAr": "Country (Arabic)",
+      "cityEn": "City (English, optional)",
+      "cityAr": "City (Arabic, optional)",
+      "addressEn": "Address (English, optional)",
+      "addressAr": "Address (Arabic, optional)",
+      "phone": "Phone (optional)",
+      "email": "Email (optional)",
+      "submitCreate": "Create agent",
+      "submitEdit": "Save changes"
+    },
+    "validation": {
+      "countryAr": "Arabic country must be at least 2 characters.",
+      "countryEn": "English country must be at least 2 characters."
+    },
+    "delete": {
+      "confirm": "Delete this agent? This cannot be undone."
+    }
+  },
+  "Leads": {
+    "heading": "Leads",
+    "empty": "No leads match this filter.",
+    "notFound": "That lead no longer exists.",
+    "updateStatus": "Update status",
+    "statusLabel": "Status",
+    "pagesLabel": "Leads pages",
+    "form": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "message": "Message",
+      "company": "Company",
+      "machineModel": "Machine / model",
+      "submitted": "Submitted"
+    },
+    "kinds": {
+      "contact": "Contact",
+      "maintenance": "Maintenance"
+    },
+    "statuses": {
+      "NEW": "New",
+      "IN_PROGRESS": "In progress",
+      "RESOLVED": "Resolved"
+    }
+  },
+  "AuditLog": {
+    "heading": "Audit log",
+    "empty": "No audit entries yet.",
+    "notAuthorizedTitle": "Not authorized",
+    "notAuthorizedDescription": "The audit log is restricted to super admins. Your editor account cannot view this page.",
+    "deletedAdmin": "(deleted admin)",
+    "pagesLabel": "Audit log pages"
+  }
+}

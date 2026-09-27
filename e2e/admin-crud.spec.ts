@@ -12,11 +12,11 @@ test.describe('category CRUD flow', () => {
   test.skip(!ADMIN_PASSWORD, 'ADMIN_PASSWORD env is required');
 
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${ADMIN_URL}/login`);
+    await page.goto(`${ADMIN_URL}/en/login`);
     await page.getByLabel('Email').fill(ADMIN_EMAIL);
     await page.getByLabel('Password').fill(ADMIN_PASSWORD);
     await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/en`);
   });
 
   test('create, verify in list, edit, block delete with machine, delete all', async ({
@@ -26,7 +26,7 @@ test.describe('category CRUD flow', () => {
     const catSlug = `e2e-category-${STAMP}`;
 
     // Create.
-    await page.goto(`${ADMIN_URL}/categories/new`);
+    await page.goto(`${ADMIN_URL}/en/categories/new`);
     await page.getByLabel('Name (English)').fill(catName);
     await page.getByLabel('Name (Arabic)').fill(`فئة ${STAMP}`);
     await page.getByLabel('Slug').fill(catSlug);
@@ -37,7 +37,7 @@ test.describe('category CRUD flow', () => {
       .getByLabel('Description (Arabic)')
       .fill('وصف تجريبي يزيد عن عشرة أحرف.');
     await page.getByRole('button', { name: 'Create category' }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/categories`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);
     await expect(page.getByText(catName)).toBeVisible();
 
     // Edit (rename) — scope to our row: seed rows sort first.
@@ -48,11 +48,11 @@ test.describe('category CRUD flow', () => {
     await expect(page.getByLabel('Name (English)')).toHaveValue(catName);
     await page.getByLabel('Name (English)').fill(`${catName} Renamed`);
     await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/categories`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);
     await expect(page.getByText(`${catName} Renamed`)).toBeVisible();
 
     // Attach a machine, then prove deletion is blocked.
-    await page.goto(`${ADMIN_URL}/machines/new`);
+    await page.goto(`${ADMIN_URL}/en/machines/new`);
     await page.getByLabel('Name (English)').fill(`E2E Machine ${STAMP}`);
     await page.getByLabel('Name (Arabic)').fill(`آلة ${STAMP}`);
     await page.getByLabel('Slug').fill(`e2e-machine-${STAMP}`);
@@ -74,9 +74,9 @@ test.describe('category CRUD flow', () => {
     await page.getByLabel('Specs (English)').fill('E2E specs.');
     await page.getByLabel('Specs (Arabic)').fill('مواصفات.');
     await page.getByRole('button', { name: 'Create machine' }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/machines`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);
 
-    await page.goto(`${ADMIN_URL}/categories`);
+    await page.goto(`${ADMIN_URL}/en/categories`);
     await page
       .locator('li', { hasText: `${catName} Renamed` })
       .getByRole('link', { name: 'Edit' })
@@ -87,23 +87,23 @@ test.describe('category CRUD flow', () => {
 
     // Delete machine, then the category goes through.
     const machineName = `E2E Machine ${STAMP}`;
-    await page.goto(`${ADMIN_URL}/machines`);
+    await page.goto(`${ADMIN_URL}/en/machines`);
     await page
       .locator('li', { hasText: machineName })
       .getByRole('link', { name: 'Edit' })
       .click();
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Delete machine' }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/machines`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);
 
-    await page.goto(`${ADMIN_URL}/categories`);
+    await page.goto(`${ADMIN_URL}/en/categories`);
     await page
       .locator('li', { hasText: `${catName} Renamed` })
       .getByRole('link', { name: 'Edit' })
       .click();
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Delete category' }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/categories`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);
     await expect(page.getByText(`${catName} Renamed`)).toBeHidden();
   });
 });

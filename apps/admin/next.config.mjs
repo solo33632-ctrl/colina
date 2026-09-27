@@ -1,3 +1,5 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
 // Same policy as apps/web except `frame-src 'none'`: the admin panel
 // embeds no iframes at all, so nothing needs framing permission. See
 // apps/web/next.config.mjs for the CSP rationale (unsafe-inline scripts,
@@ -42,4 +44,6 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// Links `./i18n/request.ts` to next-intl (conventional path, no arg needed).
+const withNextIntl = createNextIntlPlugin();
+export default withNextIntl(nextConfig);

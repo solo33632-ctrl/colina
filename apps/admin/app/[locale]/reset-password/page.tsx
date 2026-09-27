@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
+import { hasLocale } from 'next-intl';
+import { notFound } from 'next/navigation';
 import { Card, Container } from '@colina/ui';
+import { redirect } from '@/i18n/navigation';
+import { routing } from '@/i18n/routing';
 import { getAdminSession } from '@/lib/auth';
 import { ResetPasswordForm } from '@/components/reset-password-form';
 
@@ -14,13 +17,22 @@ export const metadata: Metadata = {
 };
 
 type Props = {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ token?: string }>;
 };
 
-export default async function ResetPasswordPage({ searchParams }: Props) {
+export default async function ResetPasswordPage({
+  params,
+  searchParams,
+}: Props) {
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
+
   const session = await getAdminSession();
   if (session) {
-    redirect('/');
+    redirect({ href: '/', locale });
   }
 
   const { token } = await searchParams;

@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
+import { hasLocale } from 'next-intl';
+import { notFound } from 'next/navigation';
 import { Card, Container } from '@colina/ui';
+import { redirect } from '@/i18n/navigation';
+import { routing } from '@/i18n/routing';
 import { getAdminSession } from '@/lib/auth';
 import { ForgotPasswordForm } from '@/components/forgot-password-form';
 
@@ -13,10 +16,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function ForgotPasswordPage() {
+export default async function ForgotPasswordPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
+
   const session = await getAdminSession();
   if (session) {
-    redirect('/');
+    redirect({ href: '/', locale });
   }
 
   return (

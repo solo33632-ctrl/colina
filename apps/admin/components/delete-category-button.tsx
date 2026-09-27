@@ -1,8 +1,9 @@
 'use client';
 
-import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@colina/ui';
+import { useRouter } from '@/i18n/navigation';
 import { deleteCategory } from '@/lib/actions/categories';
 
 type DeleteCategoryButtonProps = {
@@ -14,12 +15,14 @@ export function DeleteCategoryButton({
   categoryId,
   machineCount,
 }: DeleteCategoryButtonProps) {
+  const t = useTranslations('Categories');
+  const common = useTranslations('Common');
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function onDelete() {
-    if (!window.confirm('Delete this category? This cannot be undone.')) {
+    if (!window.confirm(t('delete.confirm'))) {
       return;
     }
     setError(null);
@@ -33,15 +36,17 @@ export function DeleteCategoryButton({
     }
     setError(
       result.error === 'has_machines'
-        ? `Cannot delete: this category still has ${result.machineCount ?? machineCount} machine(s). Move or delete them first.`
-        : 'Deleting failed. Try again.'
+        ? t('delete.hasMachines', {
+            count: result.machineCount ?? machineCount,
+          })
+        : common('errors.deleteFailed')
     );
   }
 
   return (
     <div className="mt-6">
       <Button variant="secondary" disabled={busy} onClick={onDelete}>
-        Delete category
+        {t('delete.button')}
       </Button>
       {error ? (
         <p role="alert" className="mt-2 text-sm font-medium text-red-700">

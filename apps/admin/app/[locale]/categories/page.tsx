@@ -1,14 +1,23 @@
-import { Link, getPathname } from '@/i18n/navigation';
+import type { Metadata } from 'next';
 import { prisma } from '@colina/db';
-import { getLocale } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Button, Card, Container } from '@colina/ui';
+import { Link, getPathname } from '@/i18n/navigation';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'Categories — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'Categories', 'heading');
+}
 
 export default async function CategoriesPage() {
   const locale = await getLocale();
+  const t = await getTranslations('Categories');
+  const common = await getTranslations('Common');
   const categories = await prisma.machineCategory.findMany({
     orderBy: { createdAt: 'asc' },
     include: { _count: { select: { machines: true } } },
@@ -18,16 +27,16 @@ export default async function CategoriesPage() {
     <main>
       <Container className="py-10">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold text-stone-900">Categories</h1>
+          <h1 className="text-2xl font-bold text-stone-900">{t('heading')}</h1>
           <Button
             href={await getPathname({ locale, href: '/categories/new' })}
             size="sm"
           >
-            New category
+            {t('new')}
           </Button>
         </div>
         {categories.length === 0 ? (
-          <Card className="mt-6" description="No categories yet." />
+          <Card className="mt-6" description={t('empty')} />
         ) : (
           <ul className="mt-6 grid gap-4">
             {categories.map((category) => (
@@ -39,17 +48,17 @@ export default async function CategoriesPage() {
                         {category.nameEn}
                       </p>
                       <p className="text-sm text-stone-500">
-                        {category.slug} · {category._count.machines}{' '}
-                        {category._count.machines === 1
-                          ? 'machine'
-                          : 'machines'}
+                        {category.slug} ·{' '}
+                        {t('machineCount', {
+                          count: category._count.machines,
+                        })}
                       </p>
                     </div>
                     <Link
                       href={`/categories/${category.id}/edit`}
                       className="rounded text-sm font-medium text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                     >
-                      Edit
+                      {common('edit')}
                     </Link>
                   </div>
                 </Card>

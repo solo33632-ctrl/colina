@@ -1,8 +1,9 @@
 'use client';
 
-import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@colina/ui';
+import { useRouter } from '@/i18n/navigation';
 import { deleteMachine } from '@/lib/actions/machines';
 
 type DeleteMachineButtonProps = {
@@ -10,16 +11,14 @@ type DeleteMachineButtonProps = {
 };
 
 export function DeleteMachineButton({ machineId }: DeleteMachineButtonProps) {
+  const t = useTranslations('Machines');
+  const common = useTranslations('Common');
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function onDelete() {
-    if (
-      !window.confirm(
-        'Delete this machine with all its images? This cannot be undone.'
-      )
-    ) {
+    if (!window.confirm(t('delete.confirm'))) {
       return;
     }
     setError(null);
@@ -33,15 +32,15 @@ export function DeleteMachineButton({ machineId }: DeleteMachineButtonProps) {
     }
     setError(
       result.error === 'unauthorized'
-        ? 'Your session expired. Log in again.'
-        : 'Deleting failed. Try again.'
+        ? common('errors.sessionExpired')
+        : common('errors.deleteFailed')
     );
   }
 
   return (
     <div className="mt-6">
       <Button variant="secondary" disabled={busy} onClick={onDelete}>
-        Delete machine
+        {t('delete.button')}
       </Button>
       {error ? (
         <p role="alert" className="mt-2 text-sm font-medium text-red-700">

@@ -1,12 +1,19 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { DeleteMachineButton } from '@/components/delete-machine-button';
 import { MachineForm } from '@/components/machine-form';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'Edit machine — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'Machines', 'form.editTitle');
+}
 
 type Props = {
   params: Promise<{ id: string }>;

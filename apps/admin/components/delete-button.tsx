@@ -1,8 +1,9 @@
 'use client';
 
-import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@colina/ui';
+import { useRouter } from '@/i18n/navigation';
 
 type DeleteButtonProps = {
   label?: string;
@@ -12,14 +13,15 @@ type DeleteButtonProps = {
 };
 
 // Shared confirm-guarded delete for the simple content types (partners,
-// services, news, agents). Phase 10's category/machine buttons predate it
-// and stay as they are — same behavior, no reason to churn them.
+// services, news, agents). The category/machine buttons predate it and stay
+// as they are — same behavior, no reason to churn them.
 export function DeleteButton({
-  label = 'Delete',
+  label,
   confirmMessage,
   redirectTo,
   onDelete,
 }: DeleteButtonProps) {
+  const common = useTranslations('Common');
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -39,15 +41,15 @@ export function DeleteButton({
     }
     setError(
       result.error === 'unauthorized'
-        ? 'Your session expired. Log in again.'
-        : 'Deleting failed. Try again.'
+        ? common('errors.sessionExpired')
+        : common('errors.deleteFailed')
     );
   }
 
   return (
     <div className="mt-6">
       <Button variant="secondary" disabled={busy} onClick={handleDelete}>
-        {label}
+        {label ?? common('delete')}
       </Button>
       {error ? (
         <p role="alert" className="mt-2 text-sm font-medium text-red-700">

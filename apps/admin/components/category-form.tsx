@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -8,6 +9,7 @@ import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { UploadField } from './upload-field';
 import { createCategory, updateCategory } from '@/lib/actions/categories';
+import { categoryMessages } from '@/lib/actions/validation-messages';
 import { categoryInputSchema, type CategoryInput } from '@/lib/schemas';
 
 type CategoryFormProps = {
@@ -16,24 +18,18 @@ type CategoryFormProps = {
   defaultValues?: CategoryInput;
 };
 
-const MESSAGES = {
-  nameAr: 'Arabic name must be at least 2 characters.',
-  nameEn: 'English name must be at least 2 characters.',
-  slug: 'Slug must be at least 2 lowercase letters, numbers or dashes.',
-  descriptionAr: 'Arabic description must be at least 10 characters.',
-  descriptionEn: 'English description must be at least 10 characters.',
-  image: 'Image must be an absolute http(s) URL or empty.',
-};
-
 export function CategoryForm({
   mode,
   categoryId,
   defaultValues,
 }: CategoryFormProps) {
+  const t = useTranslations('Categories');
+  const common = useTranslations('Common');
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
-  const schema = useMemo(() => categoryInputSchema(MESSAGES), []);
+  // Same message namespace the Server Action validates against.
+  const schema = useMemo(() => categoryInputSchema(categoryMessages(t)), [t]);
 
   const {
     register,
@@ -78,15 +74,17 @@ export function CategoryForm({
     }
     setFormError(
       result.error === 'slug_taken'
-        ? 'That slug is already used by another category.'
+        ? t('slugTaken')
         : result.error === 'unauthorized'
-          ? 'Your session expired. Log in again.'
-          : 'Saving failed. Try again.'
+          ? common('errors.sessionExpired')
+          : common('errors.saveFailed')
     );
   }
 
   return (
-    <Card title={mode === 'create' ? 'New category' : 'Edit category'}>
+    <Card
+      title={mode === 'create' ? t('form.createTitle') : t('form.editTitle')}
+    >
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
@@ -94,7 +92,7 @@ export function CategoryForm({
       >
         <Field
           id="cat-name-en"
-          label="Name (English)"
+          label={t('form.nameEn')}
           error={errors.nameEn?.message}
         >
           <input
@@ -106,7 +104,7 @@ export function CategoryForm({
         </Field>
         <Field
           id="cat-name-ar"
-          label="Name (Arabic)"
+          label={t('form.nameAr')}
           error={errors.nameAr?.message}
         >
           <input
@@ -117,7 +115,11 @@ export function CategoryForm({
             {...register('nameAr')}
           />
         </Field>
-        <Field id="cat-slug" label="Slug" error={errors.slug?.message}>
+        <Field
+          id="cat-slug"
+          label={t('form.slug')}
+          error={errors.slug?.message}
+        >
           <input
             id="cat-slug"
             type="text"
@@ -128,7 +130,7 @@ export function CategoryForm({
         </Field>
         <Field
           id="cat-description-en"
-          label="Description (English)"
+          label={t('form.descriptionEn')}
           error={errors.descriptionEn?.message}
         >
           <textarea
@@ -140,7 +142,7 @@ export function CategoryForm({
         </Field>
         <Field
           id="cat-description-ar"
-          label="Description (Arabic)"
+          label={t('form.descriptionAr')}
           error={errors.descriptionAr?.message}
         >
           <textarea
@@ -153,7 +155,7 @@ export function CategoryForm({
         </Field>
         <Field
           id="cat-image"
-          label="Image (optional)"
+          label={t('form.image')}
           error={errors.image?.message}
         >
           <UploadField
@@ -177,7 +179,7 @@ export function CategoryForm({
         ) : null}
         <div>
           <Button type="submit" disabled={isSubmitting}>
-            {mode === 'create' ? 'Create category' : 'Save changes'}
+            {mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')}
           </Button>
         </div>
       </form>

@@ -1,12 +1,19 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { CategoryForm } from '@/components/category-form';
 import { DeleteCategoryButton } from '@/components/delete-category-button';
+import { sectionMetadata } from '@/lib/metadata';
 
-export const metadata = {
-  title: 'Edit category — Colina Admin',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return sectionMetadata(locale, 'Categories', 'form.editTitle');
+}
 
 type Props = {
   params: Promise<{ id: string }>;

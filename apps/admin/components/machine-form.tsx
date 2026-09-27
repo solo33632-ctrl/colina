@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
@@ -8,6 +9,7 @@ import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { UploadField } from './upload-field';
 import { createMachine, updateMachine } from '@/lib/actions/machines';
+import { machineMessages } from '@/lib/actions/validation-messages';
 import { machineInputSchema, type MachineInput } from '@/lib/schemas';
 
 export type MachineOption = {
@@ -28,24 +30,6 @@ type MachineFormProps = {
   defaultValues?: MachineInput;
 };
 
-const MESSAGES = {
-  nameAr: 'Arabic name must be at least 2 characters.',
-  nameEn: 'English name must be at least 2 characters.',
-  slug: 'Slug must be at least 2 lowercase letters, numbers or dashes.',
-  categoryId: 'Choose a category.',
-  shortDescriptionAr:
-    'Arabic short description must be at least 10 characters.',
-  shortDescriptionEn:
-    'English short description must be at least 10 characters.',
-  descriptionAr: 'Arabic description must be at least 10 characters.',
-  descriptionEn: 'English description must be at least 10 characters.',
-  specsAr: 'Arabic specs must not be empty.',
-  specsEn: 'English specs must not be empty.',
-  imageUrl: 'Image URL must be an absolute http(s) URL.',
-  imagePosition: 'Image position must be 0 or higher.',
-  datasheetUrl: 'Datasheet URL must be an absolute http(s) URL or empty.',
-};
-
 export function MachineForm({
   mode,
   machineId,
@@ -53,10 +37,13 @@ export function MachineForm({
   machines,
   defaultValues,
 }: MachineFormProps) {
+  const t = useTranslations('Machines');
+  const common = useTranslations('Common');
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
-  const schema = useMemo(() => machineInputSchema(MESSAGES), []);
+  // Same message namespace the Server Action validates against.
+  const schema = useMemo(() => machineInputSchema(machineMessages(t)), [t]);
 
   const {
     register,
@@ -127,15 +114,17 @@ export function MachineForm({
     }
     setFormError(
       result.error === 'slug_taken'
-        ? 'That slug is already used by another machine.'
+        ? t('slugTaken')
         : result.error === 'unauthorized'
-          ? 'Your session expired. Log in again.'
-          : 'Saving failed. Try again.'
+          ? common('errors.sessionExpired')
+          : common('errors.saveFailed')
     );
   }
 
   return (
-    <Card title={mode === 'create' ? 'New machine' : 'Edit machine'}>
+    <Card
+      title={mode === 'create' ? t('form.createTitle') : t('form.editTitle')}
+    >
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
@@ -143,7 +132,7 @@ export function MachineForm({
       >
         <Field
           id="machine-name-en"
-          label="Name (English)"
+          label={t('form.nameEn')}
           error={errors.nameEn?.message}
         >
           <input
@@ -155,7 +144,7 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-name-ar"
-          label="Name (Arabic)"
+          label={t('form.nameAr')}
           error={errors.nameAr?.message}
         >
           <input
@@ -166,7 +155,11 @@ export function MachineForm({
             {...register('nameAr')}
           />
         </Field>
-        <Field id="machine-slug" label="Slug" error={errors.slug?.message}>
+        <Field
+          id="machine-slug"
+          label={t('form.slug')}
+          error={errors.slug?.message}
+        >
           <input
             id="machine-slug"
             type="text"
@@ -177,7 +170,7 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-category"
-          label="Category"
+          label={t('form.category')}
           error={errors.categoryId?.message}
         >
           <select
@@ -185,7 +178,7 @@ export function MachineForm({
             className={inputClasses}
             {...register('categoryId')}
           >
-            <option value="">Choose a category…</option>
+            <option value="">{t('form.chooseCategory')}</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.nameEn}
@@ -195,7 +188,7 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-short-en"
-          label="Short description (English)"
+          label={t('form.shortDescriptionEn')}
           error={errors.shortDescriptionEn?.message}
         >
           <textarea
@@ -207,7 +200,7 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-short-ar"
-          label="Short description (Arabic)"
+          label={t('form.shortDescriptionAr')}
           error={errors.shortDescriptionAr?.message}
         >
           <textarea
@@ -220,7 +213,7 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-desc-en"
-          label="Full description (English)"
+          label={t('form.descriptionEn')}
           error={errors.descriptionEn?.message}
         >
           <textarea
@@ -232,7 +225,7 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-desc-ar"
-          label="Full description (Arabic)"
+          label={t('form.descriptionAr')}
           error={errors.descriptionAr?.message}
         >
           <textarea
@@ -245,7 +238,7 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-specs-en"
-          label="Specs (English)"
+          label={t('form.specsEn')}
           error={errors.specsEn?.message}
         >
           <textarea
@@ -257,7 +250,7 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-specs-ar"
-          label="Specs (Arabic)"
+          label={t('form.specsAr')}
           error={errors.specsAr?.message}
         >
           <textarea
@@ -270,7 +263,7 @@ export function MachineForm({
         </Field>
         <Field
           id="machine-datasheet"
-          label="Datasheet (optional, PDF)"
+          label={t('form.datasheet')}
           error={errors.datasheetUrl?.message}
         >
           <UploadField
@@ -289,7 +282,7 @@ export function MachineForm({
         </Field>
         <fieldset>
           <legend className="mb-1 block text-sm font-medium text-stone-700">
-            Images (ordered by position)
+            {t('form.imagesLegend')}
           </legend>
           <ul className="grid gap-3">
             {imageFields.map((field, index) => (
@@ -312,7 +305,7 @@ export function MachineForm({
                 <input
                   type="number"
                   min={0}
-                  aria-label={`Image ${index + 1} position`}
+                  aria-label={t('form.imagePosition', { number: index + 1 })}
                   className="w-20 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm"
                   {...register(`images.${index}.position`, {
                     valueAsNumber: true,
@@ -324,7 +317,7 @@ export function MachineForm({
                   size="sm"
                   onClick={() => removeImage(index)}
                 >
-                  Remove
+                  {t('form.removeImage')}
                 </Button>
               </li>
             ))}
@@ -343,18 +336,16 @@ export function MachineForm({
                 appendImage({ url: '', position: imageFields.length })
               }
             >
-              Add image
+              {t('form.addImage')}
             </Button>
           </div>
         </fieldset>
         <fieldset>
           <legend className="mb-1 block text-sm font-medium text-stone-700">
-            Related machines
+            {t('form.relatedLegend')}
           </legend>
           {relatedOptions.length === 0 ? (
-            <p className="text-sm text-stone-500">
-              No other machines exist yet.
-            </p>
+            <p className="text-sm text-stone-500">{t('form.noRelated')}</p>
           ) : (
             <ul className="grid gap-2">
               {relatedOptions.map((machine) => (
@@ -379,7 +370,7 @@ export function MachineForm({
         ) : null}
         <div>
           <Button type="submit" disabled={isSubmitting}>
-            {mode === 'create' ? 'Create machine' : 'Save changes'}
+            {mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')}
           </Button>
         </div>
       </form>

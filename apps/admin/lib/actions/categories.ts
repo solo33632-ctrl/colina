@@ -1,21 +1,18 @@
 'use server';
 
 import { prisma } from '@colina/db';
+import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
+import { categoryMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { categoryInputSchema } from '../schemas';
 
-// Generic English messages for the action contract. The client maps
-// field issues back onto its translated form; `error` codes are matched
-// programmatically, never displayed verbatim.
-const SERVER_MESSAGES = {
-  nameAr: 'Arabic name must be at least 2 characters.',
-  nameEn: 'English name must be at least 2 characters.',
-  slug: 'Slug must be at least 2 lowercase letters, numbers or dashes.',
-  descriptionAr: 'Arabic description must be at least 10 characters.',
-  descriptionEn: 'English description must be at least 10 characters.',
-  image: 'Image must be an absolute http(s) URL or empty.',
-};
+// Validation messages come from the message files, in the admin's current
+// language (see `validation-messages.ts`).
+async function parse(input: unknown) {
+  const t = await getTranslations('Categories');
+  return categoryInputSchema(categoryMessages(t)).safeParse(input);
+}
 
 export async function createCategory(
   input: unknown
@@ -25,7 +22,7 @@ export async function createCategory(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = categoryInputSchema(SERVER_MESSAGES).safeParse(input);
+  const parsed = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -86,7 +83,7 @@ export async function updateCategory(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = categoryInputSchema(SERVER_MESSAGES).safeParse(input);
+  const parsed = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,

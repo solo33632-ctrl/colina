@@ -1,31 +1,17 @@
 'use server';
 
 import { prisma } from '@colina/db';
+import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
+import { machineMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { machineInputSchema } from '../schemas';
 
-// Generic English messages for the action contract (see categories.ts).
-const SERVER_MESSAGES = {
-  nameAr: 'Arabic name must be at least 2 characters.',
-  nameEn: 'English name must be at least 2 characters.',
-  slug: 'Slug must be at least 2 lowercase letters, numbers or dashes.',
-  categoryId: 'Choose a category.',
-  shortDescriptionAr:
-    'Arabic short description must be at least 10 characters.',
-  shortDescriptionEn:
-    'English short description must be at least 10 characters.',
-  descriptionAr: 'Arabic description must be at least 10 characters.',
-  descriptionEn: 'English description must be at least 10 characters.',
-  specsAr: 'Arabic specs must not be empty.',
-  specsEn: 'English specs must not be empty.',
-  imageUrl: 'Image URL must be an absolute http(s) URL.',
-  imagePosition: 'Image position must be 0 or higher.',
-  datasheetUrl: 'Datasheet URL must be an absolute http(s) URL or empty.',
-};
-
-function parseResult(input: unknown) {
-  return machineInputSchema(SERVER_MESSAGES).safeParse(input);
+// Validation messages come from the message files, in the admin's current
+// language (see `validation-messages.ts`).
+async function parseResult(input: unknown) {
+  const t = await getTranslations('Machines');
+  return machineInputSchema(machineMessages(t)).safeParse(input);
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -45,7 +31,7 @@ export async function createMachine(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = parseResult(input);
+  const parsed = await parseResult(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -130,7 +116,7 @@ export async function updateMachine(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = parseResult(input);
+  const parsed = await parseResult(input);
   if (!parsed.success) {
     return {
       ok: false,

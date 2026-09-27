@@ -19,6 +19,12 @@ packages/db/prisma/generated/
 *.log
 npm-debug.log*
 
+# Test artifacts (Playwright traces/reports, coverage)
+test-results/
+playwright-report/
+blob-report/
+coverage/
+
 # OS
 .DS_Store
 Thumbs.db

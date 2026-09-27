@@ -27,6 +27,24 @@ If install times / disk usage become an issue later, migrating to pnpm workspace
 
 If you use nvm: `nvm use` (installs/uses Node 24 automatically).
 
+### System libraries for E2E browsers (Playwright)
+
+The `test:e2e` suite drives a real Chromium. On minimal Linux bases
+(Ubuntu container/CI images especially), Chromium needs OS libraries
+that Node alone doesn't provide (`libnspr4`, `libnss3`, `libasound2`,
+…). Without them the browser process exits immediately (code 127) and
+every spec fails — with no hint that a system package is the cause.
+
+Standard fix (needs root, e.g. in CI setup or a Dockerfile):
+
+```bash
+npx playwright install --with-deps chromium
+```
+
+That single command installs both the browser and its system
+dependencies. Verifying it worked: `npx playwright install --dry-run`
+or simply running `npm run test:e2e`.
+
 ## Install
 
 ```bash
@@ -74,6 +92,30 @@ npm run lint
 npm run format
 npm run format:check
 ```
+
+## Testing
+
+```bash
+npm test              # unit tests (vitest, all workspaces)
+npm run test:e2e      # Playwright suite in ./e2e (needs both apps serving)
+```
+
+Unit tests live next to the code (`lib/*.test.ts`, pure logic only —
+no DB, no network). The e2e suite needs a live environment first:
+
+```bash
+# 1. Postgres up, migrated + seeded (see Database above)
+# 2. Both apps built and serving, e.g.:
+#      web on :3120, admin on :3121 (ports are configurable via
+#      WEB_URL / ADMIN_URL env vars, defaults shown)
+# 3. ADMIN_EMAIL / ADMIN_PASSWORD set to a seeded admin login
+WEB_URL=http://localhost:3120 ADMIN_URL=http://localhost:3121 \
+  ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='<seed password>' \
+  npm run test:e2e
+```
+
+(Note: no CI config exists yet — wiring these scripts into CI belongs to
+a future phase at the earliest.)
 
 ## Structure
 

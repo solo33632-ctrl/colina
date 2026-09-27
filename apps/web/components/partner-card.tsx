@@ -16,7 +16,7 @@ export function PartnerCard({ partner, locale }: PartnerCardProps) {
       <ImageWithFallback
         src={partner.logo}
         alt={name}
-        fallbackClassName="flex aspect-video items-center justify-center bg-stone-100"
+        fallbackClassName="bg-stone-100"
       />
       <p className="truncate px-2 py-2 text-center text-xs text-stone-600">
         {name}

@@ -32,7 +32,12 @@
     "specsHeading": "المواصفات",
     "galleryHeading": "معرض الصور",
     "datasheetLabel": "تحميل ورقة البيانات (PDF)",
-    "relatedHeading": "آلات ذات صلة"
+    "relatedHeading": "آلات ذات صلة",
+    "zoomHint": "مرّر المؤشر للتكبير",
+    "openImageLabel": "عرض الصورة بالحجم الكامل",
+    "closeImageLabel": "إغلاق الصورة",
+    "imagePosition": "الصورة {current} من {total}",
+    "showImage": "عرض الصورة {number}"
   },
   "ServicesPage": {
     "heading": "خدمات الصيانة",

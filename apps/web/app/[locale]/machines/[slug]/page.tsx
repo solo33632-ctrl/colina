@@ -4,8 +4,8 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
 import { Button, Container } from '@colina/ui';
-import { ImageWithFallback } from '@/components/image-with-fallback';
 import { MachineCard } from '@/components/machine-card';
+import { MachineGallery } from '@/components/machine-gallery';
 import { Link } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
 import { absoluteImageUrl, localeAlternates, serializeJsonLd } from '@/lib/seo';
@@ -127,16 +127,13 @@ export default async function MachineDetailPage({ params }: Props) {
             >
               {t('galleryHeading')}
             </h2>
-            <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-              {machine.images.map((image) => (
-                <li
-                  key={image.id}
-                  className="overflow-hidden rounded-xl border border-stone-200"
-                >
-                  <ImageWithFallback src={image.url} alt={name} />
-                </li>
-              ))}
-            </ul>
+            <MachineGallery
+              images={machine.images.map((image) => ({
+                id: image.id,
+                url: image.url,
+              }))}
+              alt={name}
+            />
           </section>
         ) : null}
 

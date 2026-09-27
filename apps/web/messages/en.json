@@ -32,7 +32,12 @@
     "specsHeading": "Specifications",
     "galleryHeading": "Gallery",
     "datasheetLabel": "Download datasheet (PDF)",
-    "relatedHeading": "Related machines"
+    "relatedHeading": "Related machines",
+    "zoomHint": "Hover to zoom",
+    "openImageLabel": "View full-size image",
+    "closeImageLabel": "Close image",
+    "imagePosition": "Image {current} of {total}",
+    "showImage": "Show image {number}"
   },
   "ServicesPage": {
     "heading": "Maintenance services",

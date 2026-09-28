@@ -53,7 +53,14 @@ export function AdminTopBar({
           <div className="ms-auto flex items-center gap-3">
             <AdminLanguageSwitcher />
             <div className="flex flex-col items-end text-sm leading-tight">
-              <span className="max-w-[9rem] truncate font-medium text-stone-800 sm:max-w-xs">
+              {/* An address is Latin script even on an Arabic page: without an
+                  explicit `dir`, RTL text-overflow clips it from the left and
+                  the ellipsis lands in the middle of the address. */}
+              <span
+                dir="ltr"
+                title={email}
+                className="block max-w-[9rem] truncate font-medium text-stone-800 sm:max-w-xs"
+              >
                 {email}
               </span>
               <span className="text-xs text-stone-500">{roleLabel}</span>

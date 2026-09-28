@@ -117,7 +117,9 @@ export default async function AdminHomePage() {
     highlighted?: boolean;
   }[] = [
     {
-      href: '/leads',
+      // The leads inbox already reads `?status=`, so the tile can drop the
+      // operator straight onto the untouched queue.
+      href: '/leads?status=NEW',
       label: t('newLeads'),
       count: newContactCount + newRequestCount,
       icon: 'leads',

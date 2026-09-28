@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 import { AgentForm } from '@/components/agent-form';
 import { DeleteButton } from '@/components/delete-button';
 import { deleteAgent } from '@/lib/actions/agents';
@@ -24,14 +25,26 @@ type Props = {
 export default async function EditAgentPage({ params }: Props) {
   const { id } = await params;
   const locale = await getLocale();
+  const nav = await getTranslations('Nav');
+  const common = await getTranslations('Common');
   const agent = await prisma.agent.findUnique({ where: { id } });
   if (!agent) {
     notFound();
   }
 
+  const name =
+    locale === 'ar'
+      ? agent.countryAr || agent.countryEn
+      : agent.countryEn || agent.countryAr;
+
   return (
     <main>
-      <Container className="max-w-2xl py-10">
+      <Container className="max-w-5xl py-10">
+        <Breadcrumbs
+          sectionHref="/agents"
+          sectionLabel={nav('agents')}
+          current={common('editNamed', { name })}
+        />
         <AgentForm
           mode="edit"
           agentId={agent.id}

@@ -8,6 +8,7 @@ import { AdminThumb } from '@/components/admin-thumb';
 import { DeleteButton } from '@/components/delete-button';
 import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
+import { SaveBanner } from '@/components/save-banner';
 import { deletePartner } from '@/lib/actions/partners';
 import { sectionMetadata } from '@/lib/metadata';
 
@@ -21,14 +22,15 @@ export async function generateMetadata({
 }
 
 type Props = {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; saved?: string }>;
 };
 
 export default async function PartnersPage({ searchParams }: Props) {
   const locale = await getLocale();
   const t = await getTranslations('Partners');
   const common = await getTranslations('Common');
-  const query = ((await searchParams).q ?? '').trim();
+  const { q, saved } = await searchParams;
+  const query = (q ?? '').trim();
   const isFiltered = query.length > 0;
 
   const partners = await prisma.partner.findMany({
@@ -106,6 +108,7 @@ export default async function PartnersPage({ searchParams }: Props) {
           filtered={isFiltered && partners.length > 0}
           clearHref="/partners"
         />
+        {saved ? <SaveBanner message={common('saved')} /> : null}
         {partners.length === 0 ? (
           <ListEmptyState
             message={isFiltered ? common('noResults') : t('empty')}

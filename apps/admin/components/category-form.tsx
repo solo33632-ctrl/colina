@@ -5,9 +5,11 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import { Button, Card } from '@colina/ui';
+import { Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import { FormActions } from './form-actions';
 import { UploadField } from './upload-field';
+import { useAutoSlug } from './use-auto-slug';
 import { createCategory, updateCategory } from '@/lib/actions/categories';
 import { categoryMessages } from '@/lib/actions/validation-messages';
 import { categoryInputSchema, type CategoryInput } from '@/lib/schemas';
@@ -52,6 +54,16 @@ export function CategoryForm({
   });
 
   const imageValue = useWatch({ control, name: 'image' });
+  const nameEnValue = useWatch({ control, name: 'nameEn' });
+  const { markSlugTouched } = useAutoSlug<CategoryInput>({
+    enabled: mode === 'create',
+    source: nameEnValue ?? '',
+    slug: 'slug',
+    setValue,
+  });
+  // `register` owns onChange, so the touched flag rides along with it rather
+  // than replacing it.
+  const slugField = register('slug');
 
   async function onSubmit(values: CategoryInput) {
     setFormError(null);
@@ -60,7 +72,7 @@ export function CategoryForm({
         ? await createCategory(values)
         : await updateCategory(categoryId ?? '', values);
     if (result.ok) {
-      router.push('/categories');
+      router.push('/categories?saved=1');
       router.refresh();
       return;
     }
@@ -82,107 +94,137 @@ export function CategoryForm({
   }
 
   return (
-    <Card
-      title={mode === 'create' ? t('form.createTitle') : t('form.editTitle')}
+    // `pb-24` reserves the height of the sticky action bar, so the last
+    // section can be scrolled clear of it.
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+      className="mt-6 grid gap-6 pb-24 text-start"
     >
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        noValidate
-        className="mt-4 grid gap-5 text-start"
-      >
-        <Field
-          id="cat-name-en"
-          label={t('form.nameEn')}
-          error={errors.nameEn?.message}
-        >
-          <input
-            id="cat-name-en"
-            type="text"
-            className={inputClasses}
-            {...register('nameEn')}
-          />
-        </Field>
-        <Field
-          id="cat-name-ar"
-          label={t('form.nameAr')}
-          error={errors.nameAr?.message}
-        >
-          <input
-            id="cat-name-ar"
-            type="text"
-            dir="auto"
-            className={inputClasses}
-            {...register('nameAr')}
-          />
-        </Field>
-        <Field
-          id="cat-slug"
-          label={t('form.slug')}
-          error={errors.slug?.message}
-        >
-          <input
-            id="cat-slug"
-            type="text"
-            autoComplete="off"
-            className={inputClasses}
-            {...register('slug')}
-          />
-        </Field>
-        <Field
-          id="cat-description-en"
-          label={t('form.descriptionEn')}
-          error={errors.descriptionEn?.message}
-        >
-          <textarea
-            id="cat-description-en"
-            rows={3}
-            className={inputClasses}
-            {...register('descriptionEn')}
-          />
-        </Field>
-        <Field
-          id="cat-description-ar"
-          label={t('form.descriptionAr')}
-          error={errors.descriptionAr?.message}
-        >
-          <textarea
-            id="cat-description-ar"
-            rows={3}
-            dir="auto"
-            className={inputClasses}
-            {...register('descriptionAr')}
-          />
-        </Field>
-        <Field
-          id="cat-image"
-          label={t('form.image')}
-          error={errors.image?.message}
-        >
-          <UploadField
-            id="cat-image"
-            kind="image"
-            value={imageValue ?? ''}
-            onUploaded={(url) => {
-              setValue('image', url, {
-                shouldValidate: true,
-                shouldDirty: true,
-              });
-              clearErrors('image');
-            }}
-            urlInputProps={register('image')}
-          />
-        </Field>
-        {formError ? (
-          <p role="alert" className="text-sm font-medium text-red-700">
-            {formError}
-          </p>
-        ) : null}
-        <div>
-          <Button type="submit" disabled={isSubmitting}>
-            {mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')}
-          </Button>
-        </div>
-      </form>
-    </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card title={common('sectionBasic')}>
+          <div className="grid gap-5">
+            <Field
+              id="cat-slug"
+              label={t('form.slug')}
+              error={errors.slug?.message}
+            >
+              <input
+                id="cat-slug"
+                type="text"
+                autoComplete="off"
+                className={inputClasses}
+                {...slugField}
+                onChange={(event) => {
+                  markSlugTouched();
+                  slugField.onChange(event);
+                }}
+              />
+            </Field>
+          </div>
+        </Card>
+        <Card title={common('sectionFiles')}>
+          <div className="grid gap-5">
+            <Field
+              id="cat-image"
+              label={t('form.image')}
+              error={errors.image?.message}
+            >
+              <UploadField
+                id="cat-image"
+                kind="image"
+                value={imageValue ?? ''}
+                onUploaded={(url) => {
+                  setValue('image', url, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                  clearErrors('image');
+                }}
+                onClear={() =>
+                  setValue('image', '', {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
+                urlInputProps={register('image')}
+              />
+            </Field>
+          </div>
+        </Card>
+        <Card title={common('sectionArabic')}>
+          <div dir="rtl" className="grid gap-5">
+            <Field
+              id="cat-name-ar"
+              label={t('form.nameAr')}
+              error={errors.nameAr?.message}
+            >
+              <input
+                id="cat-name-ar"
+                type="text"
+                dir="rtl"
+                className={inputClasses}
+                {...register('nameAr')}
+              />
+            </Field>
+            <Field
+              id="cat-description-ar"
+              label={t('form.descriptionAr')}
+              error={errors.descriptionAr?.message}
+            >
+              <textarea
+                id="cat-description-ar"
+                rows={5}
+                dir="rtl"
+                className={inputClasses}
+                {...register('descriptionAr')}
+              />
+            </Field>
+          </div>
+        </Card>
+        <Card title={common('sectionEnglish')}>
+          <div dir="ltr" className="grid gap-5">
+            <Field
+              id="cat-name-en"
+              label={t('form.nameEn')}
+              error={errors.nameEn?.message}
+            >
+              <input
+                id="cat-name-en"
+                type="text"
+                dir="ltr"
+                className={inputClasses}
+                {...register('nameEn')}
+              />
+            </Field>
+            <Field
+              id="cat-description-en"
+              label={t('form.descriptionEn')}
+              error={errors.descriptionEn?.message}
+            >
+              <textarea
+                id="cat-description-en"
+                rows={5}
+                dir="ltr"
+                className={inputClasses}
+                {...register('descriptionEn')}
+              />
+            </Field>
+          </div>
+        </Card>
+      </div>
+      {formError ? (
+        <p role="alert" className="text-sm font-medium text-red-700">
+          {formError}
+        </p>
+      ) : null}
+      <FormActions
+        submitLabel={
+          mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')
+        }
+        isSubmitting={isSubmitting}
+        cancelHref="/categories"
+      />
+    </form>
   );
 }

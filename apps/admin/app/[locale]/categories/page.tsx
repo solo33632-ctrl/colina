@@ -8,6 +8,7 @@ import { AdminThumb } from '@/components/admin-thumb';
 import { DeleteCategoryButton } from '@/components/delete-category-button';
 import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
+import { SaveBanner } from '@/components/save-banner';
 import { sectionMetadata } from '@/lib/metadata';
 
 export async function generateMetadata({
@@ -20,14 +21,15 @@ export async function generateMetadata({
 }
 
 type Props = {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; saved?: string }>;
 };
 
 export default async function CategoriesPage({ searchParams }: Props) {
   const locale = await getLocale();
   const t = await getTranslations('Categories');
   const common = await getTranslations('Common');
-  const query = ((await searchParams).q ?? '').trim();
+  const { q, saved } = await searchParams;
+  const query = (q ?? '').trim();
   const isFiltered = query.length > 0;
 
   const categories = await prisma.machineCategory.findMany({
@@ -112,6 +114,7 @@ export default async function CategoriesPage({ searchParams }: Props) {
           filtered={isFiltered && categories.length > 0}
           clearHref="/categories"
         />
+        {saved ? <SaveBanner message={common('saved')} /> : null}
         {categories.length === 0 ? (
           <ListEmptyState
             message={isFiltered ? common('noResults') : t('empty')}

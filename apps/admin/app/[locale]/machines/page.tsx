@@ -9,6 +9,7 @@ import { DeleteMachineButton } from '@/components/delete-machine-button';
 import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
 import { ListPagination } from '@/components/list-pagination';
+import { SaveBanner } from '@/components/save-banner';
 import { sectionMetadata } from '@/lib/metadata';
 
 export async function generateMetadata({
@@ -25,14 +26,24 @@ export async function generateMetadata({
 const PAGE_SIZE = 20;
 
 type Props = {
-  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    category?: string;
+    page?: string;
+    saved?: string;
+  }>;
 };
 
 export default async function MachinesPage({ searchParams }: Props) {
   const locale = await getLocale();
   const t = await getTranslations('Machines');
   const common = await getTranslations('Common');
-  const { q, category: categoryFilter, page: pageParam } = await searchParams;
+  const {
+    q,
+    category: categoryFilter,
+    page: pageParam,
+    saved,
+  } = await searchParams;
 
   const query = (q ?? '').trim();
   const isFiltered = query.length > 0 || Boolean(categoryFilter);
@@ -178,6 +189,7 @@ export default async function MachinesPage({ searchParams }: Props) {
             </select>
           </div>
         </ListFilters>
+        {saved ? <SaveBanner message={common('saved')} /> : null}
         {machines.length === 0 ? (
           <ListEmptyState
             message={isFiltered ? common('noResults') : t('empty')}

@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
-import { getLocale } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Container } from '@colina/ui';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 import { CategoryForm } from '@/components/category-form';
 import { DeleteCategoryButton } from '@/components/delete-category-button';
 import { sectionMetadata } from '@/lib/metadata';
@@ -23,6 +24,8 @@ type Props = {
 export default async function EditCategoryPage({ params }: Props) {
   const { id } = await params;
   const locale = await getLocale();
+  const nav = await getTranslations('Nav');
+  const common = await getTranslations('Common');
   const category = await prisma.machineCategory.findUnique({
     where: { id },
     include: { _count: { select: { machines: true } } },
@@ -31,9 +34,19 @@ export default async function EditCategoryPage({ params }: Props) {
     notFound();
   }
 
+  const name =
+    locale === 'ar'
+      ? category.nameAr || category.nameEn
+      : category.nameEn || category.nameAr;
+
   return (
     <main>
-      <Container className="max-w-2xl py-10">
+      <Container className="max-w-5xl py-10">
+        <Breadcrumbs
+          sectionHref="/categories"
+          sectionLabel={nav('categories')}
+          current={common('editNamed', { name })}
+        />
         <CategoryForm
           mode="edit"
           categoryId={category.id}

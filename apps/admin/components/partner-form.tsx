@@ -5,8 +5,9 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import { Button, Card } from '@colina/ui';
+import { Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import { FormActions } from './form-actions';
 import { UploadField } from './upload-field';
 import { createPartner, updatePartner } from '@/lib/actions/partners';
 import { partnerMessages } from '@/lib/actions/validation-messages';
@@ -28,7 +29,6 @@ export function PartnerForm({
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Same message namespace the Server Action validates against.
   const schema = useMemo(() => partnerInputSchema(partnerMessages(t)), [t]);
 
   const {
@@ -53,7 +53,7 @@ export function PartnerForm({
         ? await createPartner(values)
         : await updatePartner(partnerId ?? '', values);
     if (result.ok) {
-      router.push('/partners');
+      router.push('/partners?saved=1');
       router.refresh();
       return;
     }
@@ -73,69 +73,90 @@ export function PartnerForm({
   }
 
   return (
-    <Card
-      title={mode === 'create' ? t('form.createTitle') : t('form.editTitle')}
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+      className="mt-6 grid gap-6 pb-24 text-start"
     >
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        noValidate
-        className="mt-4 grid gap-5 text-start"
-      >
-        <Field
-          id="partner-name-en"
-          label={t('form.nameEn')}
-          error={errors.nameEn?.message}
-        >
-          <input
-            id="partner-name-en"
-            type="text"
-            className={inputClasses}
-            {...register('nameEn')}
-          />
-        </Field>
-        <Field
-          id="partner-name-ar"
-          label={t('form.nameAr')}
-          error={errors.nameAr?.message}
-        >
-          <input
-            id="partner-name-ar"
-            type="text"
-            dir="auto"
-            className={inputClasses}
-            {...register('nameAr')}
-          />
-        </Field>
-        <Field
-          id="partner-logo"
-          label={t('form.logo')}
-          error={errors.logo?.message}
-        >
-          <UploadField
-            id="partner-logo"
-            kind="image"
-            value={logoValue ?? ''}
-            onUploaded={(url) => {
-              setValue('logo', url, {
-                shouldValidate: true,
-                shouldDirty: true,
-              });
-              clearErrors('logo');
-            }}
-            urlInputProps={register('logo')}
-          />
-        </Field>
-        {formError ? (
-          <p role="alert" className="text-sm font-medium text-red-700">
-            {formError}
-          </p>
-        ) : null}
-        <div>
-          <Button type="submit" disabled={isSubmitting}>
-            {mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')}
-          </Button>
-        </div>
-      </form>
-    </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card title={common('sectionArabic')}>
+          <div dir="rtl" className="grid gap-5">
+            <Field
+              id="partner-name-ar"
+              label={t('form.nameAr')}
+              error={errors.nameAr?.message}
+            >
+              <input
+                id="partner-name-ar"
+                type="text"
+                dir="rtl"
+                className={inputClasses}
+                {...register('nameAr')}
+              />
+            </Field>
+          </div>
+        </Card>
+        <Card title={common('sectionEnglish')}>
+          <div dir="ltr" className="grid gap-5">
+            <Field
+              id="partner-name-en"
+              label={t('form.nameEn')}
+              error={errors.nameEn?.message}
+            >
+              <input
+                id="partner-name-en"
+                type="text"
+                dir="ltr"
+                className={inputClasses}
+                {...register('nameEn')}
+              />
+            </Field>
+          </div>
+        </Card>
+        {/* No "Basic info" section here: a partner has no slug and no
+            language-neutral field, so the section would be an empty card. */}
+        <Card title={common('sectionFiles')} className="lg:col-span-2">
+          <div className="grid gap-5">
+            <Field
+              id="partner-logo"
+              label={t('form.logo')}
+              error={errors.logo?.message}
+            >
+              <UploadField
+                id="partner-logo"
+                kind="image"
+                value={logoValue ?? ''}
+                onUploaded={(url) => {
+                  setValue('logo', url, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                  clearErrors('logo');
+                }}
+                onClear={() =>
+                  setValue('logo', '', {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
+                urlInputProps={register('logo')}
+              />
+            </Field>
+          </div>
+        </Card>
+      </div>
+      {formError ? (
+        <p role="alert" className="text-sm font-medium text-red-700">
+          {formError}
+        </p>
+      ) : null}
+      <FormActions
+        submitLabel={
+          mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')
+        }
+        isSubmitting={isSubmitting}
+        cancelHref="/partners"
+      />
+    </form>
   );
 }

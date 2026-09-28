@@ -9,6 +9,7 @@ import { DeleteButton } from '@/components/delete-button';
 import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
 import { ListPagination } from '@/components/list-pagination';
+import { SaveBanner } from '@/components/save-banner';
 import { deleteNews } from '@/lib/actions/news';
 import { intlLocale } from '@/lib/format';
 import { sectionMetadata } from '@/lib/metadata';
@@ -27,14 +28,14 @@ export async function generateMetadata({
 const PAGE_SIZE = 20;
 
 type Props = {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; saved?: string }>;
 };
 
 export default async function NewsPage({ searchParams }: Props) {
   const locale = await getLocale();
   const t = await getTranslations('News');
   const common = await getTranslations('Common');
-  const { q, page: pageParam } = await searchParams;
+  const { q, page: pageParam, saved } = await searchParams;
   const query = (q ?? '').trim();
   const isFiltered = query.length > 0;
 
@@ -136,6 +137,7 @@ export default async function NewsPage({ searchParams }: Props) {
           filtered={isFiltered && posts.length > 0}
           clearHref="/news"
         />
+        {saved ? <SaveBanner message={common('saved')} /> : null}
         {posts.length === 0 ? (
           <ListEmptyState
             message={isFiltered ? common('noResults') : t('empty')}

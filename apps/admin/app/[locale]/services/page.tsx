@@ -7,6 +7,7 @@ import { AdminTable, type AdminTableColumn } from '@/components/admin-table';
 import { DeleteButton } from '@/components/delete-button';
 import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
+import { SaveBanner } from '@/components/save-banner';
 import { deleteService } from '@/lib/actions/services';
 import { sectionMetadata } from '@/lib/metadata';
 
@@ -20,14 +21,15 @@ export async function generateMetadata({
 }
 
 type Props = {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; saved?: string }>;
 };
 
 export default async function ServicesPage({ searchParams }: Props) {
   const locale = await getLocale();
   const t = await getTranslations('Services');
   const common = await getTranslations('Common');
-  const query = ((await searchParams).q ?? '').trim();
+  const { q, saved } = await searchParams;
+  const query = (q ?? '').trim();
   const isFiltered = query.length > 0;
 
   const services = await prisma.maintenanceService.findMany({
@@ -107,6 +109,7 @@ export default async function ServicesPage({ searchParams }: Props) {
           filtered={isFiltered && services.length > 0}
           clearHref="/services"
         />
+        {saved ? <SaveBanner message={common('saved')} /> : null}
         {services.length === 0 ? (
           <ListEmptyState
             message={isFiltered ? common('noResults') : t('empty')}

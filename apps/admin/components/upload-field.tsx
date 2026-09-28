@@ -33,6 +33,9 @@ type UploadFieldProps = {
   kind: UploadKind;
   value: string;
   onUploaded: (url: string) => void;
+  /** Clears the field back to empty. It does not delete anything remotely:
+   *  the project stores only the URL, so the file itself is out of scope. */
+  onClear?: () => void;
   urlInputProps: UseFormRegisterReturn;
 };
 
@@ -48,6 +51,7 @@ export function UploadField({
   kind,
   value,
   onUploaded,
+  onClear,
   urlInputProps,
 }: UploadFieldProps) {
   const t = useTranslations('Uploads');
@@ -169,26 +173,38 @@ export function UploadField({
       </div>
 
       {value ? (
-        isImage ? (
-          // Plain <img> on purpose: this previews a stored URL, and pasted
-          // URLs can point anywhere, so next/image's fixed remotePatterns
-          // config can't cover them.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={value}
-            alt={t('currentImage')}
-            className="h-24 w-40 rounded-lg border border-stone-200 bg-stone-50 object-contain"
-          />
-        ) : (
-          <a
-            href={value}
-            target="_blank"
-            rel="noreferrer"
-            className="w-fit text-sm text-brand-700 underline underline-offset-2"
-          >
-            {t('viewDatasheet')}
-          </a>
-        )
+        <div className="flex flex-wrap items-center gap-3">
+          {isImage ? (
+            // Plain <img> on purpose: this previews a stored URL, and pasted
+            // URLs can point anywhere, so next/image's fixed remotePatterns
+            // config can't cover them.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={value}
+              alt={t('currentImage')}
+              className="h-24 w-40 rounded-lg border border-stone-200 bg-stone-50 object-contain"
+            />
+          ) : (
+            <a
+              href={value}
+              target="_blank"
+              rel="noreferrer"
+              className="w-fit text-sm text-brand-700 underline underline-offset-2"
+            >
+              {t('viewDatasheet')}
+            </a>
+          )}
+          {onClear ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onClear}
+            >
+              {t('removeFile')}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
 
       {uploadError ? (

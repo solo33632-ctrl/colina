@@ -5,8 +5,9 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Button, Card } from '@colina/ui';
+import { Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
+import { FormActions } from './form-actions';
 import { createAgent, updateAgent } from '@/lib/actions/agents';
 import { agentMessages } from '@/lib/actions/validation-messages';
 import { agentInputSchema, type AgentInput } from '@/lib/schemas';
@@ -23,7 +24,6 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Same message namespace the Server Action validates against.
   const schema = useMemo(() => agentInputSchema(agentMessages(t)), [t]);
 
   const {
@@ -52,7 +52,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
         ? await createAgent(values)
         : await updateAgent(agentId ?? '', values);
     if (result.ok) {
-      router.push('/agents');
+      router.push('/agents?saved=1');
       router.refresh();
       return;
     }
@@ -72,102 +72,121 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
   }
 
   return (
-    <Card
-      title={mode === 'create' ? t('form.createTitle') : t('form.editTitle')}
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+      className="mt-6 grid gap-6 pb-24 text-start"
     >
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        noValidate
-        className="mt-4 grid gap-5 text-start"
-      >
-        <Field
-          id="agent-country-en"
-          label={t('form.countryEn')}
-          error={errors.countryEn?.message}
-        >
-          <input
-            id="agent-country-en"
-            type="text"
-            className={inputClasses}
-            {...register('countryEn')}
-          />
-        </Field>
-        <Field
-          id="agent-country-ar"
-          label={t('form.countryAr')}
-          error={errors.countryAr?.message}
-        >
-          <input
-            id="agent-country-ar"
-            type="text"
-            dir="auto"
-            className={inputClasses}
-            {...register('countryAr')}
-          />
-        </Field>
-        <Field id="agent-city-en" label={t('form.cityEn')}>
-          <input
-            id="agent-city-en"
-            type="text"
-            className={inputClasses}
-            {...register('cityEn')}
-          />
-        </Field>
-        <Field id="agent-city-ar" label={t('form.cityAr')}>
-          <input
-            id="agent-city-ar"
-            type="text"
-            dir="auto"
-            className={inputClasses}
-            {...register('cityAr')}
-          />
-        </Field>
-        <Field id="agent-address-en" label={t('form.addressEn')}>
-          <input
-            id="agent-address-en"
-            type="text"
-            className={inputClasses}
-            {...register('addressEn')}
-          />
-        </Field>
-        <Field id="agent-address-ar" label={t('form.addressAr')}>
-          <input
-            id="agent-address-ar"
-            type="text"
-            dir="auto"
-            className={inputClasses}
-            {...register('addressAr')}
-          />
-        </Field>
-        <Field id="agent-phone" label={t('form.phone')}>
-          <input
-            id="agent-phone"
-            type="tel"
-            autoComplete="tel"
-            className={inputClasses}
-            {...register('phone')}
-          />
-        </Field>
-        <Field id="agent-email" label={t('form.email')}>
-          <input
-            id="agent-email"
-            type="email"
-            autoComplete="email"
-            className={inputClasses}
-            {...register('email')}
-          />
-        </Field>
-        {formError ? (
-          <p role="alert" className="text-sm font-medium text-red-700">
-            {formError}
-          </p>
-        ) : null}
-        <div>
-          <Button type="submit" disabled={isSubmitting}>
-            {mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')}
-          </Button>
-        </div>
-      </form>
-    </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Contact details are the same in both languages, so they get their
+            own full-width section above the two language columns. */}
+        <Card title={common('sectionBasic')} className="lg:col-span-2">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field id="agent-phone" label={t('form.phone')}>
+              <input
+                id="agent-phone"
+                type="tel"
+                autoComplete="tel"
+                dir="ltr"
+                className={inputClasses}
+                {...register('phone')}
+              />
+            </Field>
+            <Field id="agent-email" label={t('form.email')}>
+              <input
+                id="agent-email"
+                type="email"
+                autoComplete="email"
+                dir="ltr"
+                className={inputClasses}
+                {...register('email')}
+              />
+            </Field>
+          </div>
+        </Card>
+        <Card title={common('sectionArabic')}>
+          <div dir="rtl" className="grid gap-5">
+            <Field
+              id="agent-country-ar"
+              label={t('form.countryAr')}
+              error={errors.countryAr?.message}
+            >
+              <input
+                id="agent-country-ar"
+                type="text"
+                dir="rtl"
+                className={inputClasses}
+                {...register('countryAr')}
+              />
+            </Field>
+            <Field id="agent-city-ar" label={t('form.cityAr')}>
+              <input
+                id="agent-city-ar"
+                type="text"
+                dir="rtl"
+                className={inputClasses}
+                {...register('cityAr')}
+              />
+            </Field>
+            <Field id="agent-address-ar" label={t('form.addressAr')}>
+              <textarea
+                id="agent-address-ar"
+                rows={3}
+                dir="rtl"
+                className={inputClasses}
+                {...register('addressAr')}
+              />
+            </Field>
+          </div>
+        </Card>
+        <Card title={common('sectionEnglish')}>
+          <div dir="ltr" className="grid gap-5">
+            <Field
+              id="agent-country-en"
+              label={t('form.countryEn')}
+              error={errors.countryEn?.message}
+            >
+              <input
+                id="agent-country-en"
+                type="text"
+                dir="ltr"
+                className={inputClasses}
+                {...register('countryEn')}
+              />
+            </Field>
+            <Field id="agent-city-en" label={t('form.cityEn')}>
+              <input
+                id="agent-city-en"
+                type="text"
+                dir="ltr"
+                className={inputClasses}
+                {...register('cityEn')}
+              />
+            </Field>
+            <Field id="agent-address-en" label={t('form.addressEn')}>
+              <textarea
+                id="agent-address-en"
+                rows={3}
+                dir="ltr"
+                className={inputClasses}
+                {...register('addressEn')}
+              />
+            </Field>
+          </div>
+        </Card>
+      </div>
+      {formError ? (
+        <p role="alert" className="text-sm font-medium text-red-700">
+          {formError}
+        </p>
+      ) : null}
+      <FormActions
+        submitLabel={
+          mode === 'create' ? t('form.submitCreate') : t('form.submitEdit')
+        }
+        isSubmitting={isSubmitting}
+        cancelHref="/agents"
+      />
+    </form>
   );
 }

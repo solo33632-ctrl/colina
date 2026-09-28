@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 import { DeleteButton } from '@/components/delete-button';
 import { NewsForm } from '@/components/news-form';
 import { deleteNews } from '@/lib/actions/news';
@@ -24,14 +25,26 @@ type Props = {
 export default async function EditNewsPage({ params }: Props) {
   const { id } = await params;
   const locale = await getLocale();
+  const nav = await getTranslations('Nav');
+  const common = await getTranslations('Common');
   const post = await prisma.newsPost.findUnique({ where: { id } });
   if (!post) {
     notFound();
   }
 
+  const name =
+    locale === 'ar'
+      ? post.titleAr || post.titleEn
+      : post.titleEn || post.titleAr;
+
   return (
     <main>
-      <Container className="max-w-2xl py-10">
+      <Container className="max-w-5xl py-10">
+        <Breadcrumbs
+          sectionHref="/news"
+          sectionLabel={nav('news')}
+          current={common('editNamed', { name })}
+        />
         <NewsForm
           mode="edit"
           newsId={post.id}

@@ -60,19 +60,23 @@ export function DeleteButton({
 
   return (
     <>
-      <Button
-        type="button"
-        variant="secondary"
-        size={compact ? 'sm' : 'md'}
-        // The visible label is the generic "Delete" plus the icon; the
-        // accessible name says which record, since a list has one of these per
-        // row.
-        aria-label={t('deleteItem', { name: itemName })}
-        onClick={() => setOpen(true)}
-      >
-        <Icon name="trash" className="me-2 h-4 w-4" />
-        {t('delete')}
-      </Button>
+      {/* The edit pages render this under the form and rely on the margin it
+          had before it became a row action in the list tables. */}
+      <div className={compact ? '' : 'mt-6'}>
+        <Button
+          type="button"
+          variant="secondary"
+          size={compact ? 'sm' : 'md'}
+          // The visible label is the generic "Delete" plus the icon; the
+          // accessible name says which record, since a list has one of these per
+          // row.
+          aria-label={t('deleteItem', { name: itemName })}
+          onClick={() => setOpen(true)}
+        >
+          <Icon name="trash" className="me-2 h-4 w-4" />
+          {t('delete')}
+        </Button>
+      </div>
       <ConfirmDialog
         open={open}
         title={t('delete')}

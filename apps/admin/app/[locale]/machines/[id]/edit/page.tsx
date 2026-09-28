@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
+import { getLocale } from 'next-intl/server';
 import { Container } from '@colina/ui';
 import { DeleteMachineButton } from '@/components/delete-machine-button';
 import { MachineForm } from '@/components/machine-form';
@@ -21,6 +22,7 @@ type Props = {
 
 export default async function EditMachinePage({ params }: Props) {
   const { id } = await params;
+  const locale = await getLocale();
   const [machine, categories, machines] = await Promise.all([
     prisma.machine.findUnique({
       where: { id },
@@ -63,7 +65,14 @@ export default async function EditMachinePage({ params }: Props) {
             relatedIds: machine.relatedMachines.map((related) => related.id),
           }}
         />
-        <DeleteMachineButton machineId={machine.id} />
+        <DeleteMachineButton
+          machineId={machine.id}
+          itemName={
+            locale === 'ar'
+              ? machine.nameAr || machine.nameEn
+              : machine.nameEn || machine.nameAr
+          }
+        />
       </Container>
     </main>
   );

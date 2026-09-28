@@ -103,8 +103,7 @@ export default async function NewsPage({ searchParams }: Props) {
           </Link>
           <DeleteButton
             compact
-            label={t('delete.button')}
-            confirmMessage={t('delete.confirm')}
+            itemName={title(row)}
             redirectTo="/news"
             onDelete={deleteNews.bind(null, row.id)}
           />

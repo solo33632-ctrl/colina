@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
+import { getLocale } from 'next-intl/server';
 import { Container } from '@colina/ui';
 import { CategoryForm } from '@/components/category-form';
 import { DeleteCategoryButton } from '@/components/delete-category-button';
@@ -21,6 +22,7 @@ type Props = {
 
 export default async function EditCategoryPage({ params }: Props) {
   const { id } = await params;
+  const locale = await getLocale();
   const category = await prisma.machineCategory.findUnique({
     where: { id },
     include: { _count: { select: { machines: true } } },
@@ -47,6 +49,11 @@ export default async function EditCategoryPage({ params }: Props) {
         <DeleteCategoryButton
           categoryId={category.id}
           machineCount={category._count.machines}
+          itemName={
+            locale === 'ar'
+              ? category.nameAr || category.nameEn
+              : category.nameEn || category.nameAr
+          }
         />
       </Container>
     </main>

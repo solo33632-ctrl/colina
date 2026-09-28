@@ -19,7 +19,11 @@ export type IconName =
   | 'leads'
   | 'auditLog'
   | 'menu'
-  | 'close';
+  | 'close'
+  | 'trash'
+  | 'spinner'
+  | 'check'
+  | 'chevron';
 
 const GLYPHS: Record<IconName, ReactNode> = {
   // Four tiles.
@@ -91,6 +95,22 @@ const GLYPHS: Record<IconName, ReactNode> = {
   ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7" />
+      <path d="M6.5 7l.9 12.1A1.5 1.5 0 0 0 8.9 20.5h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7" />
+      <path d="M10.5 11v5.5M13.5 11v5.5" />
+    </>
+  ),
+  spinner: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M20.5 12a8.5 8.5 0 0 0-8.5-8.5" />
+    </>
+  ),
+  check: <path d="m5 12.5 4.5 4.5L19 7" />,
+  chevron: <path d="m9.5 5.5 6.5 6.5-6.5 6.5" />,
 };
 
 export function Icon({

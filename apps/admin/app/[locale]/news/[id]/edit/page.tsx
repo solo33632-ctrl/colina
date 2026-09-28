@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { DeleteButton } from '@/components/delete-button';
@@ -23,7 +23,7 @@ type Props = {
 
 export default async function EditNewsPage({ params }: Props) {
   const { id } = await params;
-  const t = await getTranslations('News');
+  const locale = await getLocale();
   const post = await prisma.newsPost.findUnique({ where: { id } });
   if (!post) {
     notFound();
@@ -46,10 +46,13 @@ export default async function EditNewsPage({ params }: Props) {
           }}
         />
         <DeleteButton
-          label={t('delete.button')}
-          confirmMessage={t('delete.confirm')}
+          itemName={
+            locale === 'ar'
+              ? post.titleAr || post.titleEn
+              : post.titleEn || post.titleAr
+          }
           redirectTo="/news"
-          onDelete={() => deleteNews(post.id)}
+          onDelete={deleteNews.bind(null, post.id)}
         />
       </Container>
     </main>

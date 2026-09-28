@@ -87,6 +87,7 @@ export default async function CategoriesPage({ searchParams }: Props) {
           <DeleteCategoryButton
             categoryId={row.id}
             machineCount={row._count.machines}
+            itemName={name(row)}
             compact
           />
         </div>

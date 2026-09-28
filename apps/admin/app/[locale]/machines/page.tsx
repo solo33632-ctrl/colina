@@ -117,7 +117,11 @@ export default async function MachinesPage({ searchParams }: Props) {
           >
             {common('edit')}
           </Link>
-          <DeleteMachineButton machineId={row.id} compact />
+          <DeleteMachineButton
+            machineId={row.id}
+            itemName={name(row)}
+            compact
+          />
         </div>
       ),
     },

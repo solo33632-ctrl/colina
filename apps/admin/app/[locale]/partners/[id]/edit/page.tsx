@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { DeleteButton } from '@/components/delete-button';
@@ -23,7 +23,7 @@ type Props = {
 
 export default async function EditPartnerPage({ params }: Props) {
   const { id } = await params;
-  const t = await getTranslations('Partners');
+  const locale = await getLocale();
   const partner = await prisma.partner.findUnique({ where: { id } });
   if (!partner) {
     notFound();
@@ -42,10 +42,13 @@ export default async function EditPartnerPage({ params }: Props) {
           }}
         />
         <DeleteButton
-          label={t('delete.button')}
-          confirmMessage={t('delete.confirm')}
+          itemName={
+            locale === 'ar'
+              ? partner.nameAr || partner.nameEn
+              : partner.nameEn || partner.nameAr
+          }
           redirectTo="/partners"
-          onDelete={() => deletePartner(partner.id)}
+          onDelete={deletePartner.bind(null, partner.id)}
         />
       </Container>
     </main>

@@ -80,8 +80,7 @@ export default async function PartnersPage({ searchParams }: Props) {
           </Link>
           <DeleteButton
             compact
-            label={t('delete.button')}
-            confirmMessage={t('delete.confirm')}
+            itemName={name(row)}
             redirectTo="/partners"
             onDelete={deletePartner.bind(null, row.id)}
           />

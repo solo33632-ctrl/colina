@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { DeleteButton } from '@/components/delete-button';
@@ -23,7 +23,7 @@ type Props = {
 
 export default async function EditServicePage({ params }: Props) {
   const { id } = await params;
-  const t = await getTranslations('Services');
+  const locale = await getLocale();
   const service = await prisma.maintenanceService.findUnique({
     where: { id },
   });
@@ -49,10 +49,13 @@ export default async function EditServicePage({ params }: Props) {
           }}
         />
         <DeleteButton
-          label={t('delete.button')}
-          confirmMessage={t('delete.confirm')}
+          itemName={
+            locale === 'ar'
+              ? service.titleAr || service.titleEn
+              : service.titleEn || service.titleAr
+          }
           redirectTo="/services"
-          onDelete={() => deleteService(service.id)}
+          onDelete={deleteService.bind(null, service.id)}
         />
       </Container>
     </main>

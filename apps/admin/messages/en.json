@@ -41,6 +41,10 @@
     "saveChanges": "Save changes",
     "create": "Create",
     "delete": "Delete",
+    "cancel": "Cancel",
+    "deleting": "Deleting…",
+    "deleteItem": "Delete {name}",
+    "deleteNamed": "Delete “{name}”? This cannot be undone.",
     "deleteConfirm": "Delete {name}? This cannot be undone.",
     "filter": "Filter",
     "all": "All",
@@ -177,7 +181,6 @@
     },
     "delete": {
       "button": "Delete category",
-      "confirm": "Delete this category? This cannot be undone.",
       "hasMachines": "Cannot delete: this category still has {count, plural, one {# machine} other {# machines}}. Move or delete them first."
     }
   },
@@ -227,8 +230,7 @@
       "datasheetUrl": "Datasheet URL must be an absolute http(s) URL or empty."
     },
     "delete": {
-      "button": "Delete machine",
-      "confirm": "Delete this machine with all its images? This cannot be undone."
+      "button": "Delete machine"
     }
   },
   "Partners": {
@@ -251,8 +253,7 @@
       "logo": "Logo must be an absolute http(s) URL."
     },
     "delete": {
-      "button": "Delete partner",
-      "confirm": "Delete this partner? This cannot be undone."
+      "button": "Delete partner"
     }
   },
   "Services": {
@@ -287,8 +288,7 @@
       "icon": "Icon must not be empty."
     },
     "delete": {
-      "button": "Delete service",
-      "confirm": "Delete this service? This cannot be undone."
+      "button": "Delete service"
     }
   },
   "News": {
@@ -320,8 +320,7 @@
       "publishedAt": "Published date must be a valid YYYY-MM-DD date."
     },
     "delete": {
-      "button": "Delete post",
-      "confirm": "Delete this post? This cannot be undone."
+      "button": "Delete post"
     }
   },
   "Agents": {
@@ -348,8 +347,7 @@
       "countryEn": "English country must be at least 2 characters."
     },
     "delete": {
-      "button": "Delete agent",
-      "confirm": "Delete this agent? This cannot be undone."
+      "button": "Delete agent"
     }
   },
   "Leads": {

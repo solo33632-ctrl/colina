@@ -87,12 +87,28 @@ test.describe('category CRUD flow', () => {
       .locator('tr', { hasText: `${catName} Renamed` })
       .getByRole('link', { name: 'Edit' })
       .click();
-    // The list itself has a "Delete category" button per row, so wait for the
-    // edit form before clicking delete.
+    // The list itself has a delete button per row, so wait for the edit form
+    // before clicking delete.
     await expect(page).toHaveURL(/\/categories\/[^/]+\/edit$/);
-    page.once('dialog', (dialog) => dialog.accept());
-    await page.getByRole('button', { name: 'Delete category' }).click();
+    // The delete button's accessible name is now "Delete <name>"; the visible
+    // label is the short "Delete" with a trash icon. The confirmation is the
+    // panel's own <dialog>, not a native window.confirm, so there is no
+    // Playwright dialog event to accept.
+    await page
+      .getByRole('button', { name: new RegExp(`^Delete ${catName}`) })
+      .click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Delete' })
+      .click();
+    // Blocked by the machine still attached, reported inside the dialog.
     await expect(page.getByText(/still has 1 machine/)).toBeVisible();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cancel' })
+      .click();
+    await expect(page.getByRole('dialog')).toBeHidden();
 
     // Delete machine, then the category goes through.
     const machineName = `E2E Machine ${STAMP}`;
@@ -102,8 +118,11 @@ test.describe('category CRUD flow', () => {
       .getByRole('link', { name: 'Edit' })
       .click();
     await expect(page).toHaveURL(/\/machines\/[^/]+\/edit$/);
-    page.once('dialog', (dialog) => dialog.accept());
-    await page.getByRole('button', { name: 'Delete machine' }).click();
+    await page.getByRole('button', { name: /^Delete / }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Delete' })
+      .click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);
 
     await page.goto(`${ADMIN_URL}/en/categories`);
@@ -112,8 +131,13 @@ test.describe('category CRUD flow', () => {
       .getByRole('link', { name: 'Edit' })
       .click();
     await expect(page).toHaveURL(/\/categories\/[^/]+\/edit$/);
-    page.once('dialog', (dialog) => dialog.accept());
-    await page.getByRole('button', { name: 'Delete category' }).click();
+    await page
+      .getByRole('button', { name: new RegExp(`^Delete ${catName}`) })
+      .click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Delete' })
+      .click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);
     await expect(page.getByText(`${catName} Renamed`)).toBeHidden();
 

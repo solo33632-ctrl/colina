@@ -81,8 +81,7 @@ export default async function ServicesPage({ searchParams }: Props) {
           </Link>
           <DeleteButton
             compact
-            label={t('delete.button')}
-            confirmMessage={t('delete.confirm')}
+            itemName={title(row)}
             redirectTo="/services"
             onDelete={deleteService.bind(null, row.id)}
           />

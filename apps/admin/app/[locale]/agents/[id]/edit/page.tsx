@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { AgentForm } from '@/components/agent-form';
@@ -23,7 +23,7 @@ type Props = {
 
 export default async function EditAgentPage({ params }: Props) {
   const { id } = await params;
-  const t = await getTranslations('Agents');
+  const locale = await getLocale();
   const agent = await prisma.agent.findUnique({ where: { id } });
   if (!agent) {
     notFound();
@@ -47,10 +47,13 @@ export default async function EditAgentPage({ params }: Props) {
           }}
         />
         <DeleteButton
-          label={t('delete.button')}
-          confirmMessage={t('delete.confirm')}
+          itemName={
+            locale === 'ar'
+              ? agent.countryAr || agent.countryEn
+              : agent.countryEn || agent.countryAr
+          }
           redirectTo="/agents"
-          onDelete={() => deleteAgent(agent.id)}
+          onDelete={deleteAgent.bind(null, agent.id)}
         />
       </Container>
     </main>

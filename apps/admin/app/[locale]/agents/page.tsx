@@ -84,8 +84,7 @@ export default async function AgentsPage({ searchParams }: Props) {
           </Link>
           <DeleteButton
             compact
-            label={t('delete.button')}
-            confirmMessage={t('delete.confirm')}
+            itemName={country(row)}
             redirectTo="/agents"
             onDelete={deleteAgent.bind(null, row.id)}
           />

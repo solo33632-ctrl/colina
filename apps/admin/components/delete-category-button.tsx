@@ -4,11 +4,15 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@colina/ui';
 import { useRouter } from '@/i18n/navigation';
+import { ConfirmDialog } from './confirm-dialog';
+import { Icon } from './icons';
 import { deleteCategory } from '@/lib/actions/categories';
 
 type DeleteCategoryButtonProps = {
   categoryId: string;
   machineCount: number;
+  /** Names the category in the dialog and in the button's accessible name. */
+  itemName: string;
   /** Small, unwrapped variant for the list table's actions column. */
   compact?: boolean;
 };
@@ -16,18 +20,17 @@ type DeleteCategoryButtonProps = {
 export function DeleteCategoryButton({
   categoryId,
   machineCount,
+  itemName,
   compact = false,
 }: DeleteCategoryButtonProps) {
   const t = useTranslations('Categories');
   const common = useTranslations('Common');
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function onDelete() {
-    if (!window.confirm(t('delete.confirm'))) {
-      return;
-    }
     setError(null);
     setBusy(true);
     const result = await deleteCategory(categoryId);
@@ -47,20 +50,32 @@ export function DeleteCategoryButton({
   }
 
   return (
-    <div className={compact ? '' : 'mt-6'}>
+    <>
       <Button
+        type="button"
         variant="secondary"
         size={compact ? 'sm' : 'md'}
-        disabled={busy}
-        onClick={onDelete}
+        aria-label={common('deleteItem', { name: itemName })}
+        onClick={() => setOpen(true)}
       >
-        {t('delete.button')}
+        <Icon name="trash" className="me-2 h-4 w-4" />
+        {common('delete')}
       </Button>
-      {error ? (
-        <p role="alert" className="mt-2 text-sm font-medium text-red-700">
-          {error}
-        </p>
-      ) : null}
-    </div>
+      <ConfirmDialog
+        open={open}
+        title={common('delete')}
+        message={common('deleteNamed', { name: itemName })}
+        confirmLabel={common('delete')}
+        cancelLabel={common('cancel')}
+        busy={busy}
+        busyLabel={common('deleting')}
+        error={error}
+        onConfirm={onDelete}
+        onClose={() => {
+          setOpen(false);
+          setError(null);
+        }}
+      />
+    </>
   );
 }

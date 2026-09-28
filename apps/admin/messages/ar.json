@@ -65,12 +65,18 @@
   "Dashboard": {
     "title": "لوحة تحكم كولينا",
     "description": "إدارة محتوى الموقع.",
-    "categories": "الفئات ({count})",
-    "machines": "الآلات ({count})",
-    "partners": "الشركاء ({count})",
-    "services": "خدمات الصيانة ({count})",
-    "news": "الأخبار ({count})",
-    "agents": "الوكلاء ({count})"
+    "categories": "الفئات",
+    "machines": "الآلات",
+    "partners": "الشركاء",
+    "services": "خدمات الصيانة",
+    "news": "الأخبار",
+    "agents": "الوكلاء",
+    "newLeads": "طلبات جديدة",
+    "latestLeadsHeading": "أحدث الطلبات",
+    "latestLeadsEmpty": "لا توجد طلبات بعد.",
+    "justNow": "الآن",
+    "recentActivityHeading": "أحدث النشاطات",
+    "recentActivityEmpty": "لا توجد نشاطات مسجلة بعد."
   },
   "Auth": {
     "login": {

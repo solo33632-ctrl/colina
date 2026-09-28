@@ -65,12 +65,18 @@
   "Dashboard": {
     "title": "Colina Admin",
     "description": "Manage site content.",
-    "categories": "Categories ({count})",
-    "machines": "Machines ({count})",
-    "partners": "Partners ({count})",
-    "services": "Services ({count})",
-    "news": "News ({count})",
-    "agents": "Agents ({count})"
+    "categories": "Categories",
+    "machines": "Machines",
+    "partners": "Partners",
+    "services": "Services",
+    "news": "News",
+    "agents": "Agents",
+    "newLeads": "New leads",
+    "latestLeadsHeading": "Latest leads",
+    "latestLeadsEmpty": "No leads yet.",
+    "justNow": "Just now",
+    "recentActivityHeading": "Recent activity",
+    "recentActivityEmpty": "No activity recorded yet."
   },
   "Auth": {
     "login": {

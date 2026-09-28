@@ -44,6 +44,14 @@
     "deleteConfirm": "Delete {name}? This cannot be undone.",
     "filter": "Filter",
     "all": "All",
+    "thumbnail": "Image",
+    "name": "Name",
+    "actions": "Actions",
+    "details": "Details",
+    "search": "Search",
+    "searchPlaceholder": "Search by name…",
+    "clearSearch": "Clear search",
+    "noResults": "Nothing matches the current search or filter.",
     "previous": "Previous",
     "next": "Next",
     "pagesLabel": "Pagination",
@@ -143,6 +151,7 @@
   "Categories": {
     "heading": "Categories",
     "new": "New category",
+    "createFirst": "Create the first category",
     "empty": "No categories yet.",
     "machineCount": "{count, plural, one {# machine} other {# machines}}",
     "slugTaken": "That slug is already used by another category.",
@@ -175,6 +184,7 @@
   "Machines": {
     "heading": "Machines",
     "new": "New machine",
+    "createFirst": "Create the first machine",
     "empty": "No machines yet.",
     "slugTaken": "That slug is already used by another machine.",
     "form": {
@@ -224,6 +234,7 @@
   "Partners": {
     "heading": "Partners",
     "new": "New partner",
+    "createFirst": "Create the first partner",
     "empty": "No partners yet.",
     "form": {
       "createTitle": "New partner",
@@ -247,6 +258,7 @@
   "Services": {
     "heading": "Maintenance services",
     "new": "New service",
+    "createFirst": "Create the first service",
     "empty": "No services yet.",
     "slugTaken": "That slug is already used by another service.",
     "form": {
@@ -282,6 +294,7 @@
   "News": {
     "heading": "News",
     "new": "New post",
+    "createFirst": "Create the first post",
     "empty": "No posts yet.",
     "slugTaken": "That slug is already used by another post.",
     "form": {
@@ -314,6 +327,7 @@
   "Agents": {
     "heading": "Agents",
     "new": "New agent",
+    "createFirst": "Create the first agent",
     "empty": "No agents yet.",
     "form": {
       "createTitle": "New agent",

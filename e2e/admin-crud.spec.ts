@@ -44,11 +44,13 @@ test.describe('category CRUD flow', () => {
     await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);
     await expect(page.getByText(catName)).toBeVisible();
 
-    // Edit (rename) — scope to our row: seed rows sort first.
+    // Edit (rename) — scope to our row: the list is a table, so a row is a
+    // <tr>; seed rows sort first.
     await page
-      .locator('li', { hasText: catName })
+      .locator('tr', { hasText: catName })
       .getByRole('link', { name: 'Edit' })
       .click();
+    await expect(page).toHaveURL(/\/categories\/[^/]+\/edit$/);
     await expect(page.getByLabel('Name (English)')).toHaveValue(catName);
     await page.getByLabel('Name (English)').fill(`${catName} Renamed`);
     await page.getByRole('button', { name: 'Save changes' }).click();
@@ -82,9 +84,12 @@ test.describe('category CRUD flow', () => {
 
     await page.goto(`${ADMIN_URL}/en/categories`);
     await page
-      .locator('li', { hasText: `${catName} Renamed` })
+      .locator('tr', { hasText: `${catName} Renamed` })
       .getByRole('link', { name: 'Edit' })
       .click();
+    // The list itself has a "Delete category" button per row, so wait for the
+    // edit form before clicking delete.
+    await expect(page).toHaveURL(/\/categories\/[^/]+\/edit$/);
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Delete category' }).click();
     await expect(page.getByText(/still has 1 machine/)).toBeVisible();
@@ -93,18 +98,20 @@ test.describe('category CRUD flow', () => {
     const machineName = `E2E Machine ${STAMP}`;
     await page.goto(`${ADMIN_URL}/en/machines`);
     await page
-      .locator('li', { hasText: machineName })
+      .locator('tr', { hasText: machineName })
       .getByRole('link', { name: 'Edit' })
       .click();
+    await expect(page).toHaveURL(/\/machines\/[^/]+\/edit$/);
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Delete machine' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);
 
     await page.goto(`${ADMIN_URL}/en/categories`);
     await page
-      .locator('li', { hasText: `${catName} Renamed` })
+      .locator('tr', { hasText: `${catName} Renamed` })
       .getByRole('link', { name: 'Edit' })
       .click();
+    await expect(page).toHaveURL(/\/categories\/[^/]+\/edit$/);
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Delete category' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);

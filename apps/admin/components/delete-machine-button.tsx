@@ -8,9 +8,14 @@ import { deleteMachine } from '@/lib/actions/machines';
 
 type DeleteMachineButtonProps = {
   machineId: string;
+  /** Small, unwrapped variant for the list table's actions column. */
+  compact?: boolean;
 };
 
-export function DeleteMachineButton({ machineId }: DeleteMachineButtonProps) {
+export function DeleteMachineButton({
+  machineId,
+  compact = false,
+}: DeleteMachineButtonProps) {
   const t = useTranslations('Machines');
   const common = useTranslations('Common');
   const router = useRouter();
@@ -38,8 +43,13 @@ export function DeleteMachineButton({ machineId }: DeleteMachineButtonProps) {
   }
 
   return (
-    <div className="mt-6">
-      <Button variant="secondary" disabled={busy} onClick={onDelete}>
+    <div className={compact ? '' : 'mt-6'}>
+      <Button
+        variant="secondary"
+        size={compact ? 'sm' : 'md'}
+        disabled={busy}
+        onClick={onDelete}
+      >
         {t('delete.button')}
       </Button>
       {error ? (

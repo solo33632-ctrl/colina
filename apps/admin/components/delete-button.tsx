@@ -10,6 +10,9 @@ type DeleteButtonProps = {
   confirmMessage: string;
   redirectTo: string;
   onDelete: () => Promise<{ ok: boolean; error?: string }>;
+  /** Renders the small, unwrapped variant used inside a list table's actions
+   *  column. The confirmation and the request itself are identical. */
+  compact?: boolean;
 };
 
 // Shared confirm-guarded delete for the simple content types (partners,
@@ -20,6 +23,7 @@ export function DeleteButton({
   confirmMessage,
   redirectTo,
   onDelete,
+  compact = false,
 }: DeleteButtonProps) {
   const common = useTranslations('Common');
   const router = useRouter();
@@ -47,8 +51,13 @@ export function DeleteButton({
   }
 
   return (
-    <div className="mt-6">
-      <Button variant="secondary" disabled={busy} onClick={handleDelete}>
+    <div className={compact ? '' : 'mt-6'}>
+      <Button
+        variant="secondary"
+        size={compact ? 'sm' : 'md'}
+        disabled={busy}
+        onClick={handleDelete}
+      >
         {label ?? common('delete')}
       </Button>
       {error ? (

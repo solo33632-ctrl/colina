@@ -9,11 +9,14 @@ import { deleteCategory } from '@/lib/actions/categories';
 type DeleteCategoryButtonProps = {
   categoryId: string;
   machineCount: number;
+  /** Small, unwrapped variant for the list table's actions column. */
+  compact?: boolean;
 };
 
 export function DeleteCategoryButton({
   categoryId,
   machineCount,
+  compact = false,
 }: DeleteCategoryButtonProps) {
   const t = useTranslations('Categories');
   const common = useTranslations('Common');
@@ -44,8 +47,13 @@ export function DeleteCategoryButton({
   }
 
   return (
-    <div className="mt-6">
-      <Button variant="secondary" disabled={busy} onClick={onDelete}>
+    <div className={compact ? '' : 'mt-6'}>
+      <Button
+        variant="secondary"
+        size={compact ? 'sm' : 'md'}
+        disabled={busy}
+        onClick={onDelete}
+      >
         {t('delete.button')}
       </Button>
       {error ? (

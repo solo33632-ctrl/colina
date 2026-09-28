@@ -7,6 +7,7 @@
   "Nav": {
     "brand": "لوحة تحكم كولينا",
     "sectionsLabel": "أقسام لوحة التحكم",
+    "dashboard": "لوحة المعلومات",
     "categories": "الفئات",
     "machines": "الآلات",
     "partners": "الشركاء",
@@ -14,7 +15,17 @@
     "news": "الأخبار",
     "agents": "الوكلاء",
     "leads": "الطلبات",
-    "auditLog": "سجل التدقيق"
+    "auditLog": "سجل التدقيق",
+    "groupOverview": "نظرة عامة",
+    "groupCatalog": "الكتالوج",
+    "groupContent": "المحتوى",
+    "groupInbox": "صندوق الوارد",
+    "groupSystem": "النظام",
+    "openMenu": "فتح قائمة التنقل",
+    "closeMenu": "إغلاق قائمة التنقل",
+    "newLeads": "{count} جديد",
+    "roleSuperAdmin": "مدير عام",
+    "roleEditor": "محرر"
   },
   "LanguageSwitcher": {
     "label": "اللغة",

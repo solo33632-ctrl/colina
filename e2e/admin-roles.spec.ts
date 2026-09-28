@@ -95,7 +95,7 @@ test.describe('admin role gating', () => {
       // The nav link is hidden for an editor...
       await editorPage.goto(`${ADMIN_URL}/${locale.id}`);
       expect(
-        await editorPage.locator('header nav').textContent(),
+        await editorPage.locator('aside nav').first().textContent(),
         `/${locale.id}: audit link should be hidden for an editor`
       ).not.toContain(locale.audit);
 
@@ -122,7 +122,7 @@ test.describe('admin role gating', () => {
     for (const locale of LOCALES) {
       await page.goto(`${ADMIN_URL}/${locale.id}`);
       expect(
-        await page.locator('header nav').textContent(),
+        await page.locator('aside nav').first().textContent(),
         `/${locale.id}: audit link should be visible for a super admin`
       ).toContain(locale.audit);
 

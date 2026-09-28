@@ -8,8 +8,7 @@ import {
   setRequestLocale,
 } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { AdminFooter } from '@/components/footer';
-import { AdminHeader } from '@/components/header';
+import { AdminAppShell } from '@/components/app-shell';
 import { routing } from '@/i18n/routing';
 import '../globals.css';
 
@@ -88,9 +87,7 @@ export default async function AdminLocaleLayout({
         }
       >
         <NextIntlClientProvider messages={messages}>
-          <AdminHeader />
-          {children}
-          <AdminFooter />
+          <AdminAppShell>{children}</AdminAppShell>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -131,6 +131,7 @@ describe('URL rules (Phase 13 table, now automated)', () => {
       specsAr: 's',
       specsEn: 's',
       relatedIds: [],
+      featured: false,
     };
     const gallery = (url: string) =>
       machineInputSchema(M).safeParse({
@@ -149,6 +150,36 @@ describe('URL rules (Phase 13 table, now automated)', () => {
     expect(sheet('')).toBe(true);
     expect(sheet('https://cdn.test/d.pdf')).toBe(true);
     expect(sheet('data:application/pdf,zzz')).toBe(false);
+  });
+
+  it('machine featured must be a real boolean, and never blocks on the cap', () => {
+    const base = {
+      nameAr: 'آلة',
+      nameEn: 'Machine',
+      slug: 'machine-x',
+      categoryId: 'c'.repeat(25),
+      shortDescriptionAr: 'وصف قصير كاف يزيد عن عشرة.',
+      shortDescriptionEn: 'Short description, over ten chars.',
+      descriptionAr: 'وصف كاف يزيد عن عشرة أحرف.',
+      descriptionEn: 'Description long enough, over ten.',
+      specsAr: 's',
+      specsEn: 's',
+      datasheetUrl: '',
+      images: [],
+      relatedIds: [],
+    };
+    const parse = (featured: unknown) =>
+      machineInputSchema(M).safeParse({ ...base, featured });
+
+    expect(parse(true).success).toBe(true);
+    expect(parse(false).success).toBe(true);
+    // A checkbox posts its value as a string when it is not registered with
+    // react-hook-form, so a non-boolean has to be refused rather than coerced.
+    expect(parse('true').success).toBe(false);
+    expect(parse(undefined).success).toBe(false);
+    // The cap is a homepage display limit, not a validation rule: featuring
+    // a machine is never rejected, however many others are already featured.
+    expect(parse(true).success).toBe(true);
   });
 
   it('news image is optional but must be http(s) when present', () => {

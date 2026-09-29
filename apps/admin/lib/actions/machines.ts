@@ -61,6 +61,7 @@ export async function createMachine(
           specsAr: parsed.data.specsAr,
           specsEn: parsed.data.specsEn,
           datasheetUrl: parsed.data.datasheetUrl || null,
+          featured: parsed.data.featured,
           relatedMachines:
             relatedIds.length > 0
               ? { connect: relatedIds.map((id) => ({ id })) }
@@ -91,8 +92,11 @@ export async function createMachine(
       return row;
     });
 
-    // Affected public pages: the parent category detail (machine grid).
-    revalidateWebPaths([`/categories/${created.category.slug}`]);
+    // Affected public pages: the parent category detail (machine grid), plus
+    // the home page when the machine is featured, since the featured strip
+    // reads this column. Revalidating '/' unconditionally keeps the call
+    // independent of the flag's previous value, which a create never has.
+    revalidateWebPaths(['/', `/categories/${created.category.slug}`]);
     return {
       ok: true,
       slug: created.slug,
@@ -158,6 +162,7 @@ export async function updateMachine(
           specsAr: parsed.data.specsAr,
           specsEn: parsed.data.specsEn,
           datasheetUrl: parsed.data.datasheetUrl || null,
+          featured: parsed.data.featured,
           relatedMachines: {
             set: relatedIds.map((relatedId) => ({ id: relatedId })),
           },
@@ -200,7 +205,11 @@ export async function updateMachine(
             `/categories/${existing.category.slug}`,
             `/categories/${updated.category.slug}`,
           ];
-    revalidateWebPaths([...detailPaths, ...categoryPaths]);
+    // The home page's featured strip reads `featured`, so it is revalidated
+    // whenever the flag could have changed. Doing it unconditionally is
+    // correct and cheap: the alternative (comparing old vs new) would only
+    // save one cache purge on an infrequent edit.
+    revalidateWebPaths(['/', ...detailPaths, ...categoryPaths]);
     return { ok: true, slug: updated.slug };
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -239,9 +248,11 @@ export async function deleteMachine(id: string): Promise<ActionResult> {
       });
     });
 
-    // Affected public pages: parent category detail (grid shrinks) + own
+    // Affected public pages: the home page (the row may have been in the
+    // featured strip), the parent category detail (grid shrinks), and its own
     // detail path (so it flips to 404 promptly).
     revalidateWebPaths([
+      '/',
       `/categories/${existing.category.slug}`,
       `/machines/${existing.slug}`,
     ]);

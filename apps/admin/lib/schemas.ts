@@ -136,6 +136,10 @@ export function machineInputSchema(messages: MachineFieldMessages) {
       })
     ),
     relatedIds: z.array(z.string().min(1)),
+    // Plain boolean, no rule attached. The home page caps how many it renders
+    // (FEATURED_MACHINES_LIMIT) rather than the form refusing a save, so the
+    // cap is surfaced as a hint in the form, not enforced here.
+    featured: z.boolean(),
   });
 }
 

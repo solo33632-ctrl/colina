@@ -8,6 +8,8 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Button, Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { FormActions } from './form-actions';
+import { GalleryAddTile } from './gallery-add-tile';
+import { Icon } from './icons';
 import { UploadField } from './upload-field';
 import { useAutoSlug } from './use-auto-slug';
 import { createMachine, updateMachine } from '@/lib/actions/machines';
@@ -78,6 +80,7 @@ export function MachineForm({
     fields: imageFields,
     append: appendImage,
     remove: removeImage,
+    swap: swapImages,
   } = useFieldArray({ control, name: 'images' });
 
   const datasheetValue = useWatch({ control, name: 'datasheetUrl' });
@@ -114,10 +117,21 @@ export function MachineForm({
 
   async function onSubmit(values: MachineInput) {
     setFormError(null);
+    // The gallery's order is the order the rows are displayed in, so the
+    // position is written from the index here rather than being typed by the
+    // admin. The Server Action re-normalises on write; doing it on submit too
+    // keeps the payload honest about what the admin sees.
+    const payload: MachineInput = {
+      ...values,
+      images: (values.images ?? []).map((image, index) => ({
+        url: image.url,
+        position: index,
+      })),
+    };
     const result =
       mode === 'create'
-        ? await createMachine(values)
-        : await updateMachine(machineId ?? '', values);
+        ? await createMachine(payload)
+        : await updateMachine(machineId ?? '', payload);
     if (result.ok) {
       router.push('/machines?saved=1');
       router.refresh();
@@ -355,6 +369,9 @@ export function MachineForm({
                   })
                 }
                 urlInputProps={register('datasheetUrl')}
+                uploadAriaLabel={t('form.uploadPdfFor')}
+                pasteUrlAriaLabel={t('form.pasteUrlDatasheetFor')}
+                clearAriaLabel={t('form.removeDatasheet')}
               />
               {errors.datasheetUrl?.message ? (
                 <p className="mt-1 text-sm text-red-700">
@@ -369,8 +386,8 @@ export function MachineForm({
               <ul className="grid gap-3 sm:grid-cols-2">
                 {imageFields.map((field, index) => (
                   // `flex-wrap` stops the row's min-content being the sum of its
-                  // widest children (160px preview + position input + remove),
-                  // which otherwise forces this card — and so the whole form
+                  // widest children (the 160px preview plus the controls beside
+                  // it), which otherwise forces this card — and so the whole form
                   // grid — past a 390px screen whenever a machine already has
                   // images. The row already wrapped at that width, so this only
                   // corrects the min-content, it does not restyle the row.
@@ -397,28 +414,68 @@ export function MachineForm({
                           })
                         }
                         urlInputProps={register(`images.${index}.url`)}
+                        // One field per row means one "Remove"/"Upload" per row,
+                        // so each control names the row it acts on. The visible
+                        // labels stay generic.
+                        uploadAriaLabel={t('form.uploadImageFor', {
+                          number: index + 1,
+                        })}
+                        pasteUrlAriaLabel={t('form.pasteUrlFor', {
+                          number: index + 1,
+                        })}
+                        clearAriaLabel={t('form.clearImageFor', {
+                          number: index + 1,
+                        })}
                       />
                     </div>
-                    <input
-                      type="number"
-                      min={0}
-                      dir="ltr"
-                      aria-label={t('form.imagePosition', {
-                        number: index + 1,
-                      })}
-                      className="w-20 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm"
-                      {...register(`images.${index}.position`, {
-                        valueAsNumber: true,
-                      })}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => removeImage(index)}
-                    >
-                      {t('form.removeImage')}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {/* Reorder instead of asking the admin to type a
+                          position: the number input could silently disagree
+                          with the order the rows are shown in. */}
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={index === 0}
+                        onClick={() => swapImages(index, index - 1)}
+                        aria-label={t('form.moveEarlier', {
+                          number: index + 1,
+                        })}
+                        title={t('form.moveEarlier', { number: index + 1 })}
+                      >
+                        <Icon name="moveUp" className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={index === imageFields.length - 1}
+                        onClick={() => swapImages(index, index + 1)}
+                        aria-label={t('form.moveLater', {
+                          number: index + 1,
+                        })}
+                        title={t('form.moveLater', { number: index + 1 })}
+                      >
+                        <Icon name="moveDown" className="h-4 w-4" />
+                      </Button>
+                      <span className="w-8 text-center text-xs tabular-nums text-stone-500">
+                        <span className="sr-only">
+                          {t('form.imagePosition', { number: index + 1 })}
+                        </span>
+                        <span aria-hidden="true">{index + 1}</span>
+                      </span>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => removeImage(index)}
+                        aria-label={t('form.removeImageFor', {
+                          number: index + 1,
+                        })}
+                      >
+                        {t('form.removeImage')}
+                      </Button>
+                    </div>
                     {imageUrlError(index) ? (
                       <p
                         role="alert"
@@ -438,18 +495,11 @@ export function MachineForm({
                   {errors.images.message}
                 </p>
               ) : null}
-              <div className="mt-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    appendImage({ url: '', position: imageFields.length })
-                  }
-                >
-                  {t('form.addImage')}
-                </Button>
-              </div>
+              <GalleryAddTile
+                onAdded={(url) => {
+                  appendImage({ url, position: imageFields.length });
+                }}
+              />
             </fieldset>
           </div>
         </Card>

@@ -23,7 +23,10 @@ export type IconName =
   | 'trash'
   | 'spinner'
   | 'check'
-  | 'chevron';
+  | 'chevron'
+  | 'moveUp'
+  | 'moveDown'
+  | 'plus';
 
 const GLYPHS: Record<IconName, ReactNode> = {
   // Four tiles.
@@ -111,6 +114,26 @@ const GLYPHS: Record<IconName, ReactNode> = {
   ),
   check: <path d="m5 12.5 4.5 4.5L19 7" />,
   chevron: <path d="m9.5 5.5 6.5 6.5-6.5 6.5" />,
+  // Vertical arrows for the gallery's reorder buttons. Deliberately not
+  // mirrored in RTL: "earlier" in a vertical list is up in both directions.
+  moveUp: (
+    <>
+      <path d="M12 19.5v-15" />
+      <path d="m6 10.5 6-6 6 6" />
+    </>
+  ),
+  moveDown: (
+    <>
+      <path d="M12 4.5v15" />
+      <path d="m6 13.5 6 6 6-6" />
+    </>
+  ),
+  plus: (
+    <>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </>
+  ),
 };
 
 export function Icon({

@@ -6,15 +6,12 @@ import type { UseFormRegisterReturn } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 import { Button } from '@colina/ui';
 import { inputClasses } from './form-fields';
-import { uploadDatasheet, uploadImage } from '@/lib/actions/uploads';
+import { ACCEPT_BY_KIND, type UploadKind } from '@/lib/upload-rules';
 import {
-  ACCEPT_BY_KIND,
-  IMAGE_MIME_TYPES,
-  MAX_IMAGE_BYTES,
-  MAX_PDF_BYTES,
-  PDF_MIME_TYPE,
-  type UploadKind,
-} from '@/lib/upload-rules';
+  clientRejection,
+  uploadErrorMessage,
+  uploadFile,
+} from '@/lib/upload-client';
 
 // Reusable admin upload field: an <input type="file"> that pushes the
 // chosen file to Cloudinary through a Server Action and hands the
@@ -37,14 +34,17 @@ type UploadFieldProps = {
    *  the project stores only the URL, so the file itself is out of scope. */
   onClear?: () => void;
   urlInputProps: UseFormRegisterReturn;
+  /**
+   * Per-instance accessible names. A list that renders one of these per row
+   * needs each control to say which row it belongs to, otherwise every
+   * "Remove" in the list is indistinguishable to a screen reader. Each name is
+   * expected to contain its own visible label, so the control still reads
+   * correctly when the visible text is all that is seen.
+   */
+  uploadAriaLabel?: string;
+  pasteUrlAriaLabel?: string;
+  clearAriaLabel?: string;
 };
-
-// Displayed limit, derived from the byte constants the action enforces so
-// the message can never disagree with the rule.
-const MAX_MB = {
-  image: MAX_IMAGE_BYTES / (1024 * 1024),
-  datasheet: MAX_PDF_BYTES / (1024 * 1024),
-} as const;
 
 export function UploadField({
   id,
@@ -53,6 +53,9 @@ export function UploadField({
   onUploaded,
   onClear,
   urlInputProps,
+  uploadAriaLabel,
+  pasteUrlAriaLabel,
+  clearAriaLabel,
 }: UploadFieldProps) {
   const t = useTranslations('Uploads');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,48 +64,7 @@ export function UploadField({
   const [showUrlInput, setShowUrlInput] = useState(false);
 
   const isImage = kind === 'image';
-
-  // Turns the action's machine-readable error code into a sentence, in the
-  // admin's language. The codes themselves stay untranslated.
-  function errorMessageFor(code: string): string {
-    switch (code) {
-      case 'unauthorized':
-        return t('errors.unauthorized');
-      case 'unconfigured':
-        return t('errors.unconfigured');
-      case 'no_file':
-        return t('errors.no_file');
-      case 'invalid_type':
-        return isImage
-          ? t('errors.invalidTypeImage')
-          : t('errors.invalidTypePdf');
-      case 'too_large':
-        return isImage
-          ? t('errors.tooLargeImage', { max: MAX_MB.image })
-          : t('errors.tooLargePdf', { max: MAX_MB.datasheet });
-      default:
-        return t('errors.uploadFailed');
-    }
-  }
-
-  function clientRejection(file: File): string | null {
-    if (isImage) {
-      if (!IMAGE_MIME_TYPES.includes(file.type)) {
-        return t('errors.invalidTypeImage');
-      }
-      if (file.size > MAX_IMAGE_BYTES) {
-        return t('errors.tooLargeImage', { max: MAX_MB.image });
-      }
-    } else {
-      if (file.type !== PDF_MIME_TYPE) {
-        return t('errors.invalidTypePdf');
-      }
-      if (file.size > MAX_PDF_BYTES) {
-        return t('errors.tooLargePdf', { max: MAX_MB.datasheet });
-      }
-    }
-    return null;
-  }
+  const uploadText = isImage ? t('uploadImage') : t('uploadPdf');
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -112,7 +74,7 @@ export function UploadField({
     }
     setUploadError(null);
 
-    const rejection = clientRejection(file);
+    const rejection = clientRejection(t, kind, file);
     if (rejection) {
       setUploadError(rejection);
       return;
@@ -120,16 +82,12 @@ export function UploadField({
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.set('file', file);
-      const result = isImage
-        ? await uploadImage(formData)
-        : await uploadDatasheet(formData);
+      const result = await uploadFile(file, kind);
       if (result.ok) {
         onUploaded(result.url);
         setShowUrlInput(false);
       } else {
-        setUploadError(errorMessageFor(result.error));
+        setUploadError(uploadErrorMessage(t, kind, result.error));
       }
     } catch {
       setUploadError(t('failed'));
@@ -156,16 +114,14 @@ export function UploadField({
           size="sm"
           disabled={uploading}
           onClick={() => fileInputRef.current?.click()}
+          aria-label={uploadAriaLabel}
         >
-          {uploading
-            ? t('uploading')
-            : isImage
-              ? t('uploadImage')
-              : t('uploadPdf')}
+          {uploading ? t('uploading') : uploadText}
         </Button>
         <button
           type="button"
           onClick={() => setShowUrlInput((shown) => !shown)}
+          aria-label={pasteUrlAriaLabel}
           className="text-sm text-brand-700 underline underline-offset-2 hover:text-brand-800"
         >
           {showUrlInput ? t('hideUrl') : t('pasteUrl')}
@@ -200,6 +156,7 @@ export function UploadField({
               variant="secondary"
               size="sm"
               onClick={onClear}
+              aria-label={clearAriaLabel}
             >
               {t('removeFile')}
             </Button>

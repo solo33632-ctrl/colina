@@ -7,6 +7,9 @@ out/
 dist/
 build/
 
+# TypeScript incremental build state (tsc --noEmit with `incremental`)
+*.tsbuildinfo
+
 # Prisma generated client (reproducible via `npx prisma generate`)
 packages/db/prisma/generated/
 

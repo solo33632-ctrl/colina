@@ -40,7 +40,7 @@ export async function createPartner(
         data: {
           nameAr: parsed.data.nameAr,
           nameEn: parsed.data.nameEn,
-          logo: parsed.data.logo,
+          logo: parsed.data.logo || null,
         },
       });
       await tx.auditLog.create({
@@ -95,7 +95,7 @@ export async function updatePartner(
         data: {
           nameAr: parsed.data.nameAr,
           nameEn: parsed.data.nameEn,
-          logo: parsed.data.logo,
+          logo: parsed.data.logo || null,
         },
       });
       await tx.auditLog.create({

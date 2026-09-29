@@ -124,7 +124,12 @@ model Partner {
   updatedAt DateTime @updatedAt
   nameAr    String
   nameEn    String
-  logo      String
+  // Nullable for the same reason MachineCategory.image and NewsPost.image
+  // are: a partner has a name long before Colina has its logo, and the
+  // admin form's own "clear logo" control could not save a cleared value
+  // while this column was required. `logo: parsed.data.logo || null` in
+  // the Server Action, and `?? ''` in the edit form, as for the others.
+  logo      String?
 }
 
 model Agent {

@@ -156,8 +156,10 @@ export function partnerInputSchema(messages: PartnerFieldMessages) {
     nameAr: z.string().min(2, { error: messages.nameAr }),
     nameEn: z.string().min(2, { error: messages.nameEn }),
     // Uploaded logos land here as Cloudinary secure URLs (same rule as
-    // pasted URLs).
-    logo: requiredHttpUrl(messages.logo),
+    // pasted URLs). Optional, like the category and news images: a partner
+    // exists before its logo does, and the form's own clear control set an
+    // empty string, which a required rule would then refuse to save.
+    logo: optionalHttpUrl(messages.logo),
   });
 }
 

@@ -105,16 +105,20 @@ describe('URL rules (Phase 13 table, now automated)', () => {
     }
   });
 
-  it('partner logo: required absolute http(s)', () => {
+  it('partner logo: absolute http(s) or empty only', () => {
+    // Was "required absolute http(s)": an empty logo was rejected. That made
+    // the partner form's own clear-logo control unsavable, and forced the seed
+    // to invent a URL for every partner. The rule is now the same optional
+    // http(s) one the category image and news image use, so the shared `cases`
+    // table applies unmodified — `''` is expected to pass, as it already is
+    // for those two.
     for (const [url, expected] of cases) {
-      // Empty is invalid here (required), everything else follows the table.
-      const want = url === '' ? false : expected;
       const result = partnerInputSchema(M).safeParse({
         nameAr: 'شريك',
         nameEn: 'Partner',
         logo: url,
       });
-      expect(result.success, url).toBe(want);
+      expect(result.success, url).toBe(expected);
     }
   });
 

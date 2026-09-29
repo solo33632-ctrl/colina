@@ -51,7 +51,7 @@ export default async function EditPartnerPage({ params }: Props) {
           defaultValues={{
             nameAr: partner.nameAr,
             nameEn: partner.nameEn,
-            logo: partner.logo,
+            logo: partner.logo ?? '',
           }}
         />
         <DeleteButton

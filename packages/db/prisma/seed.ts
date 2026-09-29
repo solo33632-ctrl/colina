@@ -6,6 +6,18 @@ import { prisma } from '../index';
 // Phase 2 placeholder seed — original sample copy (not client content).
 // Idempotent: every row is upserted by its unique field, so re-running
 // `prisma db seed` never duplicates rows. Real content arrives in Phase 0/10.
+//
+// NO PLACEHOLDER URLS. An earlier version of this file pointed
+// MachineCategory.image, Machine.datasheetUrl, MachineImage.url,
+// Partner.logo and NewsPost.image at root-relative paths under
+// /images/seed and /datasheets/seed. Those files were never committed, so
+// every one of them 404'd — and worse, the Phase 13 URL rules only accept
+// absolute http(s) URLs, so a seeded row could not be opened and saved
+// again without first deleting the very images it was meant to show. All
+// of those fields are now left null and the gallery loop is gone. The
+// public site already degrades gracefully (ImageWithFallback draws a
+// letter tile, and the admin list uses AdminThumb), and real media arrives
+// through the Cloudinary upload flow once Colina's content is ready.
 async function main() {
   const categories = await Promise.all(
     [
@@ -15,7 +27,7 @@ async function main() {
         nameEn: 'Production Lines',
         descriptionAr: 'خطوط إنتاج كاملة لقطاع الصناعات الغذائية.',
         descriptionEn: 'Complete production lines for the food industry.',
-        image: '/images/seed/category-production-lines.jpg',
+        image: null,
       },
       {
         slug: 'packaging-machines',
@@ -23,7 +35,7 @@ async function main() {
         nameEn: 'Packaging Machines',
         descriptionAr: 'آلات تغليف وتعبئة للمنتجات الغذائية.',
         descriptionEn: 'Packaging and filling machines for food products.',
-        image: '/images/seed/category-packaging.jpg',
+        image: null,
       },
       {
         slug: 'conveying-systems',
@@ -31,7 +43,7 @@ async function main() {
         nameEn: 'Conveying Systems',
         descriptionAr: 'سيور وأنظمة نقل للمواد والمنتجات.',
         descriptionEn: 'Belts and conveying systems for materials.',
-        image: '/images/seed/category-conveying.jpg',
+        image: null,
       },
     ].map((c) =>
       prisma.machineCategory.upsert({
@@ -57,7 +69,7 @@ async function main() {
         descriptionEn: 'Temporary detailed description of the line.',
         specsAr: 'السعة: 1000 وحدة/ساعة.',
         specsEn: 'Capacity: 1000 units/hour.',
-        datasheetUrl: '/datasheets/seed/colina-pro-1000.pdf',
+        datasheetUrl: null,
       },
       {
         slug: 'colina-pro-2000',
@@ -107,24 +119,20 @@ async function main() {
     )
   );
 
-  // Gallery images (position = display order, lowest first).
-  for (const machine of machines) {
-    for (const position of [0, 1]) {
-      await prisma.machineImage.upsert({
-        where: {
-          // No unique key on (machineId, position), so delete + recreate
-          // is avoided by matching on the deterministic seed URL instead.
-          id: `seed-${machine.slug}-${position}`,
-        },
-        update: {},
-        create: {
-          id: `seed-${machine.slug}-${position}`,
-          machineId: machine.id,
-          url: `/images/seed/${machine.slug}-${position}.jpg`,
-          position,
-        },
-      });
-    }
+  // No gallery rows are created. `MachineImage.url` is required and only
+  // accepts an absolute http(s) URL, so a seeded placeholder would both 404
+  // and block the machine from being saved again. The delete clears rows
+  // written by earlier versions of this seed, so re-seeding an existing dev
+  // database lands on the same shape as a fresh one. The ids are the
+  // deterministic `seed-<slug>-<position>` the old seed used, so nothing an
+  // admin uploaded through the real flow is touched.
+  const staleGallery = await prisma.machineImage.deleteMany({
+    where: { id: { startsWith: 'seed-' } },
+  });
+  if (staleGallery.count > 0) {
+    console.log(
+      `Removed ${staleGallery.count} placeholder gallery image(s) from a previous seed.`
+    );
   }
 
   // Related machines (directional links — seed both ways for a symmetric
@@ -187,16 +195,34 @@ async function main() {
     ['seed-partner-a', 'seed-partner-b', 'seed-partner-c'].map((name) =>
       prisma.partner.upsert({
         where: { id: name },
+        // Deliberately empty: these rows are seed-owned by id, but a partner
+        // may have had its real logo uploaded through the admin, and
+        // re-seeding must not wipe that. The placeholder is cleared
+        // separately below instead.
         update: {},
         create: {
           id: name,
           nameAr: `شريك تجريبي ${name.slice(-1).toUpperCase()}`,
           nameEn: `Seed Partner ${name.slice(-1).toUpperCase()}`,
-          logo: `/images/seed/${name}.png`,
+          logo: null,
         },
       })
     )
   );
+
+  // Clears the placeholder logo left by an earlier version of this seed, which
+  // the empty `update` above cannot reach. Matched on the exact
+  // `/images/seed/` prefix, so a real Cloudinary upload — the only other way a
+  // logo can get here — is never touched.
+  const staleLogos = await prisma.partner.updateMany({
+    where: { logo: { startsWith: '/images/seed/' } },
+    data: { logo: null },
+  });
+  if (staleLogos.count > 0) {
+    console.log(
+      `Cleared ${staleLogos.count} placeholder partner logo(s) from a previous seed.`
+    );
+  }
 
   await Promise.all(
     [
@@ -235,7 +261,7 @@ async function main() {
         titleEn: 'Seed News: Launch',
         bodyAr: 'نص تجريبي لخبر الإطلاق.',
         bodyEn: 'Seed body for the launch post.',
-        image: '/images/seed/news-launch.jpg',
+        image: null,
       },
       {
         slug: 'seed-news-service',
@@ -243,7 +269,7 @@ async function main() {
         titleEn: 'Seed News: Service',
         bodyAr: 'نص تجريبي لخبر الصيانة.',
         bodyEn: 'Seed body for the service post.',
-        image: '/images/seed/news-service.jpg',
+        image: null,
       },
     ].map((n) =>
       prisma.newsPost.upsert({

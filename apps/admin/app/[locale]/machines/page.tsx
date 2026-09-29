@@ -99,12 +99,24 @@ export default async function MachinesPage({ searchParams }: Props) {
       key: 'name',
       header: common('name'),
       render: (row) => (
-        <span
-          title={name(row)}
-          className="block max-w-[18rem] truncate font-medium text-stone-900"
-        >
-          {name(row)}
-        </span>
+        // `min-w-0` on the name keeps it truncating: inside a flex row a
+        // truncating block child would otherwise refuse to shrink and push
+        // the badge out of the cell.
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            title={name(row)}
+            className="block min-w-0 max-w-[18rem] truncate font-medium text-stone-900"
+          >
+            {name(row)}
+          </span>
+          {/* At-a-glance answer to "which machines are on the home page
+              right now", so it is never a question of opening each row. */}
+          {row.featured ? (
+            <span className="shrink-0 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-800">
+              {t('featuredBadge')}
+            </span>
+          ) : null}
+        </div>
       ),
     },
     {

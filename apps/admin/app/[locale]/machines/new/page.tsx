@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { prisma } from '@colina/db';
+import { prisma, FEATURED_MACHINES_LIMIT } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
 import { Container } from '@colina/ui';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -18,11 +18,12 @@ export async function generateMetadata({
 export default async function NewMachinePage() {
   // The form needs the category to pick from and the machines a new one can be
   // related to.
-  const [nav, t, categories, machines] = await Promise.all([
+  const [nav, t, categories, machines, featuredCount] = await Promise.all([
     getTranslations('Nav'),
     getTranslations('Machines'),
     prisma.machineCategory.findMany({ orderBy: { nameEn: 'asc' } }),
     prisma.machine.findMany({ orderBy: { nameEn: 'asc' } }),
+    prisma.machine.count({ where: { featured: true } }),
   ]);
 
   return (
@@ -37,6 +38,8 @@ export default async function NewMachinePage() {
           mode="create"
           categories={categories}
           machines={machines}
+          featuredCount={featuredCount}
+          featuredLimit={FEATURED_MACHINES_LIMIT}
         />
       </Container>
     </main>

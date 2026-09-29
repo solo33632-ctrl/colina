@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { prisma } from '@colina/db';
+import { prisma, FEATURED_MACHINES_LIMIT } from '@colina/db';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Container } from '@colina/ui';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -26,7 +26,7 @@ export default async function EditMachinePage({ params }: Props) {
   const locale = await getLocale();
   const nav = await getTranslations('Nav');
   const common = await getTranslations('Common');
-  const [machine, categories, machines] = await Promise.all([
+  const [machine, categories, machines, featuredCount] = await Promise.all([
     prisma.machine.findUnique({
       where: { id },
       include: {
@@ -36,6 +36,9 @@ export default async function EditMachinePage({ params }: Props) {
     }),
     prisma.machineCategory.findMany({ orderBy: { nameEn: 'asc' } }),
     prisma.machine.findMany({ orderBy: { nameEn: 'asc' } }),
+    // Includes the machine being edited when it is already featured, which is
+    // what the admin wants to see: the count they are working against.
+    prisma.machine.count({ where: { featured: true } }),
   ]);
   if (!machine) {
     notFound();
@@ -76,7 +79,10 @@ export default async function EditMachinePage({ params }: Props) {
               position: image.position,
             })),
             relatedIds: machine.relatedMachines.map((related) => related.id),
+            featured: machine.featured,
           }}
+          featuredCount={featuredCount}
+          featuredLimit={FEATURED_MACHINES_LIMIT}
         />
         <DeleteMachineButton
           machineId={machine.id}

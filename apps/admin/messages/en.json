@@ -199,6 +199,7 @@
     "createFirst": "Create the first machine",
     "empty": "No machines yet.",
     "slugTaken": "That slug is already used by another machine.",
+    "featuredBadge": "Featured",
     "form": {
       "createTitle": "New machine",
       "editTitle": "Edit machine",
@@ -230,6 +231,8 @@
       "addImageHint": "JPG, PNG or WEBP up to {max} MB. The image is uploaded and added straight away.",
       "relatedLegend": "Related machines",
       "noRelated": "No other machines exist yet.",
+      "featured": "Featured on homepage",
+      "featuredHint": "{count, plural, one {# machine is} other {# machines are}} currently featured. The homepage shows the {limit} most recently saved, then alphabetical by English name.",
       "submitCreate": "Create machine",
       "submitEdit": "Save changes"
     },

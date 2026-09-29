@@ -352,7 +352,16 @@ export function MachineForm({
               </legend>
               <ul className="grid gap-3 sm:grid-cols-2">
                 {imageFields.map((field, index) => (
-                  <li key={field.id} className="flex items-start gap-2">
+                  // `flex-wrap` stops the row's min-content being the sum of its
+                  // widest children (160px preview + position input + remove),
+                  // which otherwise forces this card — and so the whole form
+                  // grid — past a 390px screen whenever a machine already has
+                  // images. The row already wrapped at that width, so this only
+                  // corrects the min-content, it does not restyle the row.
+                  <li
+                    key={field.id}
+                    className="flex flex-wrap items-start gap-2"
+                  >
                     <div className="min-w-0 flex-1">
                       <UploadField
                         id={`machine-image-${index}`}

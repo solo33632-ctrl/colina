@@ -32,3 +32,18 @@ export type {
   Partner,
 } from './prisma/generated/client';
 export type { AdminRole } from './prisma/generated/client';
+
+/**
+ * How many featured machines the public home page actually renders.
+ *
+ * Shared so the query's `take` and the admin form's explanatory hint cannot
+ * drift apart — the admin is told this exact number, so if the two disagreed
+ * the hint would be a lie.
+ *
+ * Six fills the home page's `lg:grid-cols-3` grid as two clean rows. There is
+ * deliberately no database constraint on how many machines may be flagged:
+ * featuring more than this is allowed, and the ones past the limit simply do
+ * not appear, which is why the admin form states the rule rather than blocking
+ * the save.
+ */
+export const FEATURED_MACHINES_LIMIT = 6;

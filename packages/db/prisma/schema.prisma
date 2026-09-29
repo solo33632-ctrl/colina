@@ -59,6 +59,12 @@ model Machine {
   specsEn            String          @db.Text
   datasheetUrl       String?
   images             MachineImage[]
+  // Admin-curated: the public home page's featured strip selects on this.
+  // Defaults to false so a newly created machine never appears on the
+  // marketing site until somebody chooses it. There is deliberately no
+  // database constraint on how many rows may be true — the home page caps
+  // what it renders, and the admin form states that cap.
+  featured           Boolean         @default(false)
   // Related machines: implicit self-referential many-to-many
   // ("RelatedMachines" join table, managed by Prisma).
   // Chosen over an explicit join model because it needs no extra model

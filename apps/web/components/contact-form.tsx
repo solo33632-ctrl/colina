@@ -123,12 +123,12 @@ export function ContactForm() {
           {...register('message')}
         />
       </Field>
-      {/* Honeypot: off-screen (not display:none), skipped by keyboard and
-          screen readers. Bots that fill it get a fake success server-side. */}
-      <div
-        aria-hidden="true"
-        className="absolute -left-[9999px] h-px w-px overflow-hidden opacity-0"
-      >
+      {/* Honeypot: visually hidden (not display:none), skipped by keyboard
+          and screen readers. Bots that fill it get a fake success server-side.
+          `sr-only` rather than a hardcoded off-screen offset: `left` is a
+          physical edge, so a negative `left` on an RTL page extends the
+          document ~10000px to the left and the whole page scrolls sideways. */}
+      <div aria-hidden="true" className="sr-only">
         <input tabIndex={-1} autoComplete="off" {...register(HONEYPOT_FIELD)} />
       </div>
       {status === 'success' ? (

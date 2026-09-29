@@ -2,7 +2,7 @@ import argon2 from 'argon2';
 import type { NextAuthOptions } from 'next-auth';
 import { getServerSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { prisma } from '@colina/db';
+import { logSecurityEvent, prisma } from '@colina/db';
 import { routing } from '@/i18n/routing';
 import { getClientIp, LOGIN_RATE_LIMIT, rateLimitCheck } from './rate-limit';
 import { loginInputSchema } from './schemas';
@@ -10,6 +10,26 @@ import { loginInputSchema } from './schemas';
 // Generic failure — never reveal whether the email exists (agent.md:
 // no account-enumeration via error messages).
 const GENERIC_FAILURE = 'Invalid email or password.';
+
+// How this sign-in attempt is named in the `source` column of a
+// SecurityEvent row, matching the rate limiter's `login:` bucket prefix.
+const SECURITY_EVENT_SOURCE = 'admin-login';
+
+// The email a rejected attempt used, as a short string for the SecurityEvent
+// row — and nothing else. next-auth hands `authorize()` the whole credential
+// record, so this is built field by field on purpose: the password, and any
+// future field, is never passed to the writer and can never be logged. A
+// missing or malformed email is recorded as a fixed marker rather than
+// stringified, so junk shapes cannot bloat the row.
+function attemptedEmail(
+  credentials: Partial<Record<'email' | 'password', unknown>> | undefined
+) {
+  const email = credentials?.email;
+  if (typeof email !== 'string' || email.trim() === '') {
+    return 'no valid email submitted';
+  }
+  return email.trim();
+}
 
 export const authOptions: NextAuthOptions = {
   // No public self-registration exists or will ever exist: admin accounts
@@ -32,15 +52,35 @@ export const authOptions: NextAuthOptions = {
           // Same generic failure: a throttled attacker must not be able
           // to distinguish "wrong password" from "rate limited". The warn
           // line is the operator-visible signal (server log only).
+          //
+          // No SecurityEvent row here: the throttled request is not a
+          // rejected set of credentials, and the attempts that led up to
+          // it are each logged below. A RATE_LIMITED row for this bucket
+          // is a one-line addition in Phase 21c if the dashboard wants
+          // the throttled tail too.
           console.warn(`[auth] login rate-limited for ip ${ip}`);
           throw new Error(GENERIC_FAILURE);
         }
+
+        // Every rejection below records one LOGIN_FAILED row, with the same
+        // generic answer for all three causes: what the visitor sees, the
+        // server log and the database must not disagree about whether the
+        // email exists, or the log itself becomes the enumeration oracle.
+        // Best-effort writer, so a failed insert cannot change the answer.
+        const logFailure = () =>
+          logSecurityEvent({
+            type: 'LOGIN_FAILED',
+            source: SECURITY_EVENT_SOURCE,
+            ip,
+            detail: attemptedEmail(credentials),
+          });
 
         const parsed = loginInputSchema({
           email: GENERIC_FAILURE,
           password: GENERIC_FAILURE,
         }).safeParse(credentials);
         if (!parsed.success) {
+          await logFailure();
           return null;
         }
 
@@ -48,6 +88,7 @@ export const authOptions: NextAuthOptions = {
           where: { email: parsed.data.email },
         });
         if (!user) {
+          await logFailure();
           return null;
         }
 
@@ -55,9 +96,14 @@ export const authOptions: NextAuthOptions = {
         // games beyond this: misses cost one hash either way.
         const ok = await argon2.verify(user.passwordHash, parsed.data.password);
         if (!ok) {
+          await logFailure();
           return null;
         }
 
+        // A successful sign-in records nothing: this table is for refused
+        // requests, and a success would just be noise an admin has to
+        // filter past (the AuditLog side already records deliberate admin
+        // activity).
         return { id: user.id, email: user.email, role: user.role };
       },
     }),

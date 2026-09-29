@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import { Container } from '@colina/ui';
 import { Link } from '@/i18n/navigation';
+import { LOGO_SIZES } from '@/lib/intro';
 import { LanguageSwitcher } from './language-switcher';
 
 // Public-site header (app-specific — the admin header lives in apps/admin).
@@ -32,6 +33,12 @@ export async function SiteHeader() {
             alt={logoAlt}
             width={773}
             height={534}
+            // Shared with the home page's intro overlay so both <img>
+            // elements resolve to the same /_next/image candidate and the
+            // browser fetches the logo once per page load. Also far smaller
+            // than the 100vw default, which was pulling a 1920px-wide variant
+            // for a 70px logo. See LOGO_SIZES.
+            sizes={LOGO_SIZES}
             priority
             className="h-10 w-auto sm:h-12"
           />

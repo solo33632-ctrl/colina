@@ -96,6 +96,22 @@ export function MachineForm({
   // self-links); the server drops them defensively too.
   const relatedOptions = machines.filter((machine) => machine.id !== machineId);
 
+  // Per-image error reader. The gallery validates `images[n].url`, and
+  // `onSubmit` already routes a server-side issue to exactly that path, but
+  // react-hook-form types an array field's errors as either a FieldError or
+  // the nested record, so both shapes are unwrapped here. Without a rendered
+  // error for this path an invalid image URL blocks the submit and says
+  // nothing, which is what made seeded machines impossible to save.
+  function imageUrlError(index: number): string | undefined {
+    const fieldError = errors.images?.[index];
+    const urlError = fieldError?.url;
+    if (urlError && typeof urlError === 'object' && 'message' in urlError) {
+      const { message } = urlError;
+      return typeof message === 'string' && message ? message : undefined;
+    }
+    return undefined;
+  }
+
   async function onSubmit(values: MachineInput) {
     setFormError(null);
     const result =
@@ -403,6 +419,14 @@ export function MachineForm({
                     >
                       {t('form.removeImage')}
                     </Button>
+                    {imageUrlError(index) ? (
+                      <p
+                        role="alert"
+                        className="basis-full text-sm font-medium text-red-700"
+                      >
+                        {imageUrlError(index)}
+                      </p>
+                    ) : null}
                   </li>
                 ))}
               </ul>

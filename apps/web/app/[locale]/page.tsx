@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { prisma } from '@colina/db';
+import { prisma, FEATURED_MACHINES_LIMIT } from '@colina/db';
 import { CategoriesGrid } from '@/components/categories-grid';
 import { ContactSection } from '@/components/contact-section';
 import { FeaturedMachines } from '@/components/featured-machines';
@@ -46,14 +46,19 @@ export default async function HomePage({ params }: Props) {
 
   // Read-only content queries in a Server Component — no API route needed.
   // (Phase 8's backend API covers form submissions/writes, not reads.)
-  // The featured strip reuses the category grid's ordering rule because
-  // `Machine` has no `featured` flag yet; see FeaturedMachines.
   const [categories, partners, machines] = await Promise.all([
     prisma.machineCategory.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.partner.findMany({ orderBy: { createdAt: 'asc' } }),
+    // Admin-curated featured strip. Ordered most-recently-saved first so an
+    // admin can promote a machine simply by saving it, with `nameEn` as a
+    // deterministic tiebreaker for rows saved in the same millisecond (the
+    // seed loop can produce those). Capped, not validated: featuring more than
+    // the cap is allowed, the extra rows just fall past the limit, and the
+    // admin form states that rule.
     prisma.machine.findMany({
-      orderBy: { createdAt: 'asc' },
-      take: 3,
+      where: { featured: true },
+      orderBy: [{ updatedAt: 'desc' }, { nameEn: 'asc' }],
+      take: FEATURED_MACHINES_LIMIT,
       include: { images: { orderBy: { position: 'asc' }, take: 1 } },
     }),
   ]);

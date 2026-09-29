@@ -23,8 +23,7 @@
   },
   "FeaturedMachines": {
     "heading": "Featured machines",
-    "subheading": "A few of the lines we build.",
-    "empty": "No machines yet — check back soon."
+    "subheading": "A few of the lines we build."
   },
   "CategoryPage": {
     "backToCategories": "All categories",

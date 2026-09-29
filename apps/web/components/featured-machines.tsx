@@ -10,19 +10,22 @@ type FeaturedMachinesProps = {
 };
 
 /**
- * The machines shown on the home page.
+ * The admin-curated machines shown on the home page. `machines` is already
+ * filtered to `featured`, ordered and capped by the page's query
+ * (FEATURED_MACHINES_LIMIT), so this component only lays them out.
  *
- * There is no `featured` flag on `Machine` yet, so this is a stand-in: the
- * first machines in creation order, which is the same ordering rule the
- * category grid and the admin list already use, so nothing behaves oddly next
- * to it. It is deliberately NOT a curated list and cannot be arranged by an
- * editor — a `featured` boolean plus an admin toggle is the real fix and needs
- * a Prisma migration, which was out of scope for this step.
+ * Renders nothing at all when the list is empty. An earlier version showed an
+ * "empty" message here, but that is the wrong shape: the section exists to
+ * present a decision somebody made, and printing it with no machines under a
+ * heading called "Featured machines" states the opposite. Returning null also
+ * leaves no gap, where a heading with nothing under it would.
  */
 export async function FeaturedMachines({
   machines,
   locale,
 }: FeaturedMachinesProps) {
+  if (machines.length === 0) return null;
+
   const t = await getTranslations('FeaturedMachines');
 
   return (
@@ -37,17 +40,13 @@ export async function FeaturedMachines({
           </h2>
           <p className="mt-2 text-center text-stone-600">{t('subheading')}</p>
         </Reveal>
-        {machines.length === 0 ? (
-          <p className="mt-8 text-center text-stone-500">{t('empty')}</p>
-        ) : (
-          <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {machines.map((machine) => (
-              <li key={machine.id} className="h-full">
-                <MachineCard machine={machine} locale={locale} />
-              </li>
-            ))}
-          </ul>
-        )}
+        <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {machines.map((machine) => (
+            <li key={machine.id} className="h-full">
+              <MachineCard machine={machine} locale={locale} />
+            </li>
+          ))}
+        </ul>
       </Container>
     </section>
   );

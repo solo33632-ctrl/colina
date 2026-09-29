@@ -31,7 +31,13 @@ export type {
   MachineImage,
   Partner,
 } from './prisma/generated/client';
-export type { AdminRole } from './prisma/generated/client';
+export type { AdminRole, SecurityEventType } from './prisma/generated/client';
+
+// Security/abuse event logging (Phase 21a). Re-exported here so both apps
+// reach the client, the row types and the event writer through the one
+// `@colina/db` import they already use.
+export { logSecurityEvent } from './security-events';
+export type { SecurityEventInput } from './security-events';
 
 /**
  * How many featured machines the public home page actually renders.

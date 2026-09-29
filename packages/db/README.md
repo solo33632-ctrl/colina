@@ -6,6 +6,10 @@ Shared Prisma schema + generated client (PostgreSQL).
 - `prisma/seed.ts` — placeholder seed data for later phases.
 - `prisma.config.ts` — datasource URL (`DATABASE_URL`) + migration/seed wiring.
 - `index.ts` — typed `prisma` client singleton (import this in apps).
+- `security-events.ts` — `logSecurityEvent()`, the best-effort writer for
+  the `SecurityEvent` rows the rate limiter / honeypot / admin-login
+  enforcement points record (Phase 21a). Shared here so both apps write
+  through one implementation; re-exported from `index.ts`.
 
 ## Setup
 

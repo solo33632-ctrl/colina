@@ -1,3 +1,98 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Brand intro + entrance reveals (public home page only).
+
+   Plain CSS keyframes rather than an animation library: the whole effect is
+   three timed transforms plus a cross-fade, which CSS states directly.
+
+   Two constraints shape this file:
+
+   1. Direction-agnostic on purpose. Only `opacity`, `scale` and a vertical
+      `translateY` move, so the reveal is identical in RTL and LTR. Nothing
+      here offsets by a physical `left`/`right` — that is what made the
+      off-screen honeypot extend the document ~10000px on Arabic pages.
+   2. The entrance below the fold is the Largest Contentful Paint candidate,
+      so the animations only ever change `opacity` and `transform`, which
+      are composited and do not trigger layout or paint.
+
+   The overlay is unmounted by its own `animationend`, not by a JS timer, so
+   there is no duration constant duplicated between this file and the
+   component. The only timing the JS knows about is the safety backstop in
+   lib/intro.ts.
+   ------------------------------------------------------------------------- */
+
+/* Backdrop: wash in, hold, wash out. The 0% keyframe is what makes the
+   overlay safe before hydration — it starts fully transparent, so a browser
+   with no JS (or a visitor whose session is already marked) never has a
+   white sheet parked over the page. */
+@keyframes colina-intro-backdrop {
+  0% {
+    opacity: 0;
+  }
+  16% {
+    opacity: 1;
+  }
+  74% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The mark settles in from slightly below and slightly small. Vertical motion
+   only, so it reads identically in both writing directions. */
+@keyframes colina-intro-mark {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* A hairline in the measured brand orange, echoing the rule under the hero.
+   scaleX grows from the centre, which needs no start edge to be named. */
+@keyframes colina-intro-rule {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* Entrance for the content underneath is a Tailwind transition on the
+   `Reveal` wrapper, not a keyframe: its settled state is then a plain class
+   the browser can hold indefinitely, with no animation fill-mode to unwind.
+   Keep this file for the overlay only. */
+
+.colina-intro-backdrop {
+  animation: colina-intro-backdrop 1120ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.colina-intro-mark {
+  animation: colina-intro-mark 620ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both;
+}
+
+.colina-intro-rule {
+  animation: colina-intro-rule 520ms cubic-bezier(0.22, 1, 0.36, 1) 340ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The component never reaches the `playing` phase under this preference, so
+     the rules above never apply. This is a second line of defence for a
+     preference that flips while the page is open. */
+  .colina-intro-backdrop,
+  .colina-intro-mark,
+  .colina-intro-rule {
+    animation: none;
+  }
+}

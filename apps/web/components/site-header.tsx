@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import { Container } from '@colina/ui';
 import { Link } from '@/i18n/navigation';
@@ -14,15 +15,26 @@ export async function SiteHeader() {
     { label: nav('about'), href: '/about' as const },
     { label: nav('contact'), href: '/#contact' as const },
   ];
+  // The lockup already draws the wordmark and the tagline, so the alt text
+  // spells both out for assistive tech. `priority` because the logo is the
+  // largest-contentful-paint candidate on every page.
+  const logoAlt = `${site('name')} — ${site('tagline')}`;
 
   return (
     <header className="border-b border-stone-200 bg-white">
       <Container className="flex h-16 items-center gap-6">
         <Link
           href="/"
-          className="rounded text-lg font-bold text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+          className="rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
         >
-          {site('name')}
+          <Image
+            src="/logo.png"
+            alt={logoAlt}
+            width={773}
+            height={534}
+            priority
+            className="h-10 w-auto sm:h-12"
+          />
         </Link>
         <nav aria-label={nav('main')} className="hidden sm:block">
           <ul className="flex items-center gap-6">

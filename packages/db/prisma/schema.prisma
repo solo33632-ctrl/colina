@@ -29,6 +29,22 @@ enum AdminRole {
   EDITOR
 }
 
+// The three enforcement points that record abuse (Phase 21a). One enum
+// rather than a table of "reasons" so the Phase 21c dashboard can filter
+// and count on a real column. Kept deliberately small: a new member is a
+// schema change, which is the point — every value here must correspond to
+// a place in the code that actually enforces something.
+enum SecurityEventType {
+  // A public POST endpoint's rate limiter refused a request.
+  RATE_LIMITED
+  // A hidden form field (honeypot) came back filled, so the submission is
+  // treated as a bot's.
+  HONEYPOT_CAUGHT
+  // next-auth rejected admin credentials (unknown email, wrong password
+  // or a malformed body).
+  LOGIN_FAILED
+}
+
 model MachineCategory {
   id            String    @id @default(cuid())
   createdAt     DateTime  @default(now())
@@ -195,4 +211,39 @@ model AuditLog {
   entity      String
 
   @@index([adminUserId])
+}
+
+// Blocked / suspicious traffic, recorded by the enforcement points
+// themselves (Phase 21a). Distinct from AuditLog, which records what
+// authenticated staff did on purpose: these rows are written by the code
+// refusing a request, never by a human, and are the raw material for the
+// Phase 21c security/abuse dashboard.
+//
+// Append-only in practice. `updatedAt` exists only because the
+// schema-wide convention gives every model one; no code path updates a
+// row here.
+model SecurityEvent {
+  id        String            @id @default(cuid())
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  type      SecurityEventType
+  // Which endpoint or form was targeted, as the code names it: "contact",
+  // "maintenance-request", "admin-login". A fixed, code-owned vocabulary —
+  // not free text — so the dashboard can group by it.
+  source    String
+  // Best-effort client IP from the request headers, for correlating bursts
+  // across sources. Nullable because it is only ever best-effort: an
+  // unknown address must not stop the row from being recorded (and the
+  // header itself is attacker-controlled on unprotected hosting, see
+  // SECURITY.md). Stored because attributing abuse is the point of the log.
+  ip        String?
+  // Short free-text context for a human reviewer, e.g. the email attempted
+  // on a failed login. Never a password, never a password hash, never a
+  // submitted message body. Truncated by the write helper.
+  detail    String?           @db.Text
+
+  // The two dashboard queries Phase 21c starts with: newest first, and
+  // "show me every rate-limited request".
+  @@index([createdAt])
+  @@index([type])
 }

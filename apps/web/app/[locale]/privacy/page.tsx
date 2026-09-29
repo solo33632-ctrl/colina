@@ -15,6 +15,7 @@ type Props = {
 const SECTIONS = [
   'collected',
   'cookies',
+  'securityLogs',
   'trackers',
   'contact',
   'changes',

@@ -141,6 +141,8 @@
     "collectedText": "Placeholder: the contact and maintenance-request forms collect the details you type in (name, company, phone, email, machine/model, message) so Colina can respond to your inquiry.",
     "cookiesTitle": "Cookies",
     "cookiesText": "Placeholder: the site stores a locale-preference cookie (NEXT_LOCALE) to remember your language. No other cookies are set.",
+    "securityLogsTitle": "Blocked and suspicious submissions",
+    "securityLogsText": "Placeholder: when a form submission is blocked or looks suspicious — for example too many submissions in a short time, or a hidden field that only an automated program would fill in — the site records the time, the IP address the attempt came from, and which form it targeted. These records are used only for security, to detect and investigate abuse. They are not used for tracking, for building a profile of you, or for advertising.",
     "trackersTitle": "No ad trackers",
     "trackersText": "Placeholder: per this project's policy, the site uses no third-party advertising trackers or analytics scripts.",
     "contactTitle": "Contact",

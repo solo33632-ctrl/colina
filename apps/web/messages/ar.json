@@ -21,6 +21,11 @@
     "subheading": "تصفح عائلات الآلات لدينا.",
     "empty": "لا توجد فئات بعد — عُد قريباً."
   },
+  "FeaturedMachines": {
+    "heading": "آلات مميزة",
+    "subheading": "نماذج من خطوط الإنتاج التي نبنيها.",
+    "empty": "لا توجد آلات بعد — عُد قريباً."
+  },
   "CategoryPage": {
     "backToCategories": "كل الفئات",
     "machinesHeading": "آلات هذه الفئة",

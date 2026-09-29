@@ -3,6 +3,17 @@ import { Button, Container } from '@colina/ui';
 
 // Text-only hero on a brand background — no photography exists yet
 // (real media arrives with Phase 0 content).
+//
+// Deliberately NOT wrapped in `Reveal`. The hero is this page's Largest
+// Contentful Paint candidate, and Chrome excludes an element painted at
+// `opacity: 0` from LCP for good: it records the candidate at the element's
+// first paint, and a later composited opacity change does not re-qualify it.
+// Fading the hero in therefore does not just delay LCP, it loses the hero
+// altogether and leaves a 58x40 header logo holding the metric.
+//
+// The hero's entrance is the brand overlay lifting off it, which reads
+// identically and costs nothing. The entrance animation lives on the
+// sections below the fold, which are not LCP candidates.
 export async function HeroSection() {
   const t = await getTranslations('Hero');
 

@@ -5,7 +5,10 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
 import { CategoriesGrid } from '@/components/categories-grid';
 import { ContactSection } from '@/components/contact-section';
+import { FeaturedMachines } from '@/components/featured-machines';
 import { HeroSection } from '@/components/hero-section';
+import { IntroOverlay } from '@/components/intro-overlay';
+import { IntroProvider } from '@/components/intro-provider';
 import { PartnersStrip } from '@/components/partners-strip';
 import { WhyUsSection } from '@/components/why-us-section';
 import { routing } from '@/i18n/routing';
@@ -43,9 +46,16 @@ export default async function HomePage({ params }: Props) {
 
   // Read-only content queries in a Server Component — no API route needed.
   // (Phase 8's backend API covers form submissions/writes, not reads.)
-  const [categories, partners] = await Promise.all([
+  // The featured strip reuses the category grid's ordering rule because
+  // `Machine` has no `featured` flag yet; see FeaturedMachines.
+  const [categories, partners, machines] = await Promise.all([
     prisma.machineCategory.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.partner.findMany({ orderBy: { createdAt: 'asc' } }),
+    prisma.machine.findMany({
+      orderBy: { createdAt: 'asc' },
+      take: 3,
+      include: { images: { orderBy: { position: 'asc' }, take: 1 } },
+    }),
   ]);
 
   // Organization structured data: name + canonical URL only. No logo file
@@ -65,8 +75,15 @@ export default async function HomePage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: organizationJsonLd }}
       />
-      <HeroSection />
-      <CategoriesGrid categories={categories} locale={locale} />
+      {/* The brand moment and the reveal below it are scoped to the home page
+          only: a deep link never mounts this, so a visitor arriving on a
+          machine page from a search never sees a splash. */}
+      <IntroProvider>
+        <IntroOverlay />
+        <HeroSection />
+        <CategoriesGrid categories={categories} locale={locale} />
+        <FeaturedMachines machines={machines} locale={locale} />
+      </IntroProvider>
       <WhyUsSection />
       <PartnersStrip partners={partners} locale={locale} />
       <ContactSection />

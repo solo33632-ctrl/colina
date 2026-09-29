@@ -9,6 +9,27 @@ import { z } from 'zod';
 // (which inspect it before validation).
 export const HONEYPOT_FIELD = 'website';
 
+/**
+ * The trap's value, or null when the submission is a real person's.
+ *
+ * Lives here (not inline in each route) because the routes now need the
+ * value itself, not just a yes/no: it is what gets recorded on the
+ * SecurityEvent row when a bot is caught, so the field's name and the one
+ * rule for it — "a non-blank string means a bot" — must not be restated
+ * per endpoint. `detail` on that row is truncated by the write helper, so
+ * an absurdly long trap value cannot bloat the log.
+ */
+export function honeypotValue(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+  const value = (body as Record<string, unknown>)[HONEYPOT_FIELD];
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+  return value;
+}
+
 export type ContactFieldMessages = {
   name: string;
   email: string;

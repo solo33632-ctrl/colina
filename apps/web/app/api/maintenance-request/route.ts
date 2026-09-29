@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@colina/db';
+import { logSecurityEvent, prisma } from '@colina/db';
 import { sendLeadNotification } from '@/lib/lead-email';
 import { getClientIp, rateLimitCheck } from '@/lib/rate-limit';
 import { isSameOrigin } from '@/lib/request-origin';
-import { HONEYPOT_FIELD, maintenanceRequestInputSchema } from '@/lib/schemas';
+import { honeypotValue, maintenanceRequestInputSchema } from '@/lib/schemas';
 
 // Generic English messages for the API contract. The client never renders
 // these — it shows its own translated banner — so they stay untranslated.
@@ -13,6 +13,12 @@ const SERVER_MESSAGES = {
   phone: 'Phone must be at least 6 characters.',
   message: 'Message must be at least 10 characters.',
 };
+
+// How this endpoint is named in the rate limiter's buckets AND in the
+// `source` column of a SecurityEvent row. One constant so the bucket a
+// request is counted against and the label an admin reads in Phase 21c
+// cannot drift apart.
+const SOURCE = 'maintenance-request';
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -25,14 +31,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Read once: the honeypot verdict needs it, the rate limiter needs the
+  // IP, and both security rows record the same IP.
+  const ip = getClientIp(req);
+  const trapped = honeypotValue(body);
+
   // Honeypot first: a filled trap means a bot. Answer success so the bot
-  // can't tell it was caught — store nothing, send nothing.
-  if (
-    typeof body === 'object' &&
-    body !== null &&
-    typeof (body as Record<string, unknown>)[HONEYPOT_FIELD] === 'string' &&
-    ((body as Record<string, unknown>)[HONEYPOT_FIELD] as string).trim() !== ''
-  ) {
+  // can't tell it was caught — store nothing, send nothing. The SecurityEvent
+  // row is the one deliberate trace (Phase 21a): a log, not user data, and
+  // nothing about the person or request the bot submitted. Best-effort
+  // writer, so a failed insert cannot change this response.
+  if (trapped !== null) {
+    await logSecurityEvent({
+      type: 'HONEYPOT_CAUGHT',
+      source: SOURCE,
+      ip,
+      detail: trapped,
+    });
     return NextResponse.json({ ok: true });
   }
 
@@ -43,8 +58,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const retryAfter = rateLimitCheck(`maintenance-request:${getClientIp(req)}`);
+  const retryAfter = rateLimitCheck(`${SOURCE}:${ip}`);
   if (retryAfter > 0) {
+    await logSecurityEvent({
+      type: 'RATE_LIMITED',
+      source: SOURCE,
+      ip,
+      detail: `retry-after: ${retryAfter}s`,
+    });
     return NextResponse.json(
       { ok: false, error: 'rate_limited' },
       { status: 429, headers: { 'Retry-After': String(retryAfter) } }

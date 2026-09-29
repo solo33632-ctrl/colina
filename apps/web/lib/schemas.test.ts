@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   contactInputSchema,
   HONEYPOT_FIELD,
+  honeypotValue,
   maintenanceRequestInputSchema,
 } from './schemas';
 
@@ -66,6 +67,32 @@ describe('contactInputSchema', () => {
     if (filled.success) {
       expect(filled.data[HONEYPOT_FIELD]).toBe('http://spam.test');
     }
+  });
+});
+
+describe('honeypotValue', () => {
+  it('reports no trap for an absent, blank, or non-string field', () => {
+    expect(honeypotValue({ name: 'Sara' })).toBeNull();
+    expect(honeypotValue({ [HONEYPOT_FIELD]: '' })).toBeNull();
+    expect(honeypotValue({ [HONEYPOT_FIELD]: '   ' })).toBeNull();
+    expect(honeypotValue({ [HONEYPOT_FIELD]: 42 })).toBeNull();
+    expect(
+      honeypotValue({ [HONEYPOT_FIELD]: ['http://spam.test'] })
+    ).toBeNull();
+  });
+
+  it('reports no trap for a body that is not an object', () => {
+    expect(honeypotValue(null)).toBeNull();
+    expect(honeypotValue('http://spam.test')).toBeNull();
+  });
+
+  it('returns the submitted value when the trap is filled', () => {
+    expect(honeypotValue({ [HONEYPOT_FIELD]: 'http://spam.test' })).toBe(
+      'http://spam.test'
+    );
+    // Untrimmed on purpose: the SecurityEvent row records what was
+    // submitted, not a cleaned-up version of it.
+    expect(honeypotValue({ [HONEYPOT_FIELD]: ' spam \n' })).toBe(' spam \n');
   });
 });
 

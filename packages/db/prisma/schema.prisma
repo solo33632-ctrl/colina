@@ -247,3 +247,49 @@ model SecurityEvent {
   @@index([createdAt])
   @@index([type])
 }
+
+// Privacy-respecting traffic counting (Phase 21b): one row per page per day
+// per language, holding nothing that identifies a visitor.
+//
+// Deliberately NOT a per-visit table. There is no row per request, no IP and
+// no user-agent column here (unlike SecurityEvent above, whose whole purpose
+// is attributing abuse) — a visit only ever increments a counter on a row that
+// already existed. That is the property the privacy policy promises, so the
+// schema is what enforces it: there is nowhere to put an identifier.
+//
+// `path` is locale-agnostic ("/machines/colina-pack-s", never
+// "/en/machines/..."), so the same page is one addressable thing regardless of
+// the language it was served in; `locale` stays a separate column (below) so
+// the dashboard can still break the same page down by language.
+model PageViewDaily {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // A calendar day with no time component and no timezone: PostgreSQL `date`.
+  // Chosen over `DateTime` so "one row per day" is a storage guarantee rather
+  // than a convention every writer has to remember — the column physically
+  // cannot hold 13:37, so no future caller can write a timestamp into it and
+  // silently create a second row for the same day. Which day a visit belongs
+  // to is the server's calendar day (UTC on the deployed container), NOT the
+  // visitor's: deriving it from the visitor would mean storing something
+  // about them, and per-visitor precision is not what this table is for.
+  date      DateTime @db.Date
+  // The route, as the page itself knows it: a static path ("/", "/privacy")
+  // or one built from a slug ("/categories/production-lines"). Written by the
+  // page, never taken from the raw request URL, and validated against the
+  // public route list by the endpoint that receives it.
+  path      String
+  // "ar" or "en" — the language this row's views were served in. Not part of
+  // `path` (see above), kept as its own column so a breakdown by language is
+  // a GROUP BY rather than a string match.
+  locale    String
+  // Views accumulated for this page on this day. Only ever moves by +1, via
+  // the atomic upsert in `page-views.ts`; `increment` is a database-side
+  // arithmetic, so concurrent requests cannot lose a count.
+  count     Int      @default(0)
+
+  // Doubles as the upsert target and as the index the dashboard reads: it
+  // leads with `date` (time-range queries) and covers `path` within a range
+  // ("which pages are popular this month").
+  @@unique([date, path, locale])
+}

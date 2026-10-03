@@ -143,6 +143,8 @@
     "cookiesText": "Placeholder: the site stores a locale-preference cookie (NEXT_LOCALE) to remember your language. No other cookies are set.",
     "securityLogsTitle": "Blocked and suspicious submissions",
     "securityLogsText": "Placeholder: when a form submission is blocked or looks suspicious — for example too many submissions in a short time, or a hidden field that only an automated program would fill in — the site records the time, the IP address the attempt came from, and which form it targeted. These records are used only for security, to detect and investigate abuse. They are not used for tracking, for building a profile of you, or for advertising.",
+    "pageViewsTitle": "How visits are counted",
+    "pageViewsText": "Placeholder: the site counts page visits in aggregate — for each day, a single number per page per language, recording which page was opened and how many times. Nothing is recorded about you as an individual: there is no separate entry for your visit, no IP address attached to a page view, and no cookie or other identifier used for counting. This is a different thing from the blocked-submission records above, which do keep IP addresses because their purpose is investigating abuse — counting visits never stores yours. Automated crawlers that identify themselves are left out, so the totals are approximate rather than exact.",
     "trackersTitle": "No ad trackers",
     "trackersText": "Placeholder: per this project's policy, the site uses no third-party advertising trackers or analytics scripts.",
     "contactTitle": "Contact",

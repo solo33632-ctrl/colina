@@ -6,6 +6,7 @@ import { prisma } from '@colina/db';
 import { Button, Container } from '@colina/ui';
 import { MachineCard } from '@/components/machine-card';
 import { MachineGallery } from '@/components/machine-gallery';
+import { PageViewTracker } from '@/components/page-view-tracker';
 import { Link } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
 import { absoluteImageUrl, localeAlternates, serializeJsonLd } from '@/lib/seo';
@@ -98,6 +99,7 @@ export default async function MachineDetailPage({ params }: Props) {
 
   return (
     <main>
+      <PageViewTracker path={`/machines/${slug}`} locale={locale} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: productJsonLd }}

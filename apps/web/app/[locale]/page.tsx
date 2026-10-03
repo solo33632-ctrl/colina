@@ -9,6 +9,7 @@ import { FeaturedMachines } from '@/components/featured-machines';
 import { HeroSection } from '@/components/hero-section';
 import { IntroOverlay } from '@/components/intro-overlay';
 import { IntroProvider } from '@/components/intro-provider';
+import { PageViewTracker } from '@/components/page-view-tracker';
 import { PartnersStrip } from '@/components/partners-strip';
 import { WhyUsSection } from '@/components/why-us-section';
 import { routing } from '@/i18n/routing';
@@ -76,6 +77,7 @@ export default async function HomePage({ params }: Props) {
 
   return (
     <main>
+      <PageViewTracker path="/" locale={locale} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: organizationJsonLd }}

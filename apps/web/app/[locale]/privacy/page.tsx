@@ -3,6 +3,7 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { Card, Container } from '@colina/ui';
+import { PageViewTracker } from '@/components/page-view-tracker';
 import { routing } from '@/i18n/routing';
 import { localeAlternates } from '@/lib/seo';
 
@@ -16,6 +17,9 @@ const SECTIONS = [
   'collected',
   'cookies',
   'securityLogs',
+  // Directly after the security-log section on purpose: the two are easy to
+  // confuse and the page says so where a reader is most likely to.
+  'pageViews',
   'trackers',
   'contact',
   'changes',
@@ -47,6 +51,7 @@ export default async function PrivacyPage({ params }: Props) {
 
   return (
     <main>
+      <PageViewTracker path="/privacy" locale={locale} />
       <Container className="max-w-3xl py-16">
         <h1 className="text-center text-2xl font-bold text-stone-900 sm:text-3xl">
           {t('heading')}

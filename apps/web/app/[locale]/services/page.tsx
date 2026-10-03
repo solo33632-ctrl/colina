@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
 import { Card, Container } from '@colina/ui';
 import { MaintenanceRequestForm } from '@/components/maintenance-request-form';
+import { PageViewTracker } from '@/components/page-view-tracker';
 import { routing } from '@/i18n/routing';
 import { localeAlternates } from '@/lib/seo';
 
@@ -45,6 +46,7 @@ export default async function ServicesPage({ params }: Props) {
 
   return (
     <main>
+      <PageViewTracker path="/services" locale={locale} />
       <Container className="py-16">
         <h1 className="text-center text-2xl font-bold text-stone-900 sm:text-3xl">
           {t('heading')}

@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { Container } from '@colina/ui';
 import { ContactForm } from '@/components/contact-form';
+import { PageViewTracker } from '@/components/page-view-tracker';
 import { routing } from '@/i18n/routing';
 import { localeAlternates } from '@/lib/seo';
 
@@ -39,6 +40,7 @@ export default async function ContactPage({ params }: Props) {
 
   return (
     <main>
+      <PageViewTracker path="/contact" locale={locale} />
       <Container className="py-16">
         <h1 className="text-center text-2xl font-bold text-stone-900 sm:text-3xl">
           {t('heading')}

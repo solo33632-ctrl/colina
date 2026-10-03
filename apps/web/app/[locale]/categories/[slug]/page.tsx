@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { MachineCard } from '@/components/machine-card';
+import { PageViewTracker } from '@/components/page-view-tracker';
 import { Link } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
 import { localeAlternates } from '@/lib/seo';
@@ -74,6 +75,7 @@ export default async function CategoryDetailPage({ params }: Props) {
 
   return (
     <main>
+      <PageViewTracker path={`/categories/${slug}`} locale={locale} />
       <Container className="py-16">
         <Link
           href="/categories"

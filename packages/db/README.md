@@ -10,6 +10,11 @@ Shared Prisma schema + generated client (PostgreSQL).
   the `SecurityEvent` rows the rate limiter / honeypot / admin-login
   enforcement points record (Phase 21a). Shared here so both apps write
   through one implementation; re-exported from `index.ts`.
+- `page-views.ts` — `recordPageView(path, locale)`, the best-effort writer
+  for `PageViewDaily` (Phase 21b). One atomic upsert-with-increment per
+  visit, keyed on the unique `(date, path, locale)`; never throws. Which
+  requests count (crawler filter, path validation, rate limit) is apps/web
+  policy and lives with the `/api/page-view` endpoint.
 
 ## Setup
 

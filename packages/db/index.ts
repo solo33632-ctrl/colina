@@ -29,6 +29,7 @@ export type {
   Machine,
   MachineCategory,
   MachineImage,
+  PageViewDaily,
   Partner,
 } from './prisma/generated/client';
 export type { AdminRole, SecurityEventType } from './prisma/generated/client';
@@ -38,6 +39,11 @@ export type { AdminRole, SecurityEventType } from './prisma/generated/client';
 // `@colina/db` import they already use.
 export { logSecurityEvent } from './security-events';
 export type { SecurityEventInput } from './security-events';
+
+// Privacy-respecting page-view counting (Phase 21b). Same shape as the event
+// writer above and for the same reason: one implementation, shared, best-effort.
+export { recordPageView } from './page-views';
+export type { RecordPageViewResult } from './page-views';
 
 /**
  * How many featured machines the public home page actually renders.

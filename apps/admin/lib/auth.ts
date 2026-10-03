@@ -48,17 +48,27 @@ export const authOptions: NextAuthOptions = {
         // here is a plain record (RequestInternal), not Fetch Headers —
         // getClientIp handles both shapes.
         const ip = getClientIp(req?.headers);
-        if (rateLimitCheck(`login:${ip}`, LOGIN_RATE_LIMIT) > 0) {
+        const retryAfter = rateLimitCheck(`login:${ip}`, LOGIN_RATE_LIMIT);
+        if (retryAfter > 0) {
           // Same generic failure: a throttled attacker must not be able
           // to distinguish "wrong password" from "rate limited". The warn
           // line is the operator-visible signal (server log only).
           //
-          // No SecurityEvent row here: the throttled request is not a
-          // rejected set of credentials, and the attempts that led up to
-          // it are each logged below. A RATE_LIMITED row for this bucket
-          // is a one-line addition in Phase 21c if the dashboard wants
-          // the throttled tail too.
+          // This attempt is recorded as its own RATE_LIMITED row, not just
+          // logged to the console: the LOGIN_FAILED rows below stop at the
+          // limit, so without this a sustained brute-force run and a visitor
+          // who mistyped ten times would leave identical traces, and the
+          // part of the run the limiter actually stopped would be invisible.
+          // `detail` follows the public endpoints' `retry-after: Ns`
+          // convention. No credentials are named: this branch runs before
+          // they are parsed, so there is no email to record.
           console.warn(`[auth] login rate-limited for ip ${ip}`);
+          await logSecurityEvent({
+            type: 'RATE_LIMITED',
+            source: SECURITY_EVENT_SOURCE,
+            ip,
+            detail: `retry-after: ${retryAfter}s`,
+          });
           throw new Error(GENERIC_FAILURE);
         }
 

@@ -22,7 +22,7 @@ If install times / disk usage become an issue later, migrating to pnpm workspace
 
 ## Prerequisites
 
-- Node.js 24 (Active LTS, see `.nvmrc`; `next@16.3.4` requires Node `>=20.9.0`)
+- Node.js 24 (Active LTS, see `.nvmrc`; `next@16.3.8` requires Node `>=20.9.0`)
 - npm 11+ (ships with Node 24)
 
 If you use nvm: `nvm use` (installs/uses Node 24 automatically).
@@ -48,8 +48,17 @@ or simply running `npm run test:e2e`.
 ## Install
 
 ```bash
+cp .env.example .env      # then edit DATABASE_URL (see below)
 npm install
 ```
+
+`DATABASE_URL` must be resolvable **before** `npm install`: the root
+`postinstall` hook runs `prisma generate`, which needs it. `prisma.config.ts`
+loads the repo-root `.env` (and `packages/db/.env`) itself, so copying
+`.env.example` to `.env` and editing it is enough — no `export` needed.
+Prisma 7 stopped auto-loading `.env` once a config file is present, which is
+why this is stated rather than assumed; without a value the install fails
+loudly instead of leaving a broken generated client.
 
 ## Run locally
 
@@ -179,12 +188,14 @@ colina/
   already in place for it).
 - i18n (web): `next-intl@4.14.2`, locales `ar` (default) + `en`, always-prefixed
   URLs (`/ar`, `/en`; `/` redirects to `/ar`). Static rendering via
-  `setRequestLocale` (`next/root-params` doesn't compile under Turbopack 16.3.4
+  `setRequestLocale` (`next/root-params` doesn't compile under Turbopack 16.3.x
   from `i18n/request.ts` — revisit later).
 - Typography: IBM Plex Sans Arabic + IBM Plex Sans via `next/font`
   (see summary for rationale). Palette: custom `brand` teal-green scale +
   built-in `stone` neutrals — starting point, not final branding.
-- Stack: `next@16.3.4` + `react@19.2.8` / `react-dom@19.2.8`, `eslint@9.39.5`
-  (flat config), `eslint-config-next@16.3.4`, `typescript@5.9.3`, Tailwind 3.4.18.
-  `npm audit`: only the 4 accepted highs logged in SECURITY.md.
+- Stack: `next@16.3.8` + `react@19.2.8` / `react-dom@19.2.8`, `eslint@9.39.5`
+  (flat config), `eslint-config-next@16.3.8`, `typescript@5.9.3`, Tailwind 3.4.18.
+  `npm audit`: see SECURITY.md for the accepted findings (all transitive
+  dev-tooling advisories; the critical `next/og` advisory was cleared by the
+  16.3.8 patch).
 - Env vars in `.env.example` are placeholders only.

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3120';
+const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 
 // DOM/computed-style assertions (no screenshots): the locale must drive
 // `dir`/`lang`, and the logical-property utilities must resolve per

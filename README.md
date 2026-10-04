@@ -53,7 +53,12 @@ npm install
 
 ## Run locally
 
-Run each app in its own terminal (different ports so both run at once):
+Run each app in its own terminal (different ports so both run at once).
+**Local port convention: web on :3000, admin on :3001** — these are the
+defaults both `dev` scripts bind with no arguments, and they must match
+`NEXT_PUBLIC_WEB_URL` / `NEXTAUTH_URL` (see `.env.example`), because
+those values are inlined at build time and are what public POSTs are
+checked against.
 
 ```bash
 # Public site → http://localhost:3000/ar (Arabic, default) or /en (English)
@@ -106,13 +111,19 @@ no DB, no network). The e2e suite needs a live environment first:
 ```bash
 # 1. Postgres up, migrated + seeded (see Database above)
 # 2. Both apps built and serving, e.g.:
-#      web on :3120, admin on :3121 (ports are configurable via
-#      WEB_URL / ADMIN_URL env vars, defaults shown)
+#      web on :3000, admin on :3001 — the project's local port
+#      convention, and the default these scripts and
+#      `npm run dev:web` / `dev:admin` all use, so no URL
+#      overrides are needed on a default setup
 # 3. ADMIN_EMAIL / ADMIN_PASSWORD set to a seeded admin login
-WEB_URL=http://localhost:3120 ADMIN_URL=http://localhost:3121 \
-  ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='<seed password>' \
+ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='<seed password>' \
   npm run test:e2e
 ```
+
+Ports are overridable via `WEB_URL` / `ADMIN_URL` if you serve the apps
+elsewhere — but if you move apps/web off :3000, change
+`NEXT_PUBLIC_WEB_URL` to match and rebuild, or every public form POST
+fails its same-origin check.
 
 (Note: no CI config exists yet — wiring these scripts into CI belongs to
 a future phase at the earliest.)

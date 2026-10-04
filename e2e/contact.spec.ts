@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3120';
+const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 
 test.describe('contact form', () => {
   test('valid submission shows the translated success message', async ({

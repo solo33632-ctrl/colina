@@ -1,7 +1,7 @@
 import type { Browser } from '@playwright/test';
 import type { StorageState } from '@playwright/test';
 
-export const ADMIN_URL = process.env.ADMIN_URL ?? 'http://localhost:3121';
+export const ADMIN_URL = process.env.ADMIN_URL ?? 'http://localhost:3001';
 export const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@example.com';
 export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 

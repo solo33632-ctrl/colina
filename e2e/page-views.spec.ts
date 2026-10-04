@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3120';
+const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 const ENDPOINT = '/api/page-view';
 
 const CHROME_UA =

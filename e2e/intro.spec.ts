@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3120';
+const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 const SESSION_KEY = 'colina.intro-seen';
 const OVERLAY = '[data-testid="intro-overlay"]';
 

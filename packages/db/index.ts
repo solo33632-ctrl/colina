@@ -42,8 +42,27 @@ export type { SecurityEventInput } from './security-events';
 
 // Privacy-respecting page-view counting (Phase 21b). Same shape as the event
 // writer above and for the same reason: one implementation, shared, best-effort.
-export { recordPageView } from './page-views';
-export type { RecordPageViewResult } from './page-views';
+export { recordPageView, utcDayKey } from './page-views';
+export type {
+  DailyViews,
+  DayRange,
+  RecordPageViewResult,
+  TopPageViews,
+} from './page-views';
+
+// Read side for the admin insights dashboard (Phase 21c). Aggregated in SQL by
+// the same modules that own the writes, so the queries that read the
+// unbounded tables live next to the ones that append to them.
+export {
+  countSecurityEventsByType,
+  listSecurityEvents,
+} from './security-events';
+export type {
+  SecurityEventListRow,
+  SecurityEventPage,
+  SecurityEventRange,
+} from './security-events';
+export { pageViewDailySeries, pageViewTotal, topPageViews } from './page-views';
 
 /**
  * How many featured machines the public home page actually renders.

@@ -14,6 +14,7 @@
 // investigator one event, never a visitor's submission or a login.
 
 import { prisma } from './index';
+import { SecurityEventType as SecurityEventTypes } from './prisma/generated/client';
 import type { SecurityEventType } from './prisma/generated/client';
 
 // Longest `source` we will store. The values are code-owned and short
@@ -80,4 +81,118 @@ export async function logSecurityEvent(
     console.error('[security-event] write failed:', error);
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Read side (the admin insights dashboard).
+//
+// This table is the one that grows without bound: every refused public form
+// post and every rejected admin sign-in appends a row, forever. So the reader
+// counts in the database and pages with `skip`/`take` over an index-backed
+// order — it never loads the table to count it in Node.
+// ---------------------------------------------------------------------------
+
+/**
+ * Half-open window `[from, to)`, in instants.
+ *
+ * Shares its shape with `page-views`' `DayRange` on purpose: the dashboard has
+ * one date selector and both sections answer from it. The caller builds the
+ * bounds from day keys, which is why an event recorded at 23:59 on the last day
+ * of the window is inside it and one at 00:00 the next morning is not.
+ */
+export type SecurityEventRange = {
+  from: Date;
+  to: Date;
+};
+
+/** A row as the dashboard lists it: exactly the five columns it shows. */
+export type SecurityEventListRow = {
+  id: string;
+  type: SecurityEventType;
+  source: string;
+  ip: string | null;
+  detail: string | null;
+  createdAt: Date;
+};
+
+export type SecurityEventPage = {
+  rows: SecurityEventListRow[];
+  /** Total matching rows in the window, for the page count. */
+  total: number;
+};
+
+function rangeWhere(range: SecurityEventRange, type?: SecurityEventType) {
+  return {
+    createdAt: { gte: range.from, lt: range.to },
+    ...(type ? { type } : {}),
+  };
+}
+
+/**
+ * How many events of each type fall in the window, keyed by every type the
+ * schema knows — including types with a count of 0, so a caller can render one
+ * tile per type without inventing the list and without a type silently
+ * disappearing from the dashboard when the enum grows.
+ */
+export async function countSecurityEventsByType(
+  range: SecurityEventRange,
+  type?: SecurityEventType
+): Promise<Record<SecurityEventType, number>> {
+  const grouped = await prisma.securityEvent.groupBy({
+    by: ['type'],
+    where: rangeWhere(range, type),
+    _count: { _all: true },
+  });
+
+  const counts = Object.fromEntries(
+    Object.keys(SecurityEventTypes).map((key) => [key, 0])
+  ) as Record<SecurityEventType, number>;
+  for (const row of grouped) {
+    counts[row.type] = row._count._all;
+  }
+  return counts;
+}
+
+/**
+ * One page of raw events, newest first, plus the total number of matches.
+ *
+ * `orderBy: { createdAt: 'desc' }` rides the `@@index([createdAt])` the schema
+ * already declares, which is what keeps a deep page cheap on a table that only
+ * grows.
+ */
+export async function listSecurityEvents({
+  range,
+  type,
+  page,
+  pageSize,
+}: {
+  range: SecurityEventRange;
+  type?: SecurityEventType;
+  /** 1-based. Clamped to >= 1 here so a caller cannot ask for a negative
+   *  offset by passing 0 or -1 straight through. */
+  page: number;
+  pageSize: number;
+}): Promise<SecurityEventPage> {
+  const where = rangeWhere(range, type);
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+
+  const [rows, total] = await Promise.all([
+    prisma.securityEvent.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (safePage - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        type: true,
+        source: true,
+        ip: true,
+        detail: true,
+        createdAt: true,
+      },
+    }),
+    prisma.securityEvent.count({ where }),
+  ]);
+
+  return { rows, total };
 }

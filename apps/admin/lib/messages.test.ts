@@ -103,4 +103,27 @@ describe('admin message files', () => {
       expect(Object.keys(arFlat)).toContain(`Leads.statuses.${status}`);
     }
   });
+
+  it('keeps the security event type codes in sync with the message keys', () => {
+    // Same guard for `SECURITY_EVENT_TYPES` in lib/insights.ts, whose
+    // `Insights.eventTypes.*` keys are their labels. The dashboard also
+    // renders a tile per type, so a code without a label would show a raw
+    // enum value where a translated name belongs.
+    const source = readFileSync(
+      join(import.meta.dirname, 'insights.ts'),
+      'utf8'
+    );
+    const declared = source.match(/SECURITY_EVENT_TYPES = \[([^\]]*)\]/)?.[1];
+    expect(declared).toBeDefined();
+    const types = declared!
+      .split(',')
+      .map((value) => value.trim().replace(/['\s]/g, ''))
+      .filter(Boolean);
+
+    expect(types).toEqual(['RATE_LIMITED', 'HONEYPOT_CAUGHT', 'LOGIN_FAILED']);
+    for (const type of types) {
+      expect(Object.keys(enFlat)).toContain(`Insights.eventTypes.${type}`);
+      expect(Object.keys(arFlat)).toContain(`Insights.eventTypes.${type}`);
+    }
+  });
 });

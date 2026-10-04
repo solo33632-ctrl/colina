@@ -15,6 +15,7 @@
     "news": "الأخبار",
     "agents": "الوكلاء",
     "leads": "الطلبات",
+    "insights": "رؤى",
     "auditLog": "سجل التدقيق",
     "groupOverview": "نظرة عامة",
     "groupCatalog": "الكتالوج",
@@ -46,6 +47,7 @@
     "deleteItem": "حذف {name}",
     "deleteNamed": "حذف «{name}»؟ لا يمكن التراجع عن هذا الإجراء.",
     "deleteConfirm": "حذف {name}؟ لا يمكن التراجع عن هذا الإجراء.",
+    "none": "—",
     "filter": "تصفية",
     "all": "الكل",
     "thumbnail": "الصورة",
@@ -382,6 +384,45 @@
       "IN_PROGRESS": "قيد المعالجة",
       "RESOLVED": "تم الحل"
     }
+  },
+  "Insights": {
+    "heading": "رؤى",
+    "intro": "زيارات الزوار والطلبات المحظورة أو المرفوضة خلال الفترة المختارة، من عدادات الموقع نفسها. لا تُستخدم أي أدوات تحليلات خارجية.",
+    "rangeLabel": "الفترة",
+    "ranges": {
+      "7": "آخر ٧ أيام",
+      "30": "آخر ٣٠ يوماً"
+    },
+    "trafficHeading": "زيارات الزوار",
+    "totalViews": "إجمالي مشاهدات الصفحات",
+    "busiestDay": "أكثر يوم ازدحاماً",
+    "averagePerDay": "المتوسط اليومي",
+    "trendHeading": "المشاهدات اليومية",
+    "trendSummary": "مشاهدات الصفحات اليومية لآخر {days} يوماً: بإجمالي {total}.",
+    "topPagesHeading": "أكثر الصفحات زيارة",
+    "pathColumn": "الصفحة",
+    "localeColumn": "المشاهدات ({locale})",
+    "viewsColumn": "إجمالي المشاهدات",
+    "trafficEmpty": "لم تُسجَّل أي مشاهدات صفحات لهذه الفترة بعد.",
+    "securityHeading": "الطلبات المحظورة والمرفوضة",
+    "totalEvents": "كل الأحداث",
+    "eventTypes": {
+      "RATE_LIMITED": "تجاوز الحد المسموح",
+      "HONEYPOT_CAUGHT": "ضبط حقل الفخ",
+      "LOGIN_FAILED": "محاولة دخول فاشلة"
+    },
+    "filterByType": "تصفية حسب النوع",
+    "clearTypeFilter": "إزالة تصفية النوع",
+    "timeColumn": "الوقت",
+    "typeColumn": "النوع",
+    "sourceColumn": "المصدر",
+    "ipColumn": "عنوان IP",
+    "detailColumn": "التفاصيل",
+    "eventsHeading": "أحدث الأحداث",
+    "eventsEmpty": "لم تُسجَّل أي طلبات محظورة أو مرفوضة لهذه الفترة بعد.",
+    "eventsEmptyFiltered": "لا توجد أحداث من هذا النوع في هذه الفترة. جرّب نوعاً آخر أو أزل التصفية.",
+    "notAuthorizedTitle": "غير مصرّح",
+    "notAuthorizedDescription": "لوحة الرؤى متاحة لمديري النظام فقط. لا يستطيع حسابك كمحرر عرض هذه الصفحة."
   },
   "AuditLog": {
     "heading": "سجل التدقيق",

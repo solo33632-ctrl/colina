@@ -15,6 +15,7 @@
     "news": "News",
     "agents": "Agents",
     "leads": "Leads",
+    "insights": "Insights",
     "auditLog": "Audit log",
     "groupOverview": "Overview",
     "groupCatalog": "Catalog",
@@ -46,6 +47,7 @@
     "deleteItem": "Delete {name}",
     "deleteNamed": "Delete “{name}”? This cannot be undone.",
     "deleteConfirm": "Delete {name}? This cannot be undone.",
+    "none": "—",
     "filter": "Filter",
     "all": "All",
     "thumbnail": "Image",
@@ -382,6 +384,45 @@
       "IN_PROGRESS": "In progress",
       "RESOLVED": "Resolved"
     }
+  },
+  "Insights": {
+    "heading": "Insights",
+    "intro": "Visitor traffic and blocked or rejected requests for the selected period, from the site's own first-party counters. No third-party analytics are involved.",
+    "rangeLabel": "Period",
+    "ranges": {
+      "7": "Last 7 days",
+      "30": "Last 30 days"
+    },
+    "trafficHeading": "Visitor traffic",
+    "totalViews": "Total page views",
+    "busiestDay": "Busiest day",
+    "averagePerDay": "Average per day",
+    "trendHeading": "Views per day",
+    "trendSummary": "Page views per day for the last {days} days: {total} in total.",
+    "topPagesHeading": "Top pages",
+    "pathColumn": "Page",
+    "localeColumn": "Views ({locale})",
+    "viewsColumn": "Total views",
+    "trafficEmpty": "No page views have been recorded for this period yet.",
+    "securityHeading": "Blocked and rejected requests",
+    "totalEvents": "All events",
+    "eventTypes": {
+      "RATE_LIMITED": "Rate limited",
+      "HONEYPOT_CAUGHT": "Honeypot caught",
+      "LOGIN_FAILED": "Failed sign-in"
+    },
+    "filterByType": "Filter by type",
+    "clearTypeFilter": "Clear type filter",
+    "timeColumn": "Time",
+    "typeColumn": "Type",
+    "sourceColumn": "Source",
+    "ipColumn": "IP address",
+    "detailColumn": "Detail",
+    "eventsHeading": "Recent events",
+    "eventsEmpty": "No blocked or rejected requests have been recorded for this period yet.",
+    "eventsEmptyFiltered": "No events of this type in this period. Try another type, or clear the filter.",
+    "notAuthorizedTitle": "Not authorized",
+    "notAuthorizedDescription": "The insights dashboard is restricted to super admins. Your editor account cannot view this page."
   },
   "AuditLog": {
     "heading": "Audit log",

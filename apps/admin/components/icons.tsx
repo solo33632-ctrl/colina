@@ -18,6 +18,7 @@ export type IconName =
   | 'agents'
   | 'leads'
   | 'auditLog'
+  | 'insights'
   | 'menu'
   | 'close'
   | 'trash'
@@ -94,6 +95,15 @@ const GLYPHS: Record<IconName, ReactNode> = {
       <rect x="8.5" y="2.75" width="7" height="3.5" rx="1" />
       <path d="M9 4.5H7a2 2 0 0 0-2 2V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6.5a2 2 0 0 0-2-2h-2" />
       <path d="M8.75 11h6.5M8.75 14.5h4" />
+    </>
+  ),
+  // Three bars of differing height: a traffic trend, which is what this entry
+  // opens. Bars grow left to right rather than mirroring, for the same reason
+  // the chart's axis does not (see components/insights-trend-chart.tsx).
+  insights: (
+    <>
+      <path d="M4 20.5h16" />
+      <path d="M6.5 20.5v-5M11 20.5v-9M15.5 20.5v-13" />
     </>
   ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,

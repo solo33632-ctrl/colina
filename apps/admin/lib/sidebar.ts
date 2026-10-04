@@ -3,8 +3,8 @@ import type { IconName } from '@/components/icons';
 
 // Sidebar structure: which groups exist, in which order, and what each item
 // points at. Kept in one place so the desktop sidebar and the mobile drawer
-// can never drift apart, and so the role gate below is the single place the
-// audit-log entry is decided.
+// can never drift apart, and so the role gates below are the single place the
+// super-admin-only entries are decided.
 //
 // Labels are resolved by the caller (a Server Component with `getTranslations`)
 // and passed in already translated: this module stays free of runtime imports
@@ -24,7 +24,8 @@ export type SidebarLabelKey =
   | 'news'
   | 'agents'
   | 'leads'
-  | 'auditLog';
+  | 'auditLog'
+  | 'insights';
 
 export type SidebarItem = {
   href: string;
@@ -90,9 +91,17 @@ export function sidebarGroups(options: {
       id: 'system',
       label: t('groupSystem'),
       items: [
-        // SUPER_ADMIN only — the page itself re-checks with requireSuperAdmin().
+        // SUPER_ADMIN only, and each page re-checks with requireSuperAdmin():
+        // the audit log shows what staff did, the insights dashboard shows
+        // visitor IP addresses and refused requests. Hiding the link is a
+        // convenience, never the protection.
         ...(role === 'SUPER_ADMIN'
           ? [
+              {
+                href: '/insights',
+                label: t('insights'),
+                icon: 'insights' as const,
+              },
               {
                 href: '/audit-log',
                 label: t('auditLog'),

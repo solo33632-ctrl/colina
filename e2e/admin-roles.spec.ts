@@ -1,6 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
 import {
   ADMIN_URL,
   ADMIN_EMAIL,
@@ -10,52 +8,17 @@ import {
   loginState,
 } from './admin-session';
 
-const DATABASE_URL = process.env.DATABASE_URL;
+import {
+  DATABASE_URL,
+  EDITOR,
+  ensureEditor,
+  removeEditor,
+} from './admin-editor';
 
-// The audit log is the project's only role gate (Phase 12): editors must be
-// refused, and the refusal has to hold under both locale prefixes because
-// the gate now lives inside a `[locale]` segment.
-const EDITOR = {
-  email: 'editor-e2e@example.com',
-  password: 'editor-e2e-password-1234',
-  id: 'e2e-editor',
-};
-
-// The editor is created straight in the database: the admin panel has no
-// self-registration, so there is no UI path that would produce one.
-function runInDb(script: string) {
-  execFileSync('npx', ['tsx', '-e', script], {
-    cwd: resolve(__dirname, '../packages/db'),
-    env: { ...process.env, DATABASE_URL },
-    stdio: 'pipe',
-  });
-}
-
-function ensureEditor() {
-  runInDb(`
-    const argon2 = require('argon2');
-    const { prisma } = require('@colina/db');
-    (async () => {
-      const hash = await argon2.hash(${JSON.stringify(EDITOR.password)}, { type: argon2.argon2id });
-      await prisma.adminUser.upsert({
-        where: { id: ${JSON.stringify(EDITOR.id)} },
-        create: { id: ${JSON.stringify(EDITOR.id)}, email: ${JSON.stringify(EDITOR.email)}, passwordHash: hash, role: 'EDITOR' },
-        update: { passwordHash: hash, role: 'EDITOR' },
-      });
-      await prisma.$disconnect();
-    })().catch((e) => { console.error(e); process.exit(1); });
-  `);
-}
-
-function removeEditor() {
-  runInDb(`
-    const { prisma } = require('@colina/db');
-    (async () => {
-      await prisma.adminUser.deleteMany({ where: { id: ${JSON.stringify(EDITOR.id)} } });
-      await prisma.$disconnect();
-    })().catch(() => process.exit(0));
-  `);
-}
+// The audit log is a role gate (Phase 12): editors must be refused, and the
+// refusal has to hold under both locale prefixes because the gate lives
+// inside a `[locale]` segment. The insights dashboard is a second gate
+// (Phase 21c) with its own spec; both share the fixture in admin-editor.ts.
 
 test.describe('admin role gating', () => {
   test.beforeAll(() => {

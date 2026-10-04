@@ -69,6 +69,20 @@ async function main() {
         descriptionEn: 'Temporary detailed description of the line.',
         specsAr: 'السعة: 1000 وحدة/ساعة.',
         specsEn: 'Capacity: 1000 units/hour.',
+        // The flagship machine the home page's featured strip leads with, and
+        // the one seeded ON. `featured` defaults to false so a machine an
+        // admin creates never appears on the marketing site uninvited — which
+        // left a fresh database with nothing featured at all, and the strip
+        // renders no section whatsoever when its query is empty. One flagged
+        // machine is the minimum for the home page to look like the site it
+        // is meant to be, with no manual database edit after seeding.
+        //
+        // Because this is part of the seeded data, re-seeding restores it
+        // exactly as it restores every other field here. Un-flagging it in
+        // the admin is therefore a demo-data change a re-seed undoes, not a
+        // durable curation — deliberate, and the same "land on the same shape
+        // as a fresh database" rule the stale-gallery delete below follows.
+        featured: true,
         datasheetUrl: null,
       },
       {

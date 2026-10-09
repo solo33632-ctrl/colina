@@ -96,3 +96,126 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Partner logo marquee
+
+   One CSS keyframe and no JavaScript, matching the brand intro above: the
+   whole effect is a transform the browser can composite, so a strip of logos
+   scrolling costs no layout and no paint.
+
+   The loop is seamless because the component renders the logo list twice, so
+   moving exactly half the track's width lands the second copy precisely where
+   the first one began. There is no visible reset because there is no reset.
+
+   Three details that are easy to get wrong and are load-bearing here:
+
+   1. `transform`, never `left`/`margin`. The track is as wide as twice the
+      logo list, which is routinely several thousand pixels; animating a
+      layout property over that distance would re-run layout on every frame.
+      `translateX` is composited, and it is physical, so the strip travels the
+      same way on both the LTR and the RTL pages.
+   2. No `gap` on the track. A flex `gap` also sits *between* the two halves,
+      so half the track's width would be half a gap too and every loop would
+      drift by 12px. The gutter is a per-item `margin-inline-end` instead,
+      which puts the spacing inside the measured half.
+   3. The section sits below the fold on the home page, so nothing here is an
+      LCP candidate and none of it blocks the first paint.
+------------------------------------------------------------------------- */
+
+@keyframes colina-partners-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.colina-partners-marquee {
+  overflow: hidden;
+  /* Soften both edges so a logo fades in and out at the boundary instead of
+     being sliced off by the clip. Symmetric, so it reads the same whichever
+     direction the track is travelling. */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 48px,
+    #000 calc(100% - 48px),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 48px,
+    #000 calc(100% - 48px),
+    transparent
+  );
+}
+
+.colina-partners-track {
+  display: flex;
+  width: max-content;
+  animation: colina-partners-scroll 36s linear infinite;
+}
+
+/* Durations stepped by logo count, to hold the speed steady as partners are
+   added — see LOOP_SPEED_CLASSES in components/partners-strip.tsx. The keyframe
+   above is the fallback for a track with no step class. */
+.colina-partners-loop-1 {
+  animation-duration: 32s;
+}
+.colina-partners-loop-2 {
+  animation-duration: 42s;
+}
+.colina-partners-loop-3 {
+  animation-duration: 52s;
+}
+.colina-partners-loop-4 {
+  animation-duration: 64s;
+}
+.colina-partners-loop-5 {
+  animation-duration: 78s;
+}
+
+/* Pause on hover and on keyboard focus, so a visitor can actually stop and
+   look at a logo or reach one with the keyboard and click it. `:focus-within`
+   covers any link inside a card without the cards having to know they are in
+   a moving strip. */
+.colina-partners-marquee:hover .colina-partners-track,
+.colina-partners-marquee:focus-within .colina-partners-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No scrolling at all: the same logos, laid out as a static centred grid.
+     Same treatment as the brand intro above, and for the same reason — the
+     preference has to disable the animation itself, not just shorten it, so
+     there is nothing to react to and nothing to wait for.
+
+     The duplicate copy of the logos exists only to make the loop seamless.
+     With no animation it is a plain duplicate, so it leaves the layout, and
+     the per-item margin becomes an ordinary `gap` so the wrapped grid is
+     spaced correctly. */
+  .colina-partners-marquee {
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .colina-partners-track {
+    animation: none;
+    width: auto;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  .colina-partners-track > li {
+    margin-inline-end: 0;
+  }
+
+  .colina-partners-track [data-clone] {
+    display: none;
+  }
+}

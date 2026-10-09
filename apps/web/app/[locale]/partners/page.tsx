@@ -3,9 +3,8 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
-import { Container } from '@colina/ui';
 import { PageViewTracker } from '@/components/page-view-tracker';
-import { PartnerCard } from '@/components/partner-card';
+import { PartnersStrip } from '@/components/partners-strip';
 import { routing } from '@/i18n/routing';
 import { localeAlternates } from '@/lib/seo';
 
@@ -38,7 +37,6 @@ export default async function PartnersPage({ params }: Props) {
   // Enable static rendering (see `i18n/request.ts` for why this call exists).
   setRequestLocale(locale);
 
-  const t = await getTranslations('PartnersPage');
   const partners = await prisma.partner.findMany({
     orderBy: { createdAt: 'asc' },
   });
@@ -46,23 +44,15 @@ export default async function PartnersPage({ params }: Props) {
   return (
     <main>
       <PageViewTracker path="/partners" locale={locale} />
-      <Container className="py-16">
-        <h1 className="text-center text-2xl font-bold text-stone-900 sm:text-3xl">
-          {t('heading')}
-        </h1>
-        <p className="mt-2 text-center text-stone-600">{t('subheading')}</p>
-        {partners.length === 0 ? (
-          <p className="mt-8 text-center text-stone-500">{t('empty')}</p>
-        ) : (
-          <ul className="mt-8 flex flex-wrap items-start justify-center gap-6">
-            {partners.map((partner) => (
-              <li key={partner.id}>
-                <PartnerCard partner={partner} locale={locale} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Container>
+      {/* The same section as the home strip, so the listing page and the home
+          page cannot drift apart. This one is the page's `h1` and keeps its
+          own message namespace. */}
+      <PartnersStrip
+        partners={partners}
+        locale={locale}
+        namespace="PartnersPage"
+        headingLevel="h1"
+      />
     </main>
   );
 }

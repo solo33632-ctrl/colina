@@ -9,6 +9,21 @@ type ImageWithFallbackProps = {
   className?: string;
   fallbackClassName?: string;
   /**
+   * How the artwork fills its box.
+   *
+   * `cover` (the default) is a 16:9 box that crops to fill — right for a
+   * machine or category photo, where the frame is chosen for the subject and
+   * trimming the edges is the point.
+   *
+   * `contain` never crops: the whole artwork is fitted inside the box and
+   * letterboxed with whatever space is left over. It is what a *logo* needs,
+   * because a logo's aspect ratio is its content — cropping one silently
+   * amputates the first and last letters of the wordmark. In this mode the
+   * component sets no aspect ratio and the caller owns the box's size, which
+   * is what keeps a row of logos the same height whatever shape each one is.
+   */
+  fit?: 'cover' | 'contain';
+  /**
    * Fires once the image is decoded, handing over the element so callers can
    * read `naturalWidth`/`naturalHeight` (the gallery's magnifier needs them).
    */
@@ -36,6 +51,7 @@ export function ImageWithFallback({
   alt,
   className,
   fallbackClassName,
+  fit = 'cover',
   onLoad,
   loading = 'lazy',
   imgRef,
@@ -47,13 +63,19 @@ export function ImageWithFallback({
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const failed = !src || failedSrc === src;
 
+  // The two modes differ only in the box and the fit, so the initial-letter
+  // fallback has to fill the same box as the artwork it stands in for.
+  const boxClasses =
+    fit === 'contain' ? 'h-full w-full' : 'aspect-video w-full';
+  const fitClass = fit === 'contain' ? 'object-contain' : 'object-cover';
+
   if (failed) {
     const initial = alt.trim().charAt(0).toLocaleUpperCase() || '?';
     return (
       <div
         role="img"
         aria-label={alt}
-        className={`flex aspect-video items-center justify-center overflow-hidden bg-brand-100 ${fallbackClassName ?? ''} ${className ?? ''}`}
+        className={`flex ${boxClasses} items-center justify-center overflow-hidden bg-brand-100 ${fallbackClassName ?? ''} ${className ?? ''}`}
       >
         <span aria-hidden="true" className="text-4xl font-bold text-brand-800">
           {initial}
@@ -74,7 +96,7 @@ export function ImageWithFallback({
       loading={loading}
       onLoad={(event) => onLoad?.(event.currentTarget)}
       onError={() => setFailedSrc(src)}
-      className={`aspect-video w-full object-cover ${className ?? ''}`}
+      className={`${boxClasses} ${fitClass} ${className ?? ''}`}
     />
   );
 }

@@ -19,7 +19,8 @@
   "Categories": {
     "heading": "فئات المنتجات",
     "subheading": "تصفح عائلات الآلات لدينا.",
-    "empty": "لا توجد فئات بعد — عُد قريباً."
+    "empty": "لا توجد فئات بعد — عُد قريباً.",
+    "machineCount": "{count, plural, zero {لا توجد آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}"
   },
   "FeaturedMachines": {
     "heading": "آلات مميزة",
@@ -28,7 +29,10 @@
   "CategoryPage": {
     "backToCategories": "كل الفئات",
     "machinesHeading": "آلات هذه الفئة",
-    "machinesEmpty": "لا توجد آلات في هذه الفئة بعد."
+    "machinesEmpty": "لا توجد آلات في هذه الفئة بعد.",
+    "breadcrumbLabel": "مسار التنقل",
+    "categoriesCrumb": "فئات المنتجات",
+    "machineCount": "{count, plural, zero {لا توجد آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}"
   },
   "MachinePage": {
     "categoryLabel": "الفئة",
@@ -41,7 +45,8 @@
     "openImageLabel": "عرض الصورة بالحجم الكامل",
     "closeImageLabel": "إغلاق الصورة",
     "imagePosition": "الصورة {current} من {total}",
-    "showImage": "عرض الصورة {number}"
+    "showImage": "عرض الصورة {number}",
+    "breadcrumbLabel": "مسار التنقل"
   },
   "ServicesPage": {
     "heading": "خدمات الصيانة",
@@ -151,5 +156,28 @@
     "contactText": "نص مؤقت: بيانات التواصل للخصوصية (تُحدد لاحقاً).",
     "changesTitle": "التغييرات",
     "changesText": "نص مؤقت: ستُستبدل هذه المسودة بسياسة مراجعة قبل الإطلاق."
+  },
+  "RelatedMachines": {
+    "heading": "آلات ذات صلة",
+    "subheading": "المزيد من الآلات من هذه الفئة.",
+    "browseCategory": "عرض كل الآلات في هذه الفئة"
+  },
+  "QuoteForm": {
+    "heading": "اطلب عرض سعر",
+    "subheading": "أخبرنا باحتياجك وسيتواصل معك فريقنا.",
+    "machineLabel": "الآلة",
+    "nameLabel": "الاسم",
+    "companyLabel": "الشركة (اختياري)",
+    "emailLabel": "البريد الإلكتروني (اختياري)",
+    "phoneLabel": "الهاتف",
+    "messageLabel": "الرسالة",
+    "messagePlaceholder": "الطاقة الإنتاجية، سرعة الخط، أي متطلب آخر…",
+    "submitLabel": "إرسال طلب عرض السعر",
+    "submitSuccess": "شكرًا لك — تم استلام طلب عرض السعر.",
+    "submitError": "حدث خطأ ما. يرجى المحاولة مرة أخرى لاحقًا.",
+    "nameError": "يرجى إدخال اسمك (حرفان على الأقل).",
+    "emailError": "يرجى إدخال بريد إلكتروني صحيح، أو تركه فارغًا.",
+    "phoneError": "يرجى إدخال رقم هاتف صحيح.",
+    "messageError": "يرجى إضافة رسالة قصيرة (10 أحرف على الأقل)."
   }
 }

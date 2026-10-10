@@ -19,7 +19,8 @@
   "Categories": {
     "heading": "Product categories",
     "subheading": "Browse our machine families.",
-    "empty": "No categories yet — check back soon."
+    "empty": "No categories yet — check back soon.",
+    "machineCount": "{count, plural, =0 {No machines} one {# machine} other {# machines}}"
   },
   "FeaturedMachines": {
     "heading": "Featured machines",
@@ -28,7 +29,10 @@
   "CategoryPage": {
     "backToCategories": "All categories",
     "machinesHeading": "Machines in this category",
-    "machinesEmpty": "No machines in this category yet."
+    "machinesEmpty": "No machines in this category yet.",
+    "breadcrumbLabel": "Breadcrumb",
+    "categoriesCrumb": "Product categories",
+    "machineCount": "{count, plural, =0 {No machines} one {# machine} other {# machines}}"
   },
   "MachinePage": {
     "categoryLabel": "Category",
@@ -41,7 +45,8 @@
     "openImageLabel": "View full-size image",
     "closeImageLabel": "Close image",
     "imagePosition": "Image {current} of {total}",
-    "showImage": "Show image {number}"
+    "showImage": "Show image {number}",
+    "breadcrumbLabel": "Breadcrumb"
   },
   "ServicesPage": {
     "heading": "Maintenance services",
@@ -151,5 +156,28 @@
     "contactText": "Placeholder: privacy contact details (TBD).",
     "changesTitle": "Changes",
     "changesText": "Placeholder: this draft will be replaced with a reviewed policy before launch."
+  },
+  "RelatedMachines": {
+    "heading": "Related machines",
+    "subheading": "More machines from this category.",
+    "browseCategory": "See every machine in this category"
+  },
+  "QuoteForm": {
+    "heading": "Request a quote",
+    "subheading": "Tell us about your requirement and our team will get back to you.",
+    "machineLabel": "Machine",
+    "nameLabel": "Name",
+    "companyLabel": "Company (optional)",
+    "emailLabel": "Email (optional)",
+    "phoneLabel": "Phone",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Capacity, line speed, any other requirement…",
+    "submitLabel": "Send quote request",
+    "submitSuccess": "Thank you — your quote request was received.",
+    "submitError": "Something went wrong. Please try again later.",
+    "nameError": "Please enter your name (at least 2 characters).",
+    "emailError": "Please enter a valid email address, or leave it empty.",
+    "phoneError": "Please enter a valid phone number.",
+    "messageError": "Please add a short message (at least 10 characters)."
   }
 }

@@ -70,7 +70,12 @@ export default async function LeadsPage({ searchParams }: Props) {
       kind: 'contact' as const,
       id: row.id,
       name: row.name,
-      summary: row.email ?? row.phone ?? '',
+      // `||`, not `??`: the public forms submit an untouched optional field as
+      // an empty string rather than omitting it, and `'' ?? x` is `''`. With
+      // `??` a visitor who left the company blank got an empty summary instead
+      // of falling through to the phone number — and a machine quote, whose
+      // whole point is the machine it is about, showed nothing at all.
+      summary: row.email || row.phone || '',
       status: row.status,
       createdAt: row.createdAt,
     })),
@@ -78,7 +83,9 @@ export default async function LeadsPage({ searchParams }: Props) {
       kind: 'maintenance' as const,
       id: row.id,
       name: row.name,
-      summary: row.company ?? row.machineModel ?? '',
+      // Same `||` as above: an untouched company field arrives as `''`, and
+      // the machine reference is what identifies a quote request.
+      summary: row.company || row.machineModel || '',
       status: row.status,
       createdAt: row.createdAt,
     })),

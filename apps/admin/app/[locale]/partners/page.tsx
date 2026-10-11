@@ -53,8 +53,14 @@ export default async function PartnersPage({ searchParams }: Props) {
     {
       key: 'thumbnail',
       header: common('thumbnail'),
-      className: 'w-14',
-      render: (row) => <AdminThumb src={row.logo} name={name(row)} />,
+      // Wide enough for the logo plate a `contain` thumbnail draws, so the
+      // cell does not crush it back into the cropping this avoids.
+      className: 'w-24',
+      // `contain`, not the default `cover`: a partner's artwork is a logo, and
+      // a cropped wordmark is unreadable — see AdminThumb.
+      render: (row) => (
+        <AdminThumb src={row.logo} name={name(row)} fit="contain" />
+      ),
     },
     {
       key: 'name',

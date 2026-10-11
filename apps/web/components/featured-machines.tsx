@@ -1,11 +1,13 @@
 import { getTranslations } from 'next-intl/server';
-import type { MachineWithImages } from './machine-card';
 import { Container } from '@colina/ui';
-import { MachineCard } from './machine-card';
+import {
+  MachineSummaryCard,
+  type MachineSummary,
+} from './machine-summary-card';
 import { Reveal } from './reveal';
 
 type FeaturedMachinesProps = {
-  machines: MachineWithImages[];
+  machines: MachineSummary[];
   locale: 'ar' | 'en';
 };
 
@@ -40,10 +42,31 @@ export async function FeaturedMachines({
           </h2>
           <p className="mt-2 text-center text-stone-600">{t('subheading')}</p>
         </Reveal>
-        <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/*
+          Centred and self-sizing, so a row that is not full does not leave a
+          hole beside it. `auto-fit` collapses the tracks a short row leaves
+          unused — they take no space — and `justify-content: center` pulls
+          whatever is left into the middle. The plain `sm:grid-cols-2
+          lg:grid-cols-3` this replaced reserved three tracks regardless, so a
+          single featured machine sat in column one with two thirds of the
+          page empty next to it, which read as a broken layout rather than as
+          a section holding one machine.
+
+          The 16rem/22rem bounds replace fixed column counts: 16rem is the
+          narrowest a card can be before its own text wraps badly, and 22rem
+          is how wide a machine card should ever get, so on a wide screen the
+          row stays a comfortable block under a centred heading instead of
+          stretching to the full container width. Both are plain CSS
+          custom-property-free values, so no new dependency and no plugin.
+
+          At 640px two cards still sit side by side, and from roughly 1200px
+          three do, which is what the fixed breakpoints produced — so this
+          changes how a partial row is placed, not how many cards fit.
+        */}
+        <ul className="mt-8 grid justify-center gap-6 [grid-template-columns:repeat(auto-fit,minmax(16rem,22rem))]">
           {machines.map((machine) => (
             <li key={machine.id} className="h-full">
-              <MachineCard machine={machine} locale={locale} />
+              <MachineSummaryCard machine={machine} locale={locale} />
             </li>
           ))}
         </ul>

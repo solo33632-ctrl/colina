@@ -187,8 +187,6 @@
       "nameAr": "Arabic name must be at least 2 characters.",
       "nameEn": "English name must be at least 2 characters.",
       "slug": "Slug must be at least 2 lowercase letters, numbers or dashes.",
-      "descriptionAr": "Arabic description must be at least 10 characters.",
-      "descriptionEn": "English description must be at least 10 characters.",
       "image": "Image must be an absolute http(s) URL or empty."
     },
     "delete": {
@@ -245,10 +243,6 @@
       "categoryId": "Choose a category.",
       "shortDescriptionAr": "Arabic short description must be at least 10 characters.",
       "shortDescriptionEn": "English short description must be at least 10 characters.",
-      "descriptionAr": "Arabic description must be at least 10 characters.",
-      "descriptionEn": "English description must be at least 10 characters.",
-      "specsAr": "Arabic specs must not be empty.",
-      "specsEn": "English specs must not be empty.",
       "imageUrl": "Image URL must be an absolute http(s) URL.",
       "imagePosition": "Image position must be 0 or higher.",
       "datasheetUrl": "Datasheet URL must be an absolute http(s) URL or empty."

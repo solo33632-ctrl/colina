@@ -77,6 +77,23 @@ describe('categoryInputSchema', () => {
       categoryInputSchema(M).safeParse({ ...valid, slug: 'ok-slug-2' }).success
     ).toBe(true);
   });
+
+  it('accepts a completely blank description (Phase 26: optional field)', () => {
+    // The description was previously required with a min of 10 characters;
+    // it is now fully optional, and blank in either locale must save.
+    const blank = { ...valid, descriptionAr: '', descriptionEn: '' };
+    expect(categoryInputSchema(M).safeParse(blank).success).toBe(true);
+    // ...and a payload that omits the keys entirely (defensive server-side
+    // normalisation to '' in the Server Action).
+    const {
+      descriptionAr: _droppedAr,
+      descriptionEn: _droppedEn,
+      ...rest
+    } = blank;
+    void _droppedAr;
+    void _droppedEn;
+    expect(categoryInputSchema(M).safeParse(rest).success).toBe(true);
+  });
 });
 
 describe('URL rules (Phase 13 table, now automated)', () => {
@@ -184,6 +201,67 @@ describe('URL rules (Phase 13 table, now automated)', () => {
     // The cap is a homepage display limit, not a validation rule: featuring
     // a machine is never rejected, however many others are already featured.
     expect(parse(true).success).toBe(true);
+  });
+
+  it('machine long-form fields are optional; identity and short description stay required', () => {
+    const base = {
+      nameAr: 'آلة',
+      nameEn: 'Machine',
+      slug: 'machine-x',
+      categoryId: 'c'.repeat(25),
+      shortDescriptionAr: 'وصف قصير كاف يزيد عن عشرة.',
+      shortDescriptionEn: 'Short description, over ten chars.',
+      datasheetUrl: '',
+      images: [],
+      relatedIds: [],
+      featured: false,
+    };
+
+    // Blank full description and specs (both locales) must save (Phase 26).
+    const blank = machineInputSchema(M).safeParse({
+      ...base,
+      descriptionAr: '',
+      descriptionEn: '',
+      specsAr: '',
+      specsEn: '',
+    });
+    expect(blank.success).toBe(true);
+
+    // Omitting them entirely is accepted too (Server Action normalises to '').
+    const omitted = machineInputSchema(M).safeParse(base);
+    expect(omitted.success).toBe(true);
+
+    // What the brief said to KEEP required:
+    // - name (the card/listing label)...
+    expectInvalid(
+      machineInputSchema(M).safeParse({ ...base, nameEn: '' }),
+      'nameEn'
+    );
+    expectInvalid(
+      machineInputSchema(M).safeParse({
+        ...base,
+        nameEn: 'x'.repeat(30),
+        nameAr: 'n',
+      }),
+      'nameAr'
+    );
+    // - ...and the short description (the machine page's lead paragraph and
+    //   meta description), which keeps its min-10 rule.
+    expectInvalid(
+      machineInputSchema(M).safeParse({
+        ...base,
+        descriptionAr: '',
+        descriptionEn: '',
+        specsAr: '',
+        specsEn: '',
+        shortDescriptionEn: 'short',
+      }),
+      'shortDescriptionEn'
+    );
+    expectInvalid(
+      machineInputSchema(M).safeParse({ ...base, categoryId: '' }),
+      'categoryId'
+    );
   });
 
   it('news image is optional but must be http(s) when present', () => {

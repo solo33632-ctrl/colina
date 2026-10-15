@@ -39,8 +39,6 @@ export function categoryMessages(
     nameAr: t('validation.nameAr'),
     nameEn: t('validation.nameEn'),
     slug: t('validation.slug'),
-    descriptionAr: t('validation.descriptionAr'),
-    descriptionEn: t('validation.descriptionEn'),
     image: t('validation.image'),
   };
 }
@@ -55,10 +53,6 @@ export function machineMessages(
     categoryId: t('validation.categoryId'),
     shortDescriptionAr: t('validation.shortDescriptionAr'),
     shortDescriptionEn: t('validation.shortDescriptionEn'),
-    descriptionAr: t('validation.descriptionAr'),
-    descriptionEn: t('validation.descriptionEn'),
-    specsAr: t('validation.specsAr'),
-    specsEn: t('validation.specsEn'),
     imageUrl: t('validation.imageUrl'),
     imagePosition: t('validation.imagePosition'),
     datasheetUrl: t('validation.datasheetUrl'),

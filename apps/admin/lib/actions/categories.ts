@@ -41,8 +41,8 @@ export async function createCategory(
           nameAr: parsed.data.nameAr,
           nameEn: parsed.data.nameEn,
           slug: parsed.data.slug,
-          descriptionAr: parsed.data.descriptionAr,
-          descriptionEn: parsed.data.descriptionEn,
+          descriptionAr: parsed.data.descriptionAr ?? '',
+          descriptionEn: parsed.data.descriptionEn ?? '',
           image: parsed.data.image || null,
         },
       });
@@ -110,8 +110,8 @@ export async function updateCategory(
           nameAr: parsed.data.nameAr,
           nameEn: parsed.data.nameEn,
           slug: parsed.data.slug,
-          descriptionAr: parsed.data.descriptionAr,
-          descriptionEn: parsed.data.descriptionEn,
+          descriptionAr: parsed.data.descriptionAr ?? '',
+          descriptionEn: parsed.data.descriptionEn ?? '',
           image: parsed.data.image || null,
         },
       });

@@ -9,6 +9,12 @@ type ImageWithFallbackProps = {
   className?: string;
   fallbackClassName?: string;
   /**
+   * DOM id for the `<img>` (or the fallback tile). Used where a caller needs
+   * to reach one specific copy of an image — the category hero renders the
+   * same photo twice and its tests/e2e select the layers by id.
+   */
+  id?: string;
+  /**
    * How the artwork fills its box.
    *
    * `cover` (the default) is a 16:9 box that crops to fill — right for a
@@ -40,6 +46,16 @@ type ImageWithFallbackProps = {
    * `onLoad` alone would leave them stuck waiting.
    */
   imgRef?: RefObject<HTMLImageElement | null>;
+  /**
+   * Whether a failed image is replaced by the initial-letter tile.
+   *
+   * Defaults to true. Set false for a decorative *second* rendering of an
+   * image that another layer already shows (the category hero's inset
+   * photo over its blurred backdrop): when the image 404s, the surviving
+   * layer already displays the failure and a second tile on top of it
+   * would only double it.
+   */
+  renderFallback?: boolean;
 };
 
 // Renders `src` when it loads, otherwise a styled initial-letter tile.
@@ -51,10 +67,12 @@ export function ImageWithFallback({
   alt,
   className,
   fallbackClassName,
+  id,
   fit = 'cover',
   onLoad,
   loading = 'lazy',
   imgRef,
+  renderFallback = true,
 }: ImageWithFallbackProps) {
   // Tracks *which* src failed rather than a bare flag, so pointing the
   // component at a different image (the gallery swaps its hero when a
@@ -70,9 +88,13 @@ export function ImageWithFallback({
   const fitClass = fit === 'contain' ? 'object-contain' : 'object-cover';
 
   if (failed) {
+    if (!renderFallback) {
+      return null;
+    }
     const initial = alt.trim().charAt(0).toLocaleUpperCase() || '?';
     return (
       <div
+        id={id}
         role="img"
         aria-label={alt}
         className={`flex ${boxClasses} items-center justify-center overflow-hidden bg-brand-100 ${fallbackClassName ?? ''} ${className ?? ''}`}
@@ -90,6 +112,7 @@ export function ImageWithFallback({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      id={id}
       ref={imgRef}
       src={src}
       alt={alt}

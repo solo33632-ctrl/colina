@@ -75,6 +75,7 @@ export default async function CategoryDetailPage({ params }: Props) {
   const name = locale === 'ar' ? category.nameAr : category.nameEn;
   const description =
     locale === 'ar' ? category.descriptionAr : category.descriptionEn;
+  const hasDescription = description.trim().length > 0;
 
   const breadcrumb = (
     <Breadcrumb
@@ -101,22 +102,51 @@ export default async function CategoryDetailPage({ params }: Props) {
           scrim carrying the text so the title stays legible whatever the
           photo. A category without a photo gets a plain brand band rather than
           an empty banner — most categories have no image yet, and a grey
-          placeholder hero reads as broken, not as "no photo yet". */}
+          placeholder hero reads as broken, not as "no photo yet".
+
+          The photo is shown twice, letterboxed: a blurred, darkened
+          full-bleed copy is the decorative backdrop, and the photo itself is
+          rendered again, `object-contain`, fitted inside the banner's height
+          on the inline-end side (right in LTR, left in RTL — the logical
+          `end-*` inset mirrors automatically). This keeps the full-bleed
+          visual impact while never cropping the subject, however tall or
+          wide the uploaded photo is. The text column is capped so it stops
+          short of the photo and the two never collide. */}
       {category.image ? (
-        <section className="relative isolate overflow-hidden bg-brand-900">
+        <section className="relative isolate h-64 overflow-hidden bg-brand-900 sm:h-80">
           <ImageWithFallback
             src={category.image}
             alt=""
-            className="h-64 w-full object-cover sm:h-80"
+            loading="eager"
+            id="category-hero-backdrop"
+            className="absolute inset-0 h-full w-full scale-105 object-cover blur-md"
             fallbackClassName="bg-brand-900"
           />
           <div
             aria-hidden="true"
             className="absolute inset-0 bg-gradient-to-t from-stone-900/85 via-stone-900/50 to-stone-900/30"
           />
+          {/* The uncropped photo. Decorative beside the text (the backdrop is
+              the same artwork), so it carries an empty alt and no fallback:
+              if the image fails, the backdrop's tile is the failure signal. */}
+          <div
+            id="category-hero-photo"
+            className="pointer-events-none absolute inset-y-0 end-0 w-2/5 sm:w-1/3"
+          >
+            <ImageWithFallback
+              src={category.image}
+              alt=""
+              fit="contain"
+              loading="eager"
+              renderFallback={false}
+              className="h-full w-full"
+            />
+          </div>
           <Container className="absolute inset-0 flex flex-col justify-end py-10">
-            <div className={breadcrumbTone}>{breadcrumb}</div>
-            <h1 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
+            <div className={`max-w-[55%] sm:max-w-[60%] ${breadcrumbTone}`}>
+              {breadcrumb}
+            </div>
+            <h1 className="mt-3 max-w-[55%] text-3xl font-bold text-white sm:max-w-[60%] sm:text-4xl">
               {name}
             </h1>
           </Container>
@@ -133,9 +163,13 @@ export default async function CategoryDetailPage({ params }: Props) {
       )}
 
       <Container className="py-16">
-        <div className="max-w-3xl">
-          <p className="text-stone-600">{description}</p>
-        </div>
+        {hasDescription ? (
+          <div className="max-w-3xl">
+            <p id="category-description" className="text-stone-600">
+              {description}
+            </p>
+          </div>
+        ) : null}
 
         <Reveal className="mt-12">
           <div className="flex flex-wrap items-baseline justify-between gap-3">

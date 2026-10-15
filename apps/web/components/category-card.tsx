@@ -70,8 +70,9 @@ export function CategoryCard({
   countLabel,
 }: CategoryCardProps) {
   const name = locale === 'ar' ? category.nameAr : category.nameEn;
-  const description =
-    locale === 'ar' ? category.descriptionAr : category.descriptionEn;
+  const description = (
+    locale === 'ar' ? category.descriptionAr : category.descriptionEn
+  ).trim();
 
   return (
     <Link
@@ -101,9 +102,11 @@ export function CategoryCard({
           aria-hidden="true"
           className="mt-2.5 h-0.5 w-10 scale-x-0 rounded-full bg-brand-500 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-x-100"
         />
-        <p className="mt-2.5 line-clamp-2 text-sm text-stone-600">
-          {description}
-        </p>
+        {description ? (
+          <p className="mt-2.5 line-clamp-2 text-sm text-stone-600">
+            {description}
+          </p>
+        ) : null}
       </div>
     </Link>
   );

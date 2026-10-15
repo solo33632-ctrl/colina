@@ -78,8 +78,6 @@ type CategoryBaseMessages = {
   nameAr: string;
   nameEn: string;
   slug: string;
-  descriptionAr: string;
-  descriptionEn: string;
 };
 
 export type CategoryFieldMessages = CategoryBaseMessages & {
@@ -91,8 +89,13 @@ export function categoryInputSchema(messages: CategoryFieldMessages) {
     nameAr: z.string().min(2, { error: messages.nameAr }),
     nameEn: z.string().min(2, { error: messages.nameEn }),
     slug: slugRule(messages.slug),
-    descriptionAr: z.string().min(10, { error: messages.descriptionAr }),
-    descriptionEn: z.string().min(10, { error: messages.descriptionEn }),
+    // Fully optional: an admin can save a category with the description
+    // left completely blank, and the public page then renders no
+    // description block at all (Phase 26). The column stays a required
+    // Text in the database — blank means the empty string, which the
+    // Server Actions normalise from `undefined` here.
+    descriptionAr: z.string().optional(),
+    descriptionEn: z.string().optional(),
     // Cloudinary uploads store their delivered secure URL here; pasted
     // URLs follow the same absolute-http(s) rule.
     image: optionalHttpUrl(messages.image),
@@ -105,8 +108,6 @@ export type MachineFieldMessages = CategoryBaseMessages & {
   categoryId: string;
   shortDescriptionAr: string;
   shortDescriptionEn: string;
-  specsAr: string;
-  specsEn: string;
   imageUrl: string;
   imagePosition: string;
   datasheetUrl: string;
@@ -118,16 +119,24 @@ export function machineInputSchema(messages: MachineFieldMessages) {
     nameEn: z.string().min(2, { error: messages.nameEn }),
     slug: slugRule(messages.slug),
     categoryId: z.string().min(1, { error: messages.categoryId }),
+    // The short description is deliberately still required (min 10): it is
+    // the machine page's lead paragraph and the page's meta description /
+    // Product JSON-LD, so a blank one would leave the page without its
+    // summary. Only the long-form fields below were relaxed (Phase 26).
     shortDescriptionAr: z
       .string()
       .min(10, { error: messages.shortDescriptionAr }),
     shortDescriptionEn: z
       .string()
       .min(10, { error: messages.shortDescriptionEn }),
-    descriptionAr: z.string().min(10, { error: messages.descriptionAr }),
-    descriptionEn: z.string().min(10, { error: messages.descriptionEn }),
-    specsAr: z.string().min(1, { error: messages.specsAr }),
-    specsEn: z.string().min(1, { error: messages.specsEn }),
+    // Long-form fields, fully optional: a machine can be saved with the
+    // full description and specs blank, and the public page then hides
+    // those sections entirely. Same empty-string normalisation as the
+    // category description.
+    descriptionAr: z.string().optional(),
+    descriptionEn: z.string().optional(),
+    specsAr: z.string().optional(),
+    specsEn: z.string().optional(),
     datasheetUrl: optionalHttpUrl(messages.datasheetUrl),
     images: z.array(
       z.object({

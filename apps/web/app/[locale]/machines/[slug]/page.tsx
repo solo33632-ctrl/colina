@@ -79,6 +79,10 @@ export default async function MachineDetailPage({ params }: Props) {
   const description =
     locale === 'ar' ? machine.descriptionAr : machine.descriptionEn;
   const specs = locale === 'ar' ? machine.specsAr : machine.specsEn;
+  // The long-form fields are optional: a machine saved with these blank
+  // renders no section for them at all (see the admin schema).
+  const hasDescription = description.trim().length > 0;
+  const hasSpecs = specs.trim().length > 0;
   const categoryName =
     locale === 'ar' ? machine.category.nameAr : machine.category.nameEn;
 
@@ -202,36 +206,50 @@ export default async function MachineDetailPage({ params }: Props) {
                 : 'lg:col-start-1 lg:row-start-1'
             }
           >
-            <section aria-labelledby="description-heading">
-              <h2
-                id="description-heading"
-                className="text-xl font-semibold text-stone-900"
-              >
-                {t('descriptionHeading')}
-              </h2>
-              <p className="mt-2 max-w-3xl whitespace-pre-line text-stone-600">
-                {description}
-              </p>
-            </section>
+            {hasDescription ? (
+              <section aria-labelledby="description-heading">
+                <h2
+                  id="description-heading"
+                  className="text-xl font-semibold text-stone-900"
+                >
+                  {t('descriptionHeading')}
+                </h2>
+                <p className="mt-2 max-w-3xl whitespace-pre-line text-stone-600">
+                  {description}
+                </p>
+              </section>
+            ) : null}
 
-            <section aria-labelledby="specs-heading" className="mt-10">
-              <h2
-                id="specs-heading"
-                className="text-xl font-semibold text-stone-900"
+            {/* The specs section also carries the datasheet button. When the
+                prose is blank the section still renders if a datasheet is
+                attached (the button alone), and disappears entirely only
+                when both are absent — so blanking the specs never silently
+                hides the download. */}
+            {hasSpecs || machine.datasheetUrl ? (
+              <section
+                aria-labelledby="specs-heading"
+                className={hasDescription ? 'mt-10' : undefined}
               >
-                {t('specsHeading')}
-              </h2>
-              <p className="mt-2 max-w-3xl whitespace-pre-line text-stone-600">
-                {specs}
-              </p>
-              {machine.datasheetUrl ? (
-                <div className="mt-4">
-                  <Button href={machine.datasheetUrl} download>
-                    {t('datasheetLabel')}
-                  </Button>
-                </div>
-              ) : null}
-            </section>
+                <h2
+                  id="specs-heading"
+                  className="text-xl font-semibold text-stone-900"
+                >
+                  {t('specsHeading')}
+                </h2>
+                {hasSpecs ? (
+                  <p className="mt-2 max-w-3xl whitespace-pre-line text-stone-600">
+                    {specs}
+                  </p>
+                ) : null}
+                {machine.datasheetUrl ? (
+                  <div className="mt-4">
+                    <Button href={machine.datasheetUrl} download>
+                      {t('datasheetLabel')}
+                    </Button>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
           </div>
         </div>
       </Container>

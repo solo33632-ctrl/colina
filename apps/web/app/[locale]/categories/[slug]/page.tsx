@@ -104,16 +104,22 @@ export default async function CategoryDetailPage({ params }: Props) {
           an empty banner — most categories have no image yet, and a grey
           placeholder hero reads as broken, not as "no photo yet".
 
-          The photo is shown twice, letterboxed: a blurred, darkened
+          Phase 27 layout — a centered stack (structure reference: a centered
+          product visual, nothing else borrowed): the blurred, darkened
           full-bleed copy is the decorative backdrop, and the photo itself is
-          rendered again, `object-contain`, fitted inside the banner's height
-          on the inline-end side (right in LTR, left in RTL — the logical
-          `end-*` inset mirrors automatically). This keeps the full-bleed
-          visual impact while never cropping the subject, however tall or
-          wide the uploaded photo is. The text column is capped so it stops
-          short of the photo and the two never collide. */}
+          rendered again below the title, `object-contain` so it is always
+          complete however tall or wide the upload is. A thin light ring and
+          soft shadow turn the letterboxed frame into a deliberate card, so a
+          white-background studio shot reads as a card and not a floating
+          cutout. Everything sits in normal flow (title above the photo), so
+          the text can never overlap the photo, and the stack is symmetric:
+          RTL needs no mirroring.
+
+          Chosen dimensions (see report): photo capped at 9rem/13rem tall
+          (h-36/h-52), banner lands around 20rem on mobile and 23–26rem on
+          desktop — roughly 34–38% of a 1080px-tall laptop viewport. */}
       {category.image ? (
-        <section className="relative isolate h-64 overflow-hidden bg-brand-900 sm:h-80">
+        <section className="relative isolate overflow-hidden bg-brand-900">
           <ImageWithFallback
             src={category.image}
             alt=""
@@ -122,40 +128,42 @@ export default async function CategoryDetailPage({ params }: Props) {
             className="absolute inset-0 h-full w-full scale-105 object-cover blur-md"
             fallbackClassName="bg-brand-900"
           />
+          {/* Strengthened at the top: the title now sits at the top of the
+              banner, where the previous gradient was weakest. */}
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-t from-stone-900/85 via-stone-900/50 to-stone-900/30"
+            className="absolute inset-0 bg-gradient-to-b from-stone-900/80 via-stone-900/40 to-stone-900/55"
           />
-          {/* The uncropped photo. Decorative beside the text (the backdrop is
-              the same artwork), so it carries an empty alt and no fallback:
-              if the image fails, the backdrop's tile is the failure signal. */}
-          <div
-            id="category-hero-photo"
-            className="pointer-events-none absolute inset-y-0 end-0 w-2/5 sm:w-1/3"
-          >
-            <ImageWithFallback
-              src={category.image}
-              alt=""
-              fit="contain"
-              loading="eager"
-              renderFallback={false}
-              className="h-full w-full"
-            />
-          </div>
-          <Container className="absolute inset-0 flex flex-col justify-end py-10">
-            <div className={`max-w-[55%] sm:max-w-[60%] ${breadcrumbTone}`}>
-              {breadcrumb}
-            </div>
-            <h1 className="mt-3 max-w-[55%] text-3xl font-bold text-white sm:max-w-[60%] sm:text-4xl">
+          <Container className="relative flex flex-col items-center px-4 pb-8 pt-8 text-center sm:px-6 sm:pb-10 sm:pt-12 [&_ol]:w-fit [&_ol]:max-w-full [&_ol]:justify-center">
+            <div className={breadcrumbTone}>{breadcrumb}</div>
+            <h1 className="mt-2 max-w-3xl text-2xl font-bold text-white sm:text-4xl">
               {name}
             </h1>
+            {/* The uncropped photo. Decorative beside the backdrop (the same
+                artwork), so it carries an empty alt and no fallback: if the
+                image fails, the backdrop's tile is the failure signal. The
+                frame is a fixed-height box so the ring reads as one card
+                whatever the photo's own aspect ratio is. */}
+            <div
+              id="category-hero-photo"
+              className="pointer-events-none mt-6 h-36 w-full max-w-md rounded-2xl bg-white/10 p-1.5 ring-1 ring-white/40 shadow-2xl shadow-stone-950/50 sm:mt-8 sm:h-52 sm:max-w-2xl"
+            >
+              <ImageWithFallback
+                src={category.image}
+                alt=""
+                fit="contain"
+                loading="eager"
+                renderFallback={false}
+                className="h-full w-full"
+              />
+            </div>
           </Container>
         </section>
       ) : (
         <section className="bg-brand-900">
-          <Container className="py-12">
+          <Container className="flex flex-col items-center py-12 text-center [&_ol]:w-fit [&_ol]:max-w-full [&_ol]:justify-center">
             <div className={breadcrumbTone}>{breadcrumb}</div>
-            <h1 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
+            <h1 className="mt-3 max-w-3xl text-3xl font-bold text-white sm:text-4xl">
               {name}
             </h1>
           </Container>

@@ -10,12 +10,14 @@ import {
 const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 const en = copyFor('en');
 
-// Phase 26: the category detail hero must show the whole photo (letterboxed,
-// never cropped) beside a blurred backdrop, mirroring across RTL — and the
+// Phase 26/27: the category detail hero must show the whole photo
+// (letterboxed, never cropped) over a blurred backdrop — Phase 27 centers
+// the stack (breadcrumb, title, photo) instead of pinning the photo to one
+// side, so the layout is symmetric and RTL needs no mirroring — and the
 // long-form fields (category description, machine full description/specs) are
-// now optional, so blank in the admin means the section is absent on the
-// public page. These tests drive the real admin forms and read the public
-// pages back, so they also lock the "blank saves and disappears" behaviour.
+// optional, so blank in the admin means the section is absent on the public
+// page. These tests drive the real admin forms and read the public pages
+// back, so they also lock the "blank saves and disappears" behaviour.
 test.describe('category hero photo', () => {
   test.skip(!ADMIN_PASSWORD, 'ADMIN_PASSWORD env is required');
 
@@ -24,6 +26,9 @@ test.describe('category hero photo', () => {
   // not fail because an external CDN is unreachable.
   const TALL_PHOTO = `https://picsum.photos/seed/colina-tall-${Date.now().toString(36)}/400/900`;
   const WIDE_PHOTO = `https://picsum.photos/seed/colina-wide-${Date.now().toString(36)}/1600/500`;
+
+  // The four widths the brief asks to verify at, plus the default desktop.
+  const WIDTHS = [390, 768, 1280, 1920] as const;
 
   async function createCategoryWithPhoto(
     page: Page,
@@ -60,7 +65,88 @@ test.describe('category hero photo', () => {
     await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);
   }
 
-  test('a photo category renders the whole photo letterboxed beside a blurred backdrop, in both locales', async ({
+  // Asserts the Phase 27 centered stack at one viewport: photo centered
+  // horizontally in the banner (within 2px), fully inside it vertically,
+  // and never overlapping the title/breadcrumb — identical in RTL because
+  // the stack is symmetric.
+  async function expectCenteredStack(page: Page) {
+    const backdrop = page.locator('#category-hero-backdrop');
+    const photoBox = page.locator('#category-hero-photo');
+    const photo = page.locator('#category-hero-photo img');
+    await expect(backdrop).toHaveCount(1);
+    await expect(photo).toHaveCount(1);
+
+    const backdropStyle = await backdrop.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { objectFit: style.objectFit, filter: style.filter };
+    });
+    expect(backdropStyle.objectFit).toBe('cover');
+    expect(backdropStyle.filter).toContain('blur(');
+
+    const photoStyle = await photo.evaluate(
+      (element) => getComputedStyle(element).objectFit
+    );
+    expect(photoStyle).toBe('contain');
+
+    const geometry = await page.evaluate(() => {
+      const banner = document
+        .querySelector('section[class*="bg-brand-900"]')!
+        .getBoundingClientRect();
+      const box = document
+        .getElementById('category-hero-photo')!
+        .getBoundingClientRect();
+      const title = document.querySelector('h1')!.getBoundingClientRect();
+      const crumb = document
+        .querySelector('main nav[aria-label]')!
+        .getBoundingClientRect();
+      return { banner, box, title, crumb };
+    });
+
+    // Horizontally centered in the banner: both centers within ~2px.
+    const bannerCenterX = geometry.banner.left + geometry.banner.width / 2;
+    const photoCenterX = geometry.box.left + geometry.box.width / 2;
+    expect(Math.abs(photoCenterX - bannerCenterX)).toBeLessThanOrEqual(2);
+
+    // The photo stays inside the banner vertically.
+    expect(geometry.box.top).toBeGreaterThanOrEqual(geometry.banner.top - 1);
+    expect(geometry.box.bottom).toBeLessThanOrEqual(geometry.banner.bottom + 1);
+
+    // Normal flow (breadcrumb → title → photo): no overlap possible, and
+    // asserted so a future absolute-position refactor cannot break it.
+    expect(geometry.crumb.bottom).toBeLessThanOrEqual(geometry.title.top + 1);
+    expect(geometry.title.bottom).toBeLessThanOrEqual(geometry.box.top + 1);
+  }
+
+  // When the CDN answers, prove nothing is cropped: the drawn image must
+  // keep the source's aspect ratio exactly (a cropped `cover` would not).
+  // `object-fit: contain` fits the source inside the img's box without
+  // distortion, so the drawn size is min(scale) on each axis — recompute it
+  // and require the drawn ratio to equal the natural ratio.
+  async function expectUncropped(page: Page) {
+    const img = page.locator('#category-hero-photo img');
+    const loaded = await img
+      .evaluate((element) => (element as HTMLImageElement).naturalWidth > 0)
+      .catch(() => false);
+    if (!loaded) {
+      return;
+    }
+    const sizes = await img.evaluate((element) => {
+      const image = element as HTMLImageElement;
+      const rect = image.getBoundingClientRect();
+      const naturalRatio = image.naturalWidth / image.naturalHeight;
+      const drawnWidth = Math.min(rect.width, rect.height * naturalRatio);
+      const drawnHeight = Math.min(rect.height, rect.width / naturalRatio);
+      return { naturalRatio, drawnWidth, drawnHeight };
+    });
+    expect(sizes.drawnHeight).toBeGreaterThan(0);
+    expect(sizes.drawnWidth).toBeGreaterThan(0);
+    expect(sizes.drawnWidth / sizes.drawnHeight).toBeCloseTo(
+      sizes.naturalRatio,
+      3
+    );
+  }
+
+  test('a photo category centers the complete photo under the title at every width, in both locales', async ({
     browser,
   }) => {
     const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
@@ -88,96 +174,28 @@ test.describe('category hero photo', () => {
         await expect(page.locator('#category-description')).toHaveCount(0);
       }
 
-      // Structural checks that do not depend on the CDN: both layers exist,
-      // the backdrop is cover + blurred, the photo is contain.
-      for (const [locale, slug] of [
-        ['en', tallSlug],
-        ['ar', tallSlug],
-      ] as const) {
-        await page.goto(`${WEB_URL}/${locale}/categories/${slug}`);
-        const backdrop = page.locator('#category-hero-backdrop');
-        const photo = page.locator('#category-hero-photo img');
-        await expect(backdrop).toHaveCount(1);
-        await expect(photo).toHaveCount(1);
-
-        const backdropStyle = await backdrop.evaluate((element) => {
-          const style = getComputedStyle(element);
-          return { objectFit: style.objectFit, filter: style.filter };
-        });
-        expect(backdropStyle.objectFit).toBe('cover');
-        expect(backdropStyle.filter).toContain('blur(');
-
-        const photoStyle = await photo.evaluate(
-          (element) => getComputedStyle(element).objectFit
-        );
-        expect(photoStyle).toBe('contain');
-
-        // The inset photo sits on the inline end: flush right in LTR, flush
-        // left in RTL — and the title never reaches it.
-        const geometry = await page.evaluate(() => {
-          const box = document.getElementById('category-hero-photo')!;
-          const title = document.querySelector('h1')!;
-          const photoRect = box.getBoundingClientRect();
-          const titleRect = title.getBoundingClientRect();
-          const computed = getComputedStyle(box);
-          return {
-            left: computed.left,
-            right: computed.right,
-            photoRect,
-            titleRect,
-          };
-        });
-        if (locale === 'en') {
-          expect(geometry.right).toBe('0px');
-          expect(geometry.titleRect.right).toBeLessThanOrEqual(
-            geometry.photoRect.left + 1
-          );
-        } else {
-          expect(geometry.left).toBe('0px');
-          expect(geometry.titleRect.left).toBeGreaterThanOrEqual(
-            geometry.photoRect.right - 1
-          );
+      // Tall photo: centered stack at all four widths, both locales. The
+      // layout is symmetric, so RTL only needs confirming, not mirroring.
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const locale of ['en', 'ar'] as const) {
+          await page.goto(`${WEB_URL}/${locale}/categories/${tallSlug}`);
+          await expectCenteredStack(page);
         }
       }
 
-      // When the CDN answers, prove nothing is cropped: the drawn image must
-      // keep the source's aspect ratio exactly (a cropped `cover` would not).
-      await page.goto(`${WEB_URL}/en/categories/${tallSlug}`);
-      const img = page.locator('#category-hero-photo img');
-      const loaded = await img
-        .evaluate((element) => (element as HTMLImageElement).naturalWidth > 0)
-        .catch(() => false);
-      if (loaded) {
-        const sizes = await img.evaluate((element) => {
-          const image = element as HTMLImageElement;
-          const rect = image.getBoundingClientRect();
-          const box = image.parentElement!.getBoundingClientRect();
-          const drawnWidth = Math.min(
-            box.width,
-            box.height * (image.naturalWidth / image.naturalHeight)
-          );
-          const drawnHeight = Math.min(
-            box.height,
-            box.width * (image.naturalHeight / image.naturalWidth)
-          );
-          return {
-            boxWidth: box.width,
-            boxHeight: box.height,
-            drawnWidth,
-            drawnHeight,
-            naturalWidth: image.naturalWidth,
-            naturalHeight: image.naturalHeight,
-          };
-        });
-        // A tall 400×900 photo in a 40%-wide box: the drawing is height-
-        // limited, and the drawn area equals the box on the limited axis.
-        expect(sizes.drawnHeight).toBeCloseTo(sizes.boxHeight, 0);
-        expect(sizes.drawnWidth).toBeLessThanOrEqual(sizes.boxWidth + 1);
-        expect(sizes.boxHeight / sizes.drawnWidth).toBeCloseTo(
-          sizes.naturalHeight / sizes.naturalWidth,
-          1
-        );
+      // Wide photo: the same guarantees at a desktop width.
+      await page.setViewportSize({ width: 1280, height: 900 });
+      for (const locale of ['en', 'ar'] as const) {
+        await page.goto(`${WEB_URL}/${locale}/categories/${wideSlug}`);
+        await expectCenteredStack(page);
       }
+
+      // Uncropped proof, when the CDN answers, for both shapes.
+      await page.goto(`${WEB_URL}/en/categories/${tallSlug}`);
+      await expectUncropped(page);
+      await page.goto(`${WEB_URL}/en/categories/${wideSlug}`);
+      await expectUncropped(page);
     } finally {
       await deleteCategory(page, tallName);
       await deleteCategory(page, wideName);
@@ -185,18 +203,33 @@ test.describe('category hero photo', () => {
     }
   });
 
-  test('a category without a photo keeps the plain band, never a blurred hero', async ({
+  test('a category without a photo keeps the plain band with centered text, never a blurred hero', async ({
     page,
   }) => {
-    for (const locale of ['en', 'ar'] as const) {
-      await page.goto(`${WEB_URL}/${locale}/categories/production-lines`);
-      await expect(page.locator('#category-hero-backdrop')).toHaveCount(0);
-      await expect(page.locator('#category-hero-photo')).toHaveCount(0);
-      // The title is still there, on the plain brand band.
-      const title = locale === 'en' ? 'Production Lines' : 'خطوط الإنتاج';
-      await expect(
-        page.getByRole('heading', { level: 1, name: title })
-      ).toBeVisible();
+    for (const width of [390, 1280] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const locale of ['en', 'ar'] as const) {
+        await page.goto(`${WEB_URL}/${locale}/categories/production-lines`);
+        await expect(page.locator('#category-hero-backdrop')).toHaveCount(0);
+        await expect(page.locator('#category-hero-photo')).toHaveCount(0);
+        const title = locale === 'en' ? 'Production Lines' : 'خطوط الإنتاج';
+        await expect(
+          page.getByRole('heading', { level: 1, name: title })
+        ).toBeVisible();
+
+        // Centered to match the photo layout: the h1's center sits within
+        // ~2px of the band's center.
+        const geometry = await page.evaluate(() => {
+          const band = document
+            .querySelector('section[class*="bg-brand-900"]')!
+            .getBoundingClientRect();
+          const title = document.querySelector('h1')!.getBoundingClientRect();
+          return { band, title };
+        });
+        const bandCenterX = geometry.band.left + geometry.band.width / 2;
+        const titleCenterX = geometry.title.left + geometry.title.width / 2;
+        expect(Math.abs(titleCenterX - bandCenterX)).toBeLessThanOrEqual(2);
+      }
     }
   });
 });

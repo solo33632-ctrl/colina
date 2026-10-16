@@ -8,48 +8,22 @@ export type CategoryCardProps = {
 };
 
 /**
- * A line-drawn gear, our own drawing, standing in for "a family of production
- * machines". Drawn here rather than imported so the tile carries no asset: it
- * inherits `currentColor`, so it is white over the overlay and needs no second
- * variant for the no-photo tile.
- *
- * Decorative: the whole tile is one link whose accessible name is the category
- * name, so the icon conveys nothing a screen reader is missing.
- */
-function CategoryIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-11 w-11 shrink-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
-    >
-      <circle cx="12" cy="12" r="7.2" />
-      <circle cx="12" cy="12" r="2.8" />
-      <path d="M12 2.6v2.2M12 19.2v2.2M21.4 12h-2.2M4.8 12H2.6M18.6 5.4l-1.6 1.6M7 17l-1.6 1.6M18.6 18.6 17 17M7 7 5.4 5.4" />
-    </svg>
-  );
-}
-
-/**
  * One product category, as a square tile: the photo fills the tile, a dark
- * overlay sits over it, and the name is centred on top in white.
+ * overlay sits over it, and the category name is centred on top in white.
  *
  * The structure is borrowed from a reference catalogue's home grid — square
- * tiles, a scrim, the name dead centre, and nothing else — while every pixel is
- * ours: our icon, our photos, our palette.
+ * tiles, a scrim, the name dead centre — while every pixel is ours: our photos,
+ * our palette, our copy. A previous version also put a line icon above the name;
+ * it went, because the name alone is the one thing every visitor needs to read
+ * and a glyph competes with it for the middle of a small square.
  *
- * The photo is still shown COMPLETE, never cropped, which is the one rule that
- * outranks the reference here. A production-line photo cropped to a square loses
- * the machine it exists to show, so:
+ * THE PHOTO IS ALWAYS SHOWN COMPLETE, never cropped. A production-line photo
+ * cropped to a square loses the machine it exists to show, so this rule
+ * outranks the reference:
  *
  * - The LINK owns the ratio (`aspect-square`) and the image is a `h-full w-full`
- *   layer inside a padded `absolute inset-0` wrapper. As in the machine card,
- *   the ratio never goes on the image itself: `ImageWithFallback` only applies
+ *   layer inside a padded `absolute inset-0` wrapper. As in the machine card the
+ *   ratio never goes on the image itself: `ImageWithFallback` only applies
  *   `aspect-video` in its default `cover` mode, so asking it for a ratio too
  *   would put two `aspect-ratio` declarations on one element and leave
  *   stylesheet order to decide which wins.
@@ -58,22 +32,39 @@ function CategoryIcon() {
  * - `renderFallback={false}`: a photo that 404s shows the white tile through
  *   the scrim rather than a broken-image glyph or a stray initial letter.
  *
- * A category with no photo gets the same tile with a solid dark field instead
- * of photo + scrim, so the grid reads as one set: same square, same icon in the
- * same place, same name in the same place. A missing photo cannot make a tile
- * look unfinished.
+ * A category with no photo gets the same square with a solid dark field instead
+ * of photo + scrim, so the grid reads as one set: same shape, same name in the
+ * same place. A missing photo cannot make a tile look unfinished.
  *
- * Legibility over the scrim: white on `bg-black/60` is about 8:1, comfortably
- * past WCAG AA for the bold name. The drop-shadow on the icon and the name is a
- * second line of defence for the case where a photo is bright right behind the
- * text, and `line-clamp-3` bounds the name to three lines so a long one cannot
- * push the icon out of the tile.
+ * Typography. The name is `font-medium` (500): IBM Plex Sans and IBM Plex Sans
+ * Arabic both load 400/500/600/700 (see `app/[locale]/layout.tsx`), so 500 is a
+ * weight the files genuinely ship — not a synthesised one — and it is the
+ * lightest that still holds its shape over a scrim at this size. 700 is too
+ * heavy for a name repeated nine times down a page; 400 is legible but thin
+ * against a photograph. `max-w-[80%]` plus `text-balance` keeps a long name
+ * wrapping evenly instead of leaving a short orphan line, and `line-clamp-2`
+ * bounds it to two lines so every tile is the same height and a long name can
+ * never push its neighbours out of line.
  *
- * Hover/focus lightens the scrim (`bg-black/60` → `bg-black/45`) — a colour and
- * opacity change, not movement, so it needs no `motion-safe:` gate and no
- * `motion-reduce:` cancellation. There is deliberately no scale or translate
- * here at all: a full-bleed photo lifted off the page reveals the tile edges,
- * which is the wrong signal for something that already fills its frame.
+ * Centring is exact: the name is the only in-flow child, and the hover underline
+ * is positioned out of flow (`absolute top-full`), so a tile that has never been
+ * hovered is laid out exactly as one that has.
+ *
+ * Hover/focus says "this is a link" four ways at once — the tile lifts, the
+ * shadow deepens, the photo eases in, the scrim lightens — plus an underline
+ * bar under the name. The movement is gated with `motion-safe:` rather than
+ * cancelled with `motion-reduce:`: Tailwind emits the hover rule as a
+ * two-class selector (`.hover\:-translate-y-2:hover`) against `motion-reduce:`'s
+ * single class, so under `prefers-reduced-motion: reduce` both rules match and
+ * the higher-specificity hover rule wins — the lift would survive the very
+ * preference it ignores. `motion-safe:` wraps the hover rule itself in
+ * `(prefers-reduced-motion: no-preference)`, so a visitor who asked for less
+ * motion is never given a rule to override. Opacity and colour changes are not
+ * movement and stay ungated.
+ *
+ * The lift cannot widen the page: the tile is `overflow-hidden` and the
+ * transform is vertical only, so a neighbouring tile's shadow is the only
+ * thing that ever reaches past a cell edge.
  */
 export function CategoryCard({ category, locale }: CategoryCardProps) {
   const name = locale === 'ar' ? category.nameAr : category.nameEn;
@@ -82,20 +73,23 @@ export function CategoryCard({ category, locale }: CategoryCardProps) {
     <Link
       href={`/categories/${category.slug}`}
       // The tile's accessible name is the category name and nothing else, so a
-      // screen reader announces "Production Lines, link" rather than the icon
-      // or the scrim as well.
+      // screen reader announces "Production Lines, link" rather than the photo
+      // and the scrim as well.
       aria-label={name}
-      className="group relative block aspect-square overflow-hidden rounded-lg bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+      className="group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-white transition-[transform,box-shadow] duration-300 ease-out motion-safe:hover:-translate-y-2 motion-safe:group-focus-visible:-translate-y-2 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
     >
       {category.image ? (
         <>
           {/* The tile owns the ratio; this layer only pads the photo off the
-              edges, and the image inside is `contain`, so it is always whole. */}
-          <div className="absolute inset-0 p-2">
+              edges, and the image inside is `contain`, so it is always whole.
+              The zoom is on the image, inside the padded box, so it grows
+              towards the middle rather than out past the tile edge. */}
+          <div className="absolute inset-0 overflow-hidden p-2">
             <ImageWithFallback
               src={category.image}
               alt=""
               fit="contain"
+              className="motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-105"
               renderFallback={false}
             />
           </div>
@@ -112,11 +106,20 @@ export function CategoryCard({ category, locale }: CategoryCardProps) {
         <div aria-hidden="true" className="absolute inset-0 bg-stone-800" />
       )}
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center text-white">
-        <CategoryIcon />
-        <h3 className="line-clamp-3 text-lg font-bold leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] sm:text-xl">
-          {name}
-        </h3>
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
+        <div className="relative flex max-w-[80%] flex-col items-center">
+          <h3 className="line-clamp-2 text-balance font-medium text-lg leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] sm:text-xl">
+            {name}
+          </h3>
+          {/* The hover underline, out of flow on purpose: in flow it would make
+              the name sit above the tile's centre instead of on it, and a tile
+              would only be truly centred once hovered. `-ml-5` centres it on the
+              name without a translate transform. */}
+          <span
+            aria-hidden="true"
+            className="absolute left-1/2 top-full -ml-5 mt-2 h-0.5 w-10 rounded-full bg-white opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+          />
+        </div>
       </div>
     </Link>
   );

@@ -268,8 +268,8 @@ test.describe('catalog browsing flow', () => {
  * Asserts one tile's shape, scrim and centred white name.
  *
  * The scrim is found by colour rather than by a test id, so it cannot drift out
- * of step with the markup: any child painted `rgba(0, 0, 0, 0.6)` is the
- * overlay, and the test additionally requires it to cover the tile.
+ * of step with the markup: any child painted a translucent black over the whole
+ * tile is the overlay, and the test additionally requires it to cover the tile.
  */
 async function expectSquareTileWithCenteredName(tile: Locator) {
   const shape = await tile.evaluate((el) => {
@@ -278,27 +278,48 @@ async function expectSquareTileWithCenteredName(tile: Locator) {
     const nameRect = name.getBoundingClientRect();
     const style = getComputedStyle(name);
 
-    // The overlay: a child painted a translucent black over the whole tile.
-    const overlay = Array.from(el.querySelectorAll('div')).find((child) => {
-      const bg = getComputedStyle(child).backgroundColor;
-      return /^rgba\(0,\s*0,\s*0,\s*0?\.?\d+\)$/.test(bg);
+    // The scrim: a child painted a translucent black over the whole tile.
+    // Alpha must be non-zero — a transparent layer computes to
+    // `rgba(0, 0, 0, 0)` too, and the photo wrapper is one of those.
+    const overlayEl = Array.from(el.querySelectorAll('div')).find((child) => {
+      const match = getComputedStyle(child).backgroundColor.match(
+        /^rgba\(0,\s*0,\s*0,\s*([\d.]+)\)$/
+      );
+      return match !== null && Number(match[1]) > 0;
     });
-    const overlayRect = overlay?.getBoundingClientRect();
+    const overlayRect = overlayEl?.getBoundingClientRect();
+    const overlayBg = overlayEl
+      ? getComputedStyle(overlayEl).backgroundColor
+      : '';
+    const overlayAlpha = (() => {
+      const match = overlayBg.match(/rgba\(0,\s*0,\s*0,\s*([\d.]+)\)/);
+      return match ? Number(match[1]) : 1;
+    })();
+
+    // Rendered line count, from the box height against the computed line
+    // height — which is what "at most two lines" actually means on screen.
+    const lineHeight = parseFloat(style.lineHeight);
 
     return {
       width: rect.width,
       height: rect.height,
       hasPhoto: el.querySelector('img') !== null,
+      icons: el.querySelectorAll('svg').length,
       nameColor: style.color,
+      nameWeight: Number(style.fontWeight),
+      nameLineClamp: style.webkitLineClamp,
+      nameLines: lineHeight > 0 ? nameRect.height / lineHeight : 0,
       nameCentreX: nameRect.left + nameRect.width / 2,
       nameCentreY: nameRect.top + nameRect.height / 2,
       tileCentreX: rect.left + rect.width / 2,
       tileCentreY: rect.top + rect.height / 2,
       boxShadow: getComputedStyle(el).boxShadow,
+      cursor: getComputedStyle(el).cursor,
       overlay: overlayRect
         ? {
             width: overlayRect.width,
             height: overlayRect.height,
+            alpha: overlayAlpha,
           }
         : null,
     };
@@ -310,24 +331,33 @@ async function expectSquareTileWithCenteredName(tile: Locator) {
   ).toBeLessThanOrEqual(0.05);
   expect(shape.width).toBeGreaterThan(0);
 
-  // No card: the tile is flat, with no drop shadow and no border.
+  // The tile is a link, and says so with the pointer.
+  expect(shape.cursor).toBe('pointer');
+
+  // The name is the tile's whole content: no icon left above it.
+  expect(shape.icons).toBe(0);
+
+  // Flat when idle — the deeper shadow is a hover/focus affordance.
   expect(['none', '']).toContain(shape.boxShadow);
 
-  // The name is white, wherever it sits.
+  // White, and light enough to read as a label rather than a slab: 400 is the
+  // floor and 500 the target, both of which IBM Plex ships (400/500/600/700).
   expect(shape.nameColor).toBe('rgb(255, 255, 255)');
+  expect(shape.nameWeight).toBeGreaterThanOrEqual(400);
+  expect(shape.nameWeight).toBeLessThanOrEqual(500);
 
-  // Centred horizontally to within 8% of the tile.
+  // At most two lines, and clamped at two.
+  expect(shape.nameLineClamp).toBe('2');
+  expect(shape.nameLines).toBeLessThanOrEqual(2.05);
+
+  // Dead centre on both axes. The hover underline is out of flow, so a tile
+  // that has never been hovered is laid out exactly like one that has.
   expect(
     Math.abs(shape.nameCentreX - shape.tileCentreX) / shape.width
-  ).toBeLessThanOrEqual(0.08);
-
-  // The icon sits ABOVE the name, so the pair is centred as a unit and the
-  // name's own centre sits one half-icon plus one gap below the tile's centre
-  // — a fixed ~28px, or 8-9% of a tile. Anything genuinely off-centre (a name
-  // pinned to the bottom, or to one side) is far outside this.
+  ).toBeLessThanOrEqual(0.03);
   expect(
     Math.abs(shape.nameCentreY - shape.tileCentreY) / shape.height
-  ).toBeLessThanOrEqual(0.1);
+  ).toBeLessThanOrEqual(0.03);
 
   // The overlay covers the whole tile: same box, to within a pixel.
   if (shape.overlay) {
@@ -335,6 +365,8 @@ async function expectSquareTileWithCenteredName(tile: Locator) {
       1
     );
     expect(Math.abs(shape.overlay.width - shape.width)).toBeLessThanOrEqual(1);
+    // The scrim starts at 60% black.
+    expect(shape.overlay.alpha).toBeCloseTo(0.6, 2);
   } else {
     // A tile with no photo has no scrim — it uses a solid field instead.
     expect(shape.hasPhoto).toBe(false);
@@ -396,27 +428,37 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
           insideRight: true,
         });
 
-        // Every tile: square, scrimmed, white centred name, name is the only
-        // text, and the icon is the only graphic.
+        // Every tile: square, scrimmed, white centred name at a light weight,
+        // and the name is the tile's whole content — no icon, no count.
         for (const tile of await tiles.all()) {
           const name = await tile.getAttribute('aria-label');
           expect(name).toBeTruthy();
           await expect(tile.locator('h3')).toBeVisible();
           await expect(tile.locator('h3')).toHaveText(name!);
-          // No count, no arrow: the only icon is the gear.
-          expect(await tile.locator('svg').count()).toBe(1);
+          // The icon is gone from every tile, photo or not.
+          expect(await tile.locator('svg').count()).toBe(0);
           expect(((await tile.textContent()) ?? '').trim()).toBe(name);
           await expectSquareTileWithCenteredName(tile);
         }
 
-        // A tile with no photo: the same square, the icon and the name over a
-        // solid dark field, and no <img> at all.
+        // Desktop: the tiles are the size they were widened to be.
+        if (width === 1280) {
+          const tileWidth = await tiles
+            .first()
+            .evaluate((el) => el.getBoundingClientRect().width);
+          expect(tileWidth).toBeGreaterThanOrEqual(340);
+          expect(tileWidth).toBeLessThanOrEqual(400);
+        }
+
+        // A tile with no photo: the same square and the same name over a solid
+        // dark field, and no <img> and no icon at all.
         const withoutPhoto = page.locator(
           `main ul li a[href="/${locale}/categories/production-lines"]`
         );
         await expect(withoutPhoto).toHaveCount(1);
         await expect(withoutPhoto.locator('img')).toHaveCount(0);
-        await expect(withoutPhoto.locator('svg')).toHaveCount(1);
+        await expect(withoutPhoto.locator('svg')).toHaveCount(0);
+        await expectSquareTileWithCenteredName(withoutPhoto);
         const field = await withoutPhoto.evaluate((el) => {
           const dark = Array.from(el.querySelectorAll('div')).find((child) => {
             const bg = getComputedStyle(child).backgroundColor;
@@ -447,6 +489,110 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
         await expectEqualHeightsInRows(tiles);
       });
     }
+  }
+
+  // The tile must look like a link when pointed at or tabbed to. Both the
+  // movement and the photo zoom are gated with `motion-safe:`, which is what
+  // the second test pins down.
+  for (const locale of ['en', 'ar'] as const) {
+    test(`${locale}: hovering a tile lifts it and lightens the scrim`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(`${WEB_URL}/${locale}/categories`);
+
+      const tile = page.locator('main ul li a[href*="/categories/"]').first();
+      await tile.scrollIntoViewIfNeeded();
+
+      const measure = () =>
+        tile.evaluate((el) => {
+          const rect = el.getBoundingClientRect();
+          const scrim = Array.from(el.querySelectorAll('div')).find((child) => {
+            const match = getComputedStyle(child).backgroundColor.match(
+              /^rgba\(0,\s*0,\s*0,\s*([\d.]+)\)$/
+            );
+            return match !== null && Number(match[1]) > 0;
+          });
+          const img = el.querySelector('img');
+          return {
+            top: rect.top,
+            alpha: scrim
+              ? Number(
+                  (getComputedStyle(scrim).backgroundColor.match(
+                    /rgba\(0,\s*0,\s*0,\s*([\d.]+)\)/
+                  ) ?? [])[1] ?? '1'
+                )
+              : null,
+            imageTransform: img ? getComputedStyle(img).transform : null,
+          };
+        });
+
+      const before = await measure();
+      await tile.hover();
+      // Let the 300ms transition settle.
+      await page.waitForTimeout(700);
+      const after = await measure();
+
+      // The tile moved UP by at least 4px (`-translate-y-2` is 8px).
+      expect(before.top - after.top).toBeGreaterThanOrEqual(4);
+      // The scrim lightened: 60% black -> 45% black.
+      if (before.alpha !== null && after.alpha !== null) {
+        expect(after.alpha).toBeLessThan(before.alpha);
+        expect(before.alpha).toBeCloseTo(0.6, 2);
+        expect(after.alpha).toBeCloseTo(0.45, 2);
+      }
+      // The photo zoomed in: a scale matrix, not the identity.
+      if (before.imageTransform && after.imageTransform) {
+        expect(after.imageTransform).not.toBe(before.imageTransform);
+      }
+    });
+
+    test(`${locale}: with reduced motion the tile does not move, and still lightens`, async ({
+      browser,
+    }) => {
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 900 },
+        reducedMotion: 'reduce',
+      });
+      const page = await context.newPage();
+      await page.goto(`${WEB_URL}/${locale}/categories`);
+
+      const tile = page.locator('main ul li a[href*="/categories/"]').first();
+      await tile.scrollIntoViewIfNeeded();
+
+      const before = await tile.evaluate(
+        (el) => el.getBoundingClientRect().top
+      );
+      await tile.hover();
+      await page.waitForTimeout(700);
+      const after = await tile.evaluate((el) => el.getBoundingClientRect().top);
+
+      // No lift at all: the hover transform is inside
+      // `(prefers-reduced-motion: no-preference)`, so the rule never exists.
+      expect(Math.abs(after - before)).toBeLessThanOrEqual(0.5);
+
+      // The scrim still lightens — that is a colour change, not movement.
+      const alpha = await tile.evaluate((el) => {
+        const scrim = Array.from(el.querySelectorAll('div')).find((child) => {
+          const match = getComputedStyle(child).backgroundColor.match(
+            /^rgba\(0,\s*0,\s*0,\s*([\d.]+)\)$/
+          );
+          return match !== null && Number(match[1]) > 0;
+        });
+        return scrim
+          ? Number(
+              (getComputedStyle(scrim).backgroundColor.match(
+                /rgba\(0,\s*0,\s*0,\s*([\d.]+)\)/
+              ) ?? [])[1] ?? '1'
+            )
+          : null;
+      });
+      if (alpha !== null) {
+        expect(alpha).toBeCloseTo(0.45, 2);
+      }
+
+      await context.close();
+    });
   }
 });
 

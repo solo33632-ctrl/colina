@@ -33,9 +33,9 @@ export async function CategoriesGrid({
           {categories.length === 0 ? (
             <p className="mt-8 text-center text-stone-500">{t('empty')}</p>
           ) : (
-            // Constrained and centred so the square tiles land around 360px on
+            // Constrained and centred so the square tiles land around 370px on
             // desktop rather than stretching the full container width.
-            <ul className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mx-auto mt-12 grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {categories.map((category) => (
                 <li key={category.id}>
                   <CategoryCard category={category} locale={locale} />

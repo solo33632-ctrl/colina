@@ -17,10 +17,9 @@
     "cta": "Get in touch"
   },
   "Categories": {
-    "heading": "Product categories",
+    "heading": "Product Categories",
     "subheading": "Browse our machine families.",
-    "empty": "No categories yet — check back soon.",
-    "machineCount": "{count, plural, =0 {No machines} one {# machine} other {# machines}}"
+    "empty": "No categories yet — check back soon."
   },
   "FeaturedMachines": {
     "heading": "Featured machines",
@@ -31,7 +30,7 @@
     "machinesHeading": "Machines in this category",
     "machinesEmpty": "No machines in this category yet.",
     "breadcrumbLabel": "Breadcrumb",
-    "categoriesCrumb": "Product categories",
+    "categoriesCrumb": "Product Categories",
     "machineCount": "{count, plural, =0 {No machines} one {# machine} other {# machines}}",
     "heroCountPill": "{count, plural, =0 {No machines} one {# machine} other {# machines}}"
   },

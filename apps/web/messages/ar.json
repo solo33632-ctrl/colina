@@ -17,10 +17,9 @@
     "cta": "تواصل معنا"
   },
   "Categories": {
-    "heading": "فئات المنتجات",
+    "heading": "أقسام المنتجات",
     "subheading": "تصفح عائلات الآلات لدينا.",
-    "empty": "لا توجد فئات بعد — عُد قريباً.",
-    "machineCount": "{count, plural, zero {لا توجد آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}"
+    "empty": "لا توجد فئات بعد — عُد قريباً."
   },
   "FeaturedMachines": {
     "heading": "آلات مميزة",
@@ -31,7 +30,7 @@
     "machinesHeading": "آلات هذه الفئة",
     "machinesEmpty": "لا توجد آلات في هذه الفئة بعد.",
     "breadcrumbLabel": "مسار التنقل",
-    "categoriesCrumb": "فئات المنتجات",
+    "categoriesCrumb": "أقسام المنتجات",
     "machineCount": "{count, plural, zero {لا توجد آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}",
     "heroCountPill": "{count, plural, zero {لا آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}"
   },

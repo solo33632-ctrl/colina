@@ -178,12 +178,12 @@ test.afterAll(() => {
 });
 
 test.describe('catalog browsing flow', () => {
-  test('the categories index shows every category with a machine count', async ({
+  test('the categories index shows every category, named on the tile itself', async ({
     page,
   }) => {
     await page.goto(`${WEB_URL}/en/categories`);
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Product categories' })
+      page.getByRole('heading', { level: 1, name: 'Product Categories' })
     ).toBeVisible();
 
     const cards = page.locator('main ul li a[href^="/en/categories/"]');
@@ -193,14 +193,13 @@ test.describe('catalog browsing flow', () => {
     // Each card is a link through to its own category page.
     const first = cards.first();
     await expect(first).toHaveAttribute('href', /^\/en\/categories\/[^/]+$/);
-    // ...and every card carries its name on the tile itself, plus a machine
-    // count line including the "none" case.
+    // ...and every card carries its name on the tile. Nothing else: the tile is
+    // a photo, a scrim, an icon and the name.
     for (const card of await cards.all()) {
       const name = await card.getAttribute('aria-label');
       expect(name).toBeTruthy();
       await expect(card.getByRole('heading')).toHaveText(name!);
-      const band = (await card.textContent()) ?? '';
-      expect(band).toMatch(/\d|one|No machines/i);
+      expect(((await card.textContent()) ?? '').trim()).toBe(name);
     }
   });
 
@@ -265,49 +264,180 @@ test.describe('catalog browsing flow', () => {
   });
 });
 
-test.describe('category tiles show the complete photo and always name the category', () => {
+/**
+ * Asserts one tile's shape, scrim and centred white name.
+ *
+ * The scrim is found by colour rather than by a test id, so it cannot drift out
+ * of step with the markup: any child painted `rgba(0, 0, 0, 0.6)` is the
+ * overlay, and the test additionally requires it to cover the tile.
+ */
+async function expectSquareTileWithCenteredName(tile: Locator) {
+  const shape = await tile.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const name = el.querySelector('h3')!;
+    const nameRect = name.getBoundingClientRect();
+    const style = getComputedStyle(name);
+
+    // The overlay: a child painted a translucent black over the whole tile.
+    const overlay = Array.from(el.querySelectorAll('div')).find((child) => {
+      const bg = getComputedStyle(child).backgroundColor;
+      return /^rgba\(0,\s*0,\s*0,\s*0?\.?\d+\)$/.test(bg);
+    });
+    const overlayRect = overlay?.getBoundingClientRect();
+
+    return {
+      width: rect.width,
+      height: rect.height,
+      hasPhoto: el.querySelector('img') !== null,
+      nameColor: style.color,
+      nameCentreX: nameRect.left + nameRect.width / 2,
+      nameCentreY: nameRect.top + nameRect.height / 2,
+      tileCentreX: rect.left + rect.width / 2,
+      tileCentreY: rect.top + rect.height / 2,
+      boxShadow: getComputedStyle(el).boxShadow,
+      overlay: overlayRect
+        ? {
+            width: overlayRect.width,
+            height: overlayRect.height,
+          }
+        : null,
+    };
+  });
+
+  // Roughly square: within 5% on each axis.
+  expect(
+    Math.abs(shape.width - shape.height) / shape.width
+  ).toBeLessThanOrEqual(0.05);
+  expect(shape.width).toBeGreaterThan(0);
+
+  // No card: the tile is flat, with no drop shadow and no border.
+  expect(['none', '']).toContain(shape.boxShadow);
+
+  // The name is white, wherever it sits.
+  expect(shape.nameColor).toBe('rgb(255, 255, 255)');
+
+  // Centred horizontally to within 8% of the tile.
+  expect(
+    Math.abs(shape.nameCentreX - shape.tileCentreX) / shape.width
+  ).toBeLessThanOrEqual(0.08);
+
+  // The icon sits ABOVE the name, so the pair is centred as a unit and the
+  // name's own centre sits one half-icon plus one gap below the tile's centre
+  // — a fixed ~28px, or 8-9% of a tile. Anything genuinely off-centre (a name
+  // pinned to the bottom, or to one side) is far outside this.
+  expect(
+    Math.abs(shape.nameCentreY - shape.tileCentreY) / shape.height
+  ).toBeLessThanOrEqual(0.1);
+
+  // The overlay covers the whole tile: same box, to within a pixel.
+  if (shape.overlay) {
+    expect(Math.abs(shape.overlay.height - shape.height)).toBeLessThanOrEqual(
+      1
+    );
+    expect(Math.abs(shape.overlay.width - shape.width)).toBeLessThanOrEqual(1);
+  } else {
+    // A tile with no photo has no scrim — it uses a solid field instead.
+    expect(shape.hasPhoto).toBe(false);
+  }
+}
+
+test.describe('category tiles: full-bleed photo, dark overlay, centred white name', () => {
   for (const locale of ['en', 'ar'] as const) {
     for (const width of [390, 1280] as const) {
-      test(`${locale} at ${width}px: every tile names its category, shows the photo whole, and rows line up`, async ({
+      test(`${locale} at ${width}px: square tile, photo complete, name centred in white`, async ({
         page,
       }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${WEB_URL}/${locale}/categories`);
 
-        const tiles = page.locator('main ul li a[href*="/categories/"]');
-        const total = await tiles.count();
-        expect(total).toBeGreaterThan(1);
+        // The heading wording, in this locale.
+        await expect(
+          page.getByRole('heading', {
+            level: 1,
+            name: locale === 'en' ? 'Product Categories' : 'أقسام المنتجات',
+          })
+        ).toBeVisible();
+        // The reference has a heading and nothing else above the grid: the
+        // subheading sentence that used to sit there is gone from both the home
+        // grid and this page.
+        await expect(
+          page.getByText(
+            locale === 'en'
+              ? 'Browse our machine families.'
+              : 'تصفح عائلات الآلات لدينا.'
+          )
+        ).toHaveCount(0);
 
-        // The fixture tile is the one carrying a photo.
+        const tiles = page.locator('main ul li a[href*="/categories/"]');
+        expect(await tiles.count()).toBeGreaterThan(1);
+
+        // The fixture tile carries a photo: `contain`, and wholly inside the
+        // tile — no cropping, whatever the photo's proportions.
         const withPhoto = page.locator(
           `main ul li a[href="/${locale}/categories/${TILES}"]`
         );
         await expect(withPhoto).toHaveCount(1);
         await expectCompleteImage(withPhoto.locator('img'));
 
-        // Every tile names itself, with or without a photo: the brand band
-        // under the picture is the point of the tile.
+        const inside = await withPhoto.locator('img').evaluate((img) => {
+          const tile = img.closest('a')!.getBoundingClientRect();
+          const box = img.getBoundingClientRect();
+          return {
+            insideTop: box.top >= tile.top - 0.5,
+            insideBottom: box.bottom <= tile.bottom + 0.5,
+            insideLeft: box.left >= tile.left - 0.5,
+            insideRight: box.right <= tile.right + 0.5,
+          };
+        });
+        expect(inside).toEqual({
+          insideTop: true,
+          insideBottom: true,
+          insideLeft: true,
+          insideRight: true,
+        });
+
+        // Every tile: square, scrimmed, white centred name, name is the only
+        // text, and the icon is the only graphic.
         for (const tile of await tiles.all()) {
           const name = await tile.getAttribute('aria-label');
           expect(name).toBeTruthy();
           await expect(tile.locator('h3')).toBeVisible();
           await expect(tile.locator('h3')).toHaveText(name!);
+          // No count, no arrow: the only icon is the gear.
+          expect(await tile.locator('svg').count()).toBe(1);
+          expect(((await tile.textContent()) ?? '').trim()).toBe(name);
+          await expectSquareTileWithCenteredName(tile);
         }
 
-        // A tile whose category has no photo shows a drawn placeholder on the
-        // neutral plate — never a broken-image glyph and never a bare gap.
+        // A tile with no photo: the same square, the icon and the name over a
+        // solid dark field, and no <img> at all.
         const withoutPhoto = page.locator(
           `main ul li a[href="/${locale}/categories/production-lines"]`
         );
         await expect(withoutPhoto).toHaveCount(1);
         await expect(withoutPhoto.locator('img')).toHaveCount(0);
-        // Scoped to the image area: the tile also carries an arrow icon in its
-        // brand band, so a bare `svg` count would be 2, not 1.
-        await expect(
-          withoutPhoto.locator('div.aspect-\\[4\\/3\\] svg')
-        ).toHaveCount(1);
+        await expect(withoutPhoto.locator('svg')).toHaveCount(1);
+        const field = await withoutPhoto.evaluate((el) => {
+          const dark = Array.from(el.querySelectorAll('div')).find((child) => {
+            const bg = getComputedStyle(child).backgroundColor;
+            const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (!match) return false;
+            return (
+              Number(match[1]) < 60 &&
+              Number(match[2]) < 60 &&
+              Number(match[3]) < 60
+            );
+          });
+          return {
+            present: Boolean(dark),
+            background: dark ? getComputedStyle(dark).backgroundColor : '',
+          };
+        });
+        expect(field.present).toBe(true);
+        // Opaque, not a scrim over nothing.
+        expect(field.background).toMatch(/^rgb\(/);
 
-        // And no tile overflows the page sideways at the narrow width.
+        // No sideways overflow, and the row lines up.
         const widths = await page.evaluate(() => ({
           scroll: document.scrollingElement!.scrollWidth,
           client: document.documentElement.clientWidth,

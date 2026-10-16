@@ -127,14 +127,16 @@ export function ZoomableImage({
   const lensVisible = measure.src === src && measure.visible;
 
   // The lens shows the image it is given, so it has to be re-pointed
-  // whenever that changes. Writing to the DOM is exactly what an effect is
-  // for.
+  // whenever that changes — AND whenever the lens itself appears, which is a
+  // separate event: the pane is only rendered on the hover path, and at mount
+  // that is not yet true, so `lensRef.current` is null and this effect no-ops.
+  // Writing to the DOM is exactly what an effect is for.
   useEffect(() => {
     const lens = lensRef.current;
     if (lens) {
       lens.style.backgroundImage = `url("${src}")`;
     }
-  }, [src]);
+  }, [src, canHover]);
 
   const updateMeasure = useCallback(
     (patch: { size?: Size | null; visible?: boolean }) => {
@@ -298,6 +300,10 @@ export function ZoomableImage({
         <>
           <div
             ref={lensRef}
+            // The only handle a test has on the lens: it is `aria-hidden`, has
+            // no role and no text, and nothing else on the page shares its
+            // class string except the zoom hint, which is also `rounded-full`.
+            data-testid="zoom-lens"
             aria-hidden="true"
             className={`pointer-events-none absolute rounded-full border-2 border-white bg-no-repeat shadow-lg ring-1 ring-stone-900/10 left-[var(--lens-x)] top-[var(--lens-y)] h-[var(--lens-size)] w-[var(--lens-size)] bg-[length:var(--zoom-size)] bg-[position:var(--zoom-position)] ${
               lensVisible ? 'block' : 'hidden'

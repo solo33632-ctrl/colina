@@ -7,6 +7,7 @@ import { Button, Container } from '@colina/ui';
 import { Breadcrumb } from '@/components/breadcrumb';
 import { Link } from '@/i18n/navigation';
 import { MachineGallery } from '@/components/machine-gallery';
+import { MobileQuoteBar } from '@/components/mobile-quote-bar';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { QuoteRequestPanel } from '@/components/quote-request-panel';
 import { RelatedMachines } from '@/components/related-machines';
@@ -138,7 +139,11 @@ export default async function MachineDetailPage({ params }: Props) {
   });
 
   return (
-    <main>
+    // The marker is inert HTML — nothing selects on it. It exists only so
+    // globals.css can tell this page apart and reserve room for the mobile
+    // quote bar's clearance under the footer, without that padding appearing on
+    // every other page. See the note there.
+    <main data-quote-bar-page="">
       <PageViewTracker path={`/machines/${slug}`} locale={locale} />
       <script
         type="application/ld+json"
@@ -214,7 +219,12 @@ export default async function MachineDetailPage({ params }: Props) {
             </h1>
             <p className="mt-3 text-stone-600">{shortDescription}</p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Button href="#quote" size="lg">
+              {/* `id` is the hook the mobile quote bar's observer watches to
+                  decide whether the real button is on screen: it watches that
+                  button and `#quote`, and shows itself only when neither is in
+                  view. Without it the bar cannot know the button it duplicates
+                  is sitting right there. */}
+              <Button id="quote-cta" href="#quote" size="lg">
                 {t('requestQuote')}
               </Button>
               {machine.datasheetUrl ? (
@@ -297,6 +307,14 @@ export default async function MachineDetailPage({ params }: Props) {
         locale={locale}
         categorySlug={machine.category.slug}
       />
+
+      {/* The phone-only way back to the form once the button above has scrolled
+          away. It renders hidden and decides for itself when to appear, and it
+          hides again as soon as `#quote` comes into view, so it never covers the
+          form it points at. Placed after `RelatedMachines` — `position: fixed`
+          takes it out of the flow, so this is only about DOM order, and it
+          keeps the reading order (summary -> details -> form -> related) intact. */}
+      <MobileQuoteBar label={t('requestQuote')} />
     </main>
   );
 }

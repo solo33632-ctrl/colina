@@ -98,6 +98,40 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Machine page: room for the mobile quote bar
+
+   The bar is `position: fixed` at the bottom of the viewport, so when the
+   visitor scrolls to the very end of the page it sits on top of the last thing
+   there is — here, the footer's copyright line and tagline. The page therefore
+   has to be able to scroll PAST the footer by the height of the bar, or the
+   bar permanently hides the bottom of the page.
+
+   The padding has to live on the FOOTER, not on the page: the footer is
+   rendered by the layout (`app/[locale]/layout.tsx`) after `{children}`, so no
+   spacer a machine page appends to its own `<main>` can ever push the footer up.
+
+   It is also scoped rather than unconditional, so this rule cannot change a
+   single other page. `:has()` matches the footer only while a
+   `<main data-quote-bar-page>` exists in the document, and only the machine
+   page carries that marker. Paying 5rem of dead space under the footer on
+   every other mobile page — where there is no bar to make room for — is the
+   cost of the simpler alternative, and it is not one worth paying.
+
+   5rem is the bar's measured height with room to spare: a 1px top border +
+   `pt-3` + a `size="lg"` button (12px of padding each side of a 24px line) +
+   `pb-3` = 73px, plus the safe-area inset added on top so the clearance
+   survives a notched phone. Reserving the exact measured height would leave
+   the bar's own 1px border sitting on the footer's last line. Below `lg` only,
+   matching the bar's own `lg:hidden`.
+   ------------------------------------------------------------------------- */
+
+@media (max-width: 1023.98px) {
+  body:has(main[data-quote-bar-page]) footer {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ---------------------------------------------------------------------------
    Partner logo marquee
 
    One CSS keyframe and no JavaScript, matching the brand intro above: the

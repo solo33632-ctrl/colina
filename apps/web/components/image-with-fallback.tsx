@@ -47,6 +47,21 @@ type ImageWithFallbackProps = {
    */
   imgRef?: RefObject<HTMLImageElement | null>;
   /**
+   * `srcset` sizes hint, forwarded to the `<img>`.
+   *
+   * Only meaningful alongside a `srcSet`, which this component does not build;
+   * it exists so a caller that DOES hand over a responsive source elsewhere can
+   * keep the hint on the element. Omitted entirely when not supplied, so every
+   * other call site renders exactly as before.
+   */
+  sizes?: string;
+  /**
+   * Fetch priority hint. `high` marks an above-the-fold image as the LCP
+   * candidate so the browser fetches it ahead of everything else on the page.
+   * Omitted when not supplied.
+   */
+  fetchPriority?: 'high' | 'low' | 'auto';
+  /**
    * Whether a failed image is replaced by the initial-letter tile.
    *
    * Defaults to true. Set false for a decorative *second* rendering of an
@@ -72,6 +87,8 @@ export function ImageWithFallback({
   onLoad,
   loading = 'lazy',
   imgRef,
+  sizes,
+  fetchPriority,
   renderFallback = true,
 }: ImageWithFallbackProps) {
   // Tracks *which* src failed rather than a bare flag, so pointing the
@@ -117,6 +134,8 @@ export function ImageWithFallback({
       src={src}
       alt={alt}
       loading={loading}
+      sizes={sizes}
+      fetchPriority={fetchPriority}
       onLoad={(event) => onLoad?.(event.currentTarget)}
       onError={() => setFailedSrc(src)}
       className={`${boxClasses} ${fitClass} ${className ?? ''}`}

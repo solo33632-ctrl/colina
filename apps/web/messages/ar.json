@@ -31,8 +31,7 @@
     "machinesEmpty": "لا توجد آلات في هذه الفئة بعد.",
     "breadcrumbLabel": "مسار التنقل",
     "categoriesCrumb": "أقسام المنتجات",
-    "machineCount": "{count, plural, zero {لا توجد آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}",
-    "heroCountPill": "{count, plural, zero {لا آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}"
+    "machineCount": "{count, plural, zero {لا توجد آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}"
   },
   "Machines": {
     "heading": "كل الآلات",

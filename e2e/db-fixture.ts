@@ -69,6 +69,34 @@ export function runInDb(body: string) {
 export const FIXTURE_TAG = 'st28a';
 
 /**
+ * A photo of a given intrinsic size, as an inline SVG data URI.
+ *
+ * Data URI rather than a real upload, and a real intrinsic size rather than one
+ * shape, for the same reason: the hero specs assert that the photo is rendered
+ * COMPLETE, and the only honest way to do that is with images whose proportions
+ * cannot be confused with the frame's. A 400x900 portrait, a 1600x500 panorama
+ * and a 600x600 square all letterbox in the same box, and each of them would
+ * have lost a different edge to `cover`.
+ *
+ * Because the bytes are in the spec the image always loads, so an assertion
+ * never has to be skipped for an offline run.
+ *
+ * `width`/`height` are set so the browser reports a real `naturalWidth` /
+ * `naturalHeight`, which is what the uncropped proof is computed from.
+ */
+export function photoOf(width: number, height: number) {
+  const svg = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"`,
+    ` viewBox="0 0 ${width} ${height}">`,
+    `<rect width="${width}" height="${height}" fill="#EB693F"/>`,
+    `<circle cx="${Math.round(width / 3)}" cy="${Math.round(height / 2)}" r="${Math.round(Math.min(width, height) / 4)}" fill="#FFF0E2"/>`,
+    `<rect x="${Math.round(width * 0.7)}" y="${Math.round(height * 0.2)}" width="${Math.round(width * 0.2)}" height="${Math.round(height * 0.6)}" fill="#6E1711"/>`,
+    '</svg>',
+  ].join('');
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
+/**
  * A 4:1 photo, as an inline SVG data URI.
  *
  * Data URI rather than a real upload, and 4:1 rather than something square, for
@@ -83,15 +111,7 @@ export const FIXTURE_TAG = 'st28a';
  * `naturalHeight`, which is what the uncropped proof is computed from.
  */
 export function widePhoto() {
-  const svg = [
-    '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200"',
-    ' viewBox="0 0 800 200">',
-    '<rect width="800" height="200" fill="#EB693F"/>',
-    '<circle cx="120" cy="100" r="60" fill="#FFF0E2"/>',
-    '<rect x="600" y="40" width="120" height="120" fill="#6E1711"/>',
-    '</svg>',
-  ].join('');
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+  return photoOf(800, 200);
 }
 
 export type CategoryFixture = {

@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { Breadcrumb } from '@/components/breadcrumb';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 import { MachineSummaryCard } from '@/components/machine-summary-card';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { Reveal } from '@/components/reveal';
@@ -95,75 +96,99 @@ export default async function CategoryDetailPage({ params }: Props) {
     <main>
       <PageViewTracker path={`/categories/${slug}`} locale={locale} />
 
-      {/* The category hero loads ZERO images.
+      {/* The category photo, shown whole, under a neutral scrim, with the
+          category name centred over it and the breadcrumb beneath.
 
-          It used to render the category photo twice — a blurred full-bleed
-          backdrop plus a framed, letterboxed copy in the middle. Both were
-          "always complete" in the sense that neither cropped, but together they
-          meant the top of every category page shipped and decoded a photo before
-          a visitor had read a single word, and a tall upload still had to be
-          squeezed into a fixed-height frame to fit. A band carries the same
-          information for none of that cost: the depth comes from CSS gradients
-          and a repeating pattern, which are a few hundred bytes of CSS rather
-          than a network request, and the layout is identical whatever the
-          upload's proportions.
+          The photo is the page's subject, not its wallpaper: it is the largest
+          thing in the viewport and the LCP element, so it is fetched eagerly at
+          high priority and is the ONE `<img>` on the page. It is `object-contain`
+          inside a box that fills the hero, which is what guarantees the whole
+          machine is visible for any upload — a 400x900 portrait and a 1600x500
+          panorama both letterbox rather than lose their ends.
 
-          The pattern and the highlight are decorative, so they are `aria-hidden`
-          siblings rather than backgrounds on the text column — nothing about the
-          heading depends on them being painted. */}
+          The `bg-white` behind the photo is deliberate, not a default: the scrim
+          is `bg-black/60`, so white photo-area and white letterbox-area darken
+          to exactly the same neutral and the join between them disappears. The
+          tile below had the same idea in reverse, where the white page shows
+          through so a photo that does not fill its square blends in.
+
+          Height is a `min-height`, not a height: the hero grows with the photo
+          and the title but never shrinks below a comfortable band, and because
+          it is declared in `rem` it does not stretch on an ultra-wide screen.
+          The old red gradient band, its diagonal pattern, its radial highlight
+          and the machine-count pill are gone — the photo carries the hero now,
+          and the count still sits beside "Machines in this category" below. */}
       <section
         id="category-hero"
-        className="relative isolate overflow-hidden bg-brand-900"
+        className="relative isolate flex min-h-[18rem] items-center overflow-hidden bg-white md:min-h-[28rem] xl:min-h-[30rem]"
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand-800/70 via-brand-900/50 to-brand-950/80"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 [background-image:repeating-linear-gradient(135deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_1px,transparent_1px,transparent_16px)]"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_at_top,rgba(235,105,63,0.38),transparent_65%)]"
-        />
-        <Container className="relative flex flex-col items-center px-4 py-10 text-center sm:px-6 sm:py-14 [&_ol]:w-fit [&_ol]:max-w-full [&_ol]:justify-center">
-          <div className="[&_ol]:text-brand-200 [&_a]:text-brand-100 [&_a:hover]:text-white [&_span[aria-current]]:text-white">
-            {breadcrumb}
+        {category.image ? (
+          <>
+            {/* `absolute inset-0 h-full w-full` with the padding ON the image:
+                Tailwind's preflight sets `box-sizing: border-box`, so `py-4`
+                is carved out of the element's height and `object-contain` fits
+                the photo inside what is left — the picture keeps a margin from
+                the hero's top and bottom without a wrapper element in between.
+                `sizes="100vw"` is exact: the image is as wide as the viewport
+                and is never re-requested. */}
+            <ImageWithFallback
+              id="category-hero-photo"
+              src={category.image}
+              alt=""
+              fit="contain"
+              loading="eager"
+              fetchPriority="high"
+              sizes="100vw"
+              renderFallback={false}
+              className="absolute inset-0 h-full w-full py-4 sm:py-6"
+            />
+            {/* One flat scrim over everything, so the title reads the same over
+                a bright studio shot and a dark night shot alike. */}
+            <div aria-hidden="true" className="absolute inset-0 bg-black/60" />
+          </>
+        ) : (
+          // No photo: the same band in a solid dark field, same height, same
+          // centred title — a category without artwork must not look broken.
+          <div aria-hidden="true" className="absolute inset-0 bg-stone-800" />
+        )}
+
+        <Container className="relative flex w-full flex-col items-center px-4 py-16 text-center sm:px-6">
+          {/* The title is the only in-flow child, so it sits exactly on the
+              hero's centre. The breadcrumb hangs below it out of flow: in flow
+              it would push the heading one half-breadcrumb above centre, which
+              is visible on a short hero. `inset-x-0` + a centred `ol` wraps the
+              trail on a 390px screen without any translate or fixed width. */}
+          <div className="relative flex max-w-full flex-col items-center">
+            <h1 className="max-w-4xl text-balance text-3xl font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] sm:text-5xl">
+              {name}
+            </h1>
+            <div className="absolute inset-x-0 top-full mt-3 px-4 [&_a]:underline [&_a:hover]:underline-offset-2 [&_ol]:justify-center [&_ol]:text-white/80 [&_span[aria-current]]:text-white">
+              {breadcrumb}
+            </div>
           </div>
-          <h1 className="mt-3 max-w-3xl text-2xl font-bold text-white sm:text-4xl">
-            {name}
-          </h1>
-          {/* How much there is to see, stated up front rather than discovered by
-              scrolling. Pluralised per locale (`heroCountPill`), and always
-              rendered — "0 machines" is information, not an empty state. */}
-          <span
-            id="category-hero-count"
-            className="mt-4 shrink-0 rounded-full bg-brand-800/70 px-3.5 py-1 text-sm font-medium text-brand-100 ring-1 ring-brand-700"
-          >
-            {t('heroCountPill', { count: category.machines.length })}
-          </span>
-          {hasDescription ? (
-            <p
-              id="category-description"
-              className="mt-6 max-w-3xl leading-relaxed text-brand-100"
-            >
-              {description}
-            </p>
-          ) : null}
         </Container>
       </section>
 
       <Container className="py-16">
-        {/* The description used to be repeated here as well as in the hero.
-            It is now rendered once, inside the band — two elements sharing
-            `id="category-description"` is invalid HTML and made the id
-            ambiguous for both tests and assistive tech. */}
-        <Reveal className="mt-12">
+        {/* The description lives here now, once. It used to be repeated inside
+            the hero band and again below it, which meant two elements sharing
+            `id="category-description"` — invalid HTML, and an ambiguous id for
+            both tests and assistive tech. The hero is the photo and the title;
+            the prose belongs in the page body, where it has room to be read at
+            a comfortable measure instead of being stacked under a heading. */}
+        {hasDescription ? (
+          <p id="category-description" className="max-w-3xl leading-relaxed">
+            {description}
+          </p>
+        ) : null}
+
+        <Reveal className={hasDescription ? 'mt-12' : undefined}>
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="text-xl font-semibold text-stone-900">
               {t('machinesHeading')}
             </h2>
+            {/* The machine count kept its place beside this heading when the
+                hero's count pill went. */}
             <p className="text-sm text-stone-500">
               {t('machineCount', { count: category.machines.length })}
             </p>

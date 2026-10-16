@@ -95,15 +95,14 @@ export function QuoteRequestPanel({ machineRef }: QuoteRequestPanelProps) {
     }
   }
 
+  // This is the CARD, not the section. The page owns the `<section id="quote">`
+  // and its visible heading, so the card carries no heading of its own — two
+  // elements with `id="quote-heading"` is invalid HTML, and it made the
+  // `#quote-heading` hook ambiguous for the page, the tests and assistive tech.
+  // The reassurance line stays here, directly above the fields it introduces.
   return (
-    <section
-      aria-labelledby="quote-heading"
-      className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm"
-    >
-      <h2 id="quote-heading" className="text-lg font-semibold text-stone-900">
-        {t('heading')}
-      </h2>
-      <p className="mt-1 text-sm text-stone-600">{t('subheading')}</p>
+    <div className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+      <p className="text-sm text-stone-600">{t('subheading')}</p>
 
       {/* Which machine this quote is about, stated rather than asked: the
           visitor should never have to type a model name to ask about one. */}
@@ -114,10 +113,21 @@ export function QuoteRequestPanel({ machineRef }: QuoteRequestPanelProps) {
         <span className="text-stone-700">{machineRef}</span>
       </p>
 
+      {/* Two columns from `md` up: name beside phone, email beside company, and
+          the message — the one field that wants a full line — across the whole
+          width. One column on a phone.
+
+          `md:col-start-2` is what pairs each field with its partner: with an
+          auto-flowed grid the second column would fill row-major and put email
+          under NAME rather than under COMPANY, so each even-numbered field
+          states the column it starts in. The message simply spans both.
+
+          Every id, name attribute, validation rule and the honeypot below are
+          unchanged; only the placement is new. */}
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        className="mt-5 grid gap-4 text-start"
+        className="mt-5 grid gap-4 text-start md:grid-cols-2"
       >
         <Field
           id="quote-name"
@@ -133,22 +143,10 @@ export function QuoteRequestPanel({ machineRef }: QuoteRequestPanelProps) {
           />
         </Field>
         <Field
-          id="quote-company"
-          label={t('companyLabel')}
-          error={errors.company?.message}
-        >
-          <input
-            id="quote-company"
-            type="text"
-            autoComplete="organization"
-            className={inputClasses}
-            {...register('company')}
-          />
-        </Field>
-        <Field
           id="quote-phone"
           label={t('phoneLabel')}
           error={errors.phone?.message}
+          className="md:col-start-2"
         >
           <input
             id="quote-phone"
@@ -172,9 +170,24 @@ export function QuoteRequestPanel({ machineRef }: QuoteRequestPanelProps) {
           />
         </Field>
         <Field
+          id="quote-company"
+          label={t('companyLabel')}
+          error={errors.company?.message}
+          className="md:col-start-2"
+        >
+          <input
+            id="quote-company"
+            type="text"
+            autoComplete="organization"
+            className={inputClasses}
+            {...register('company')}
+          />
+        </Field>
+        <Field
           id="quote-message"
           label={t('messageLabel')}
           error={errors.message?.message}
+          className="md:col-span-2"
         >
           <textarea
             id="quote-message"
@@ -208,12 +221,12 @@ export function QuoteRequestPanel({ machineRef }: QuoteRequestPanelProps) {
           </p>
         ) : null}
 
-        <div>
+        <div className="md:col-span-2">
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {t('submitLabel')}
           </Button>
         </div>
       </form>
-    </section>
+    </div>
   );
 }

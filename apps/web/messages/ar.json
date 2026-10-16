@@ -47,6 +47,8 @@
   },
   "MachinePage": {
     "categoryLabel": "الفئة",
+    "requestQuote": "اطلب عرض سعر",
+    "quoteHeading": "اطلب عرض سعر لهذه الماكينة",
     "descriptionHeading": "الوصف",
     "specsHeading": "المواصفات",
     "galleryHeading": "معرض الصور",

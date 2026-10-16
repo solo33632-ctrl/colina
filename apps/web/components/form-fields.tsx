@@ -10,14 +10,20 @@ export type FieldProps = {
   label: ReactNode;
   error?: string;
   children: ReactNode;
+  /**
+   * Extra classes on the wrapping element, for grid placement: a form laid out
+   * in two columns needs its second field of each row to start in column two.
+   * Optional, so every other caller renders exactly as before.
+   */
+  className?: string;
 };
 
 // Shared label + control + error block used by the contact and
 // maintenance-request forms. Presentational only — validation lives in
 // each form's Zod schema.
-export function Field({ id, label, error, children }: FieldProps) {
+export function Field({ id, label, error, children, className }: FieldProps) {
   return (
-    <div>
+    <div className={className}>
       <label
         htmlFor={id}
         className="mb-1 block text-sm font-medium text-stone-700"

@@ -807,7 +807,11 @@ test.describe('machine quote panel', () => {
       await context.close();
     }
 
-    // Mobile: the panel comes after the gallery, before the description.
+    // Mobile: the quote section comes after the detail sections, not beside
+    // the gallery. This assertion used to be the other way round — the panel
+    // was a sticky side column that sat ABOVE the description — and stage 29b-1
+    // deliberately inverted it so a visitor reads what the machine is before
+    // they are asked to fill anything in.
     const context = await browser.newContext({
       viewport: { width: 390, height: 844 },
     });
@@ -821,9 +825,13 @@ test.describe('machine quote panel', () => {
       return {
         panel: top('#quote-heading'),
         description: top('#description-heading'),
+        summary: top('h1'),
       };
     });
-    expect(order.panel).toBeLessThan(order.description);
+    // The name and its short description come first, then the details, then
+    // the form.
+    expect(order.summary).toBeLessThan(order.description);
+    expect(order.description).toBeLessThan(order.panel);
     await context.close();
   });
 
@@ -850,7 +858,14 @@ test.describe('machine quote panel', () => {
 
   // The endpoint is rate limited (5 per 10 minutes per IP, shared with the
   // public maintenance form), so the suite deliberately spends only one
-  // submission here and checks it end to end.
+  // *successful* submission here and checks it end to end. The one above is
+  // client-side rejected and never reaches the endpoint, so it costs nothing
+  // against that budget — that test proves as much.
+  //
+  // `e2e/machine-quote.spec.ts` spends one too. Two of the five go to these two
+  // specs, so a full run fits the budget; that spec asserts the request payload
+  // and the success state without needing a lead in the admin inbox, which is
+  // what keeps its cost to a single request.
   test('a valid submission reaches the backend and shows up as a lead', async ({
     browser,
   }) => {

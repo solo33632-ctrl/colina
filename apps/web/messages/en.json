@@ -47,6 +47,8 @@
   },
   "MachinePage": {
     "categoryLabel": "Category",
+    "requestQuote": "Request a quote",
+    "quoteHeading": "Request a quote for this machine",
     "descriptionHeading": "Description",
     "specsHeading": "Specifications",
     "galleryHeading": "Gallery",

@@ -32,7 +32,20 @@
     "machinesEmpty": "لا توجد آلات في هذه الفئة بعد.",
     "breadcrumbLabel": "مسار التنقل",
     "categoriesCrumb": "فئات المنتجات",
-    "machineCount": "{count, plural, zero {لا توجد آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}"
+    "machineCount": "{count, plural, zero {لا توجد آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}",
+    "heroCountPill": "{count, plural, zero {لا آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}"
+  },
+  "Machines": {
+    "heading": "كل الآلات",
+    "subheading": "تصفح كامل كتالوج خطوط الإنتاج.",
+    "filterLabel": "تصفية حسب الفئة",
+    "allCategories": "الكل",
+    "empty": "لا توجد آلات في هذه الفئة بعد.",
+    "count": "{count, plural, zero {لا توجد آلات} one {آلة واحدة} two {آلتان} few {# آلات} many {# آلة} other {# آلة}}"
+  },
+  "MachineCard": {
+    "viewDetails": "عرض التفاصيل",
+    "featured": "مميزة"
   },
   "MachinePage": {
     "categoryLabel": "الفئة",

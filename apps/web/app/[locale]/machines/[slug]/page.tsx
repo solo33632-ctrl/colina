@@ -63,6 +63,9 @@ export default async function MachineDetailPage({ params }: Props) {
       images: { orderBy: { position: 'asc' } },
       relatedMachines: {
         include: {
+          // Same reason as the category grid: the shared card prints the
+          // machine's category as a label above its name.
+          category: true,
           images: { orderBy: { position: 'asc' }, take: 1 },
         },
       },

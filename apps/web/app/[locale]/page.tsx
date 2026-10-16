@@ -60,7 +60,12 @@ export default async function HomePage({ params }: Props) {
       where: { featured: true },
       orderBy: [{ updatedAt: 'desc' }, { nameEn: 'asc' }],
       take: FEATURED_MACHINES_LIMIT,
-      include: { images: { orderBy: { position: 'asc' }, take: 1 } },
+      // The card labels each machine with its category, so the parent row
+      // comes along with the first photo.
+      include: {
+        category: true,
+        images: { orderBy: { position: 'asc' }, take: 1 },
+      },
     }),
   ]);
 

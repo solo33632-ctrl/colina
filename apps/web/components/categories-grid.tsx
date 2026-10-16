@@ -31,7 +31,7 @@ export async function CategoriesGrid({
           ) : (
             <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {categories.map((category) => (
-                <li key={category.id}>
+                <li key={category.id} className="h-full">
                   <CategoryCard category={category} locale={locale} />
                 </li>
               ))}

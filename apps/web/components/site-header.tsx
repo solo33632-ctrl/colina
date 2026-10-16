@@ -11,7 +11,7 @@ export async function SiteHeader() {
   const nav = await getTranslations('Nav');
   const items = [
     { label: nav('home'), href: '/' as const },
-    { label: nav('machines'), href: '/categories' as const },
+    { label: nav('machines'), href: '/machines' as const },
     { label: nav('services'), href: '/services' as const },
     { label: nav('about'), href: '/about' as const },
     { label: nav('contact'), href: '/#contact' as const },

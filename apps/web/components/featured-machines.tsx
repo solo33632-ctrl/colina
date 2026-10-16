@@ -29,6 +29,7 @@ export async function FeaturedMachines({
   if (machines.length === 0) return null;
 
   const t = await getTranslations('FeaturedMachines');
+  const card = await getTranslations('MachineCard');
 
   return (
     <section aria-labelledby="featured-machines-heading">
@@ -66,7 +67,14 @@ export async function FeaturedMachines({
         <ul className="mt-8 grid justify-center gap-6 [grid-template-columns:repeat(auto-fit,minmax(16rem,22rem))]">
           {machines.map((machine) => (
             <li key={machine.id} className="h-full">
-              <MachineSummaryCard machine={machine} locale={locale} />
+              <MachineSummaryCard
+                machine={machine}
+                locale={locale}
+                labels={{
+                  viewDetails: card('viewDetails'),
+                  featured: card('featured'),
+                }}
+              />
             </li>
           ))}
         </ul>

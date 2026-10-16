@@ -10,6 +10,10 @@ const STATIC_PATHS = [
   '/',
   '/about',
   '/categories',
+  // The catalogue listing. Its filtered views are the same URL with a
+  // `?category=` query, which a sitemap must not list, so only the unfiltered
+  // entry belongs here — the chips on the page reach every other view.
+  '/machines',
   '/services',
   '/partners',
   '/contact',

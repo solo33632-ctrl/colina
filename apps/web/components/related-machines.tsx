@@ -29,6 +29,7 @@ export async function RelatedMachines({
   if (machines.length === 0) return null;
 
   const t = await getTranslations('RelatedMachines');
+  const card = await getTranslations('MachineCard');
 
   return (
     <section
@@ -45,10 +46,17 @@ export async function RelatedMachines({
           </h2>
           <p className="mt-2 text-center text-stone-600">{t('subheading')}</p>
         </Reveal>
-        <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {machines.map((machine) => (
-            <li key={machine.id}>
-              <MachineSummaryCard machine={machine} locale={locale} />
+            <li key={machine.id} className="h-full">
+              <MachineSummaryCard
+                machine={machine}
+                locale={locale}
+                labels={{
+                  viewDetails: card('viewDetails'),
+                  featured: card('featured'),
+                }}
+              />
             </li>
           ))}
         </ul>

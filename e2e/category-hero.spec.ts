@@ -1,301 +1,280 @@
 import { test, expect, type Page } from '@playwright/test';
-import {
-  ADMIN_URL,
-  ADMIN_EMAIL,
-  ADMIN_PASSWORD,
-  copyFor,
-  loginState,
-} from './admin-session';
+import { cleanupFixtures, createCategory, widePhoto } from './db-fixture';
 
 const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
-const en = copyFor('en');
 
-// Phase 26/27: the category detail hero must show the whole photo
-// (letterboxed, never cropped) over a blurred backdrop — Phase 27 centers
-// the stack (breadcrumb, title, photo) instead of pinning the photo to one
-// side, so the layout is symmetric and RTL needs no mirroring — and the
-// long-form fields (category description, machine full description/specs) are
-// optional, so blank in the admin means the section is absent on the public
-// page. These tests drive the real admin forms and read the public pages
-// back, so they also lock the "blank saves and disappears" behaviour.
-test.describe('category hero photo', () => {
-  test.skip(!ADMIN_PASSWORD, 'ADMIN_PASSWORD env is required');
+// The category hero carries no photograph at all.
+//
+// It used to render the category photo twice — a blurred full-bleed backdrop
+// plus a framed, letterboxed copy — which meant every category page shipped and
+// decoded an image before a visitor had read a word, and a tall upload still had
+// to be squeezed into a fixed-height frame to fit. These tests lock the
+// replacement: a brand band built from CSS gradients and a pattern, so the hero
+// loads ZERO images no matter what the category row holds.
+//
+// The fixtures below are written straight to the database (see db-fixture.ts)
+// rather than through the admin UI: a public-page test should not depend on an
+// admin login, an admin server and a set of translated form labels. Every
+// fixture is tagged and removed again in `afterAll`.
 
-  // A photo that loads: picsum delivers a fixed-dimension image per seed.
-  // Offline environments get the structural assertions only — the spec must
-  // not fail because an external CDN is unreachable.
-  const TALL_PHOTO = `https://picsum.photos/seed/colina-tall-${Date.now().toString(36)}/400/900`;
-  const WIDE_PHOTO = `https://picsum.photos/seed/colina-wide-${Date.now().toString(36)}/1600/500`;
+const STAMP = Date.now().toString(36);
+const TAG = 'st28a';
 
-  // The four widths the brief asks to verify at, plus the default desktop.
-  const WIDTHS = [390, 768, 1280, 1920] as const;
+// A category that HAS a photo — the case the old hero was built around.
+const WITH_PHOTO = `${TAG}-herophoto-${STAMP}`;
+const WITH_PHOTO_DESCRIPTION =
+  'Automatic filling and capping lines built for high-volume food plants, ' +
+  'configured per line and supported on site by our engineers.';
 
-  async function createCategoryWithPhoto(
-    page: Page,
-    name: string,
-    slug: string,
-    imageUrl: string
-  ) {
-    await page.goto(`${ADMIN_URL}/en/categories/new`);
-    await page.getByLabel('Name (English)').fill(name);
-    await page.getByLabel('Name (Arabic)').fill(`فئة ${name}`);
-    await page.getByLabel('Slug').fill(slug);
-    // Description left completely blank on purpose: it must save (Phase 26)
-    // and the public page must then render no description block.
-    await page.getByRole('button', { name: 'Or paste a URL' }).click();
-    await page.locator('#cat-image-url').fill(imageUrl);
-    await page.getByRole('button', { name: 'Create category' }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);
-  }
+// The same category with its description left blank, which must render no
+// description block at all.
+const NO_DESCRIPTION = `${TAG}-heroblank-${STAMP}`;
 
-  async function deleteCategory(page: Page, name: string) {
-    await page.goto(`${ADMIN_URL}/en/categories?q=${encodeURIComponent(name)}`);
-    await page
-      .locator('tr', { hasText: name })
-      .getByRole('link', { name: 'Edit' })
-      .click();
-    await expect(page).toHaveURL(/\/categories\/[^/]+\/edit$/);
-    await page
-      .getByRole('button', { name: new RegExp(`^Delete ${name}`) })
-      .click();
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Delete' })
-      .click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/en/categories`);
-  }
+// A seeded category that is always present and always has a description.
+const SEEDED = 'production-lines';
 
-  // Asserts the Phase 27 centered stack at one viewport: photo centered
-  // horizontally in the banner (within 2px), fully inside it vertically,
-  // and never overlapping the title/breadcrumb — identical in RTL because
-  // the stack is symmetric.
-  async function expectCenteredStack(page: Page) {
-    const backdrop = page.locator('#category-hero-backdrop');
-    const photoBox = page.locator('#category-hero-photo');
-    const photo = page.locator('#category-hero-photo img');
-    await expect(backdrop).toHaveCount(1);
-    await expect(photo).toHaveCount(1);
+// The four widths the brief asks for.
+const WIDTHS = [390, 768, 1280, 1920] as const;
 
-    const backdropStyle = await backdrop.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { objectFit: style.objectFit, filter: style.filter };
-    });
-    expect(backdropStyle.objectFit).toBe('cover');
-    expect(backdropStyle.filter).toContain('blur(');
-
-    const photoStyle = await photo.evaluate(
-      (element) => getComputedStyle(element).objectFit
-    );
-    expect(photoStyle).toBe('contain');
-
-    const geometry = await page.evaluate(() => {
-      const banner = document
-        .querySelector('section[class*="bg-brand-900"]')!
-        .getBoundingClientRect();
-      const box = document
-        .getElementById('category-hero-photo')!
-        .getBoundingClientRect();
-      const title = document.querySelector('h1')!.getBoundingClientRect();
-      const crumb = document
-        .querySelector('main nav[aria-label]')!
-        .getBoundingClientRect();
-      return { banner, box, title, crumb };
-    });
-
-    // Horizontally centered in the banner: both centers within ~2px.
-    const bannerCenterX = geometry.banner.left + geometry.banner.width / 2;
-    const photoCenterX = geometry.box.left + geometry.box.width / 2;
-    expect(Math.abs(photoCenterX - bannerCenterX)).toBeLessThanOrEqual(2);
-
-    // The photo stays inside the banner vertically.
-    expect(geometry.box.top).toBeGreaterThanOrEqual(geometry.banner.top - 1);
-    expect(geometry.box.bottom).toBeLessThanOrEqual(geometry.banner.bottom + 1);
-
-    // Normal flow (breadcrumb → title → photo): no overlap possible, and
-    // asserted so a future absolute-position refactor cannot break it.
-    expect(geometry.crumb.bottom).toBeLessThanOrEqual(geometry.title.top + 1);
-    expect(geometry.title.bottom).toBeLessThanOrEqual(geometry.box.top + 1);
-  }
-
-  // When the CDN answers, prove nothing is cropped: the drawn image must
-  // keep the source's aspect ratio exactly (a cropped `cover` would not).
-  // `object-fit: contain` fits the source inside the img's box without
-  // distortion, so the drawn size is min(scale) on each axis — recompute it
-  // and require the drawn ratio to equal the natural ratio.
-  async function expectUncropped(page: Page) {
-    const img = page.locator('#category-hero-photo img');
-    const loaded = await img
-      .evaluate((element) => (element as HTMLImageElement).naturalWidth > 0)
-      .catch(() => false);
-    if (!loaded) {
-      return;
-    }
-    const sizes = await img.evaluate((element) => {
-      const image = element as HTMLImageElement;
-      const rect = image.getBoundingClientRect();
-      const naturalRatio = image.naturalWidth / image.naturalHeight;
-      const drawnWidth = Math.min(rect.width, rect.height * naturalRatio);
-      const drawnHeight = Math.min(rect.height, rect.width / naturalRatio);
-      return { naturalRatio, drawnWidth, drawnHeight };
-    });
-    expect(sizes.drawnHeight).toBeGreaterThan(0);
-    expect(sizes.drawnWidth).toBeGreaterThan(0);
-    expect(sizes.drawnWidth / sizes.drawnHeight).toBeCloseTo(
-      sizes.naturalRatio,
-      3
-    );
-  }
-
-  test('a photo category centers the complete photo under the title at every width, in both locales', async ({
-    browser,
-  }) => {
-    const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
-    const context = await browser.newContext({ storageState: state });
-    const page = await context.newPage();
-
-    const stamp = Date.now().toString(36);
-    const tallName = `Hero Tall ${stamp}`;
-    const tallSlug = `hero-tall-${stamp}`;
-    const wideName = `Hero Wide ${stamp}`;
-    const wideSlug = `hero-wide-${stamp}`;
-    try {
-      await createCategoryWithPhoto(page, tallName, tallSlug, TALL_PHOTO);
-      await createCategoryWithPhoto(page, wideName, wideSlug, WIDE_PHOTO);
-
-      // The blank description saved with the categories above must not
-      // render a description block on the public page.
-      for (const [locale, slug] of [
-        ['en', tallSlug],
-        ['en', wideSlug],
-        ['ar', tallSlug],
-        ['ar', wideSlug],
-      ] as const) {
-        await page.goto(`${WEB_URL}/${locale}/categories/${slug}`);
-        await expect(page.locator('#category-description')).toHaveCount(0);
-      }
-
-      // Tall photo: centered stack at all four widths, both locales. The
-      // layout is symmetric, so RTL only needs confirming, not mirroring.
-      for (const width of WIDTHS) {
-        await page.setViewportSize({ width, height: 900 });
-        for (const locale of ['en', 'ar'] as const) {
-          await page.goto(`${WEB_URL}/${locale}/categories/${tallSlug}`);
-          await expectCenteredStack(page);
-        }
-      }
-
-      // Wide photo: the same guarantees at a desktop width.
-      await page.setViewportSize({ width: 1280, height: 900 });
-      for (const locale of ['en', 'ar'] as const) {
-        await page.goto(`${WEB_URL}/${locale}/categories/${wideSlug}`);
-        await expectCenteredStack(page);
-      }
-
-      // Uncropped proof, when the CDN answers, for both shapes.
-      await page.goto(`${WEB_URL}/en/categories/${tallSlug}`);
-      await expectUncropped(page);
-      await page.goto(`${WEB_URL}/en/categories/${wideSlug}`);
-      await expectUncropped(page);
-    } finally {
-      await deleteCategory(page, tallName);
-      await deleteCategory(page, wideName);
-      await context.close();
-    }
+test.beforeAll(() => {
+  const photo = widePhoto();
+  createCategory({
+    slug: WITH_PHOTO,
+    nameEn: `Hero Photo ${STAMP}`,
+    nameAr: `صورة البطل ${STAMP}`,
+    descriptionEn: WITH_PHOTO_DESCRIPTION,
+    descriptionAr:
+      'خطوط تعبئة وتغطية-automatically 구성 for high-volume food plants.',
+    image: photo,
   });
-
-  test('a category without a photo keeps the plain band with centered text, never a blurred hero', async ({
-    page,
-  }) => {
-    for (const width of [390, 1280] as const) {
-      await page.setViewportSize({ width, height: 900 });
-      for (const locale of ['en', 'ar'] as const) {
-        await page.goto(`${WEB_URL}/${locale}/categories/production-lines`);
-        await expect(page.locator('#category-hero-backdrop')).toHaveCount(0);
-        await expect(page.locator('#category-hero-photo')).toHaveCount(0);
-        const title = locale === 'en' ? 'Production Lines' : 'خطوط الإنتاج';
-        await expect(
-          page.getByRole('heading', { level: 1, name: title })
-        ).toBeVisible();
-
-        // Centered to match the photo layout: the h1's center sits within
-        // ~2px of the band's center.
-        const geometry = await page.evaluate(() => {
-          const band = document
-            .querySelector('section[class*="bg-brand-900"]')!
-            .getBoundingClientRect();
-          const title = document.querySelector('h1')!.getBoundingClientRect();
-          return { band, title };
-        });
-        const bandCenterX = geometry.band.left + geometry.band.width / 2;
-        const titleCenterX = geometry.title.left + geometry.title.width / 2;
-        expect(Math.abs(titleCenterX - bandCenterX)).toBeLessThanOrEqual(2);
-      }
-    }
+  createCategory({
+    slug: NO_DESCRIPTION,
+    nameEn: `Hero Blank ${STAMP}`,
+    nameAr: `بطل فارغ ${STAMP}`,
+    image: photo,
   });
 });
 
-test.describe('optional machine long-form fields', () => {
-  test.skip(!ADMIN_PASSWORD, 'ADMIN_PASSWORD env is required');
+test.afterAll(() => {
+  cleanupFixtures();
+});
 
-  test('a machine saved with blank specs and full description renders neither section on the public page', async ({
-    browser,
+/** The hero section itself. */
+function hero(page: Page) {
+  return page.locator('#category-hero');
+}
+
+/**
+ * No image of any kind inside the hero, whatever the category row holds.
+ *
+ * This is the load-bearing assertion of the whole change: a single `<img>` or
+ * CSS `background-image` here means the hero is fetching media again. The
+ * check covers both, because the pattern could be painted either way.
+ */
+async function expectNoImagesInHero(page: Page) {
+  await expect(page.locator('#category-hero img')).toHaveCount(0);
+  await expect(page.locator('#category-hero picture')).toHaveCount(0);
+  await expect(page.locator('#category-hero svg')).toHaveCount(0);
+  const painted = await hero(page).evaluate((section) => {
+    const backgrounds: string[] = [];
+    for (const element of [
+      section,
+      ...Array.from(section.querySelectorAll('*')),
+    ]) {
+      const style = getComputedStyle(element);
+      if (style.backgroundImage && style.backgroundImage !== 'none') {
+        // The decorative gradient/pattern ARE background-images; what must not
+        // appear is a raster photo, so only flag anything that loads a file.
+        if (/url\(/.test(style.backgroundImage)) {
+          backgrounds.push(style.backgroundImage);
+        }
+      }
+    }
+    return backgrounds;
+  });
+  expect(painted).toEqual([]);
+}
+
+test.describe('category hero is photo-free', () => {
+  test('a category that has a photo still loads no image in its hero, in both locales', async ({
+    page,
   }) => {
-    const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
-    const context = await browser.newContext({ storageState: state });
-    const page = await context.newPage();
+    for (const locale of ['en', 'ar'] as const) {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(`${WEB_URL}/${locale}/categories/${WITH_PHOTO}`);
+      await expect(hero(page)).toHaveCount(1);
+      await expectNoImagesInHero(page);
+      // The photo is still shown on the tile that links here, so this is a
+      // statement about the hero and not about the data.
+      await page.goto(`${WEB_URL}/${locale}/categories`);
+      const tile = page.locator(
+        `a[href="/${locale}/categories/${WITH_PHOTO}"]`
+      );
+      await expect(tile.locator('img')).toHaveCount(1);
+    }
+  });
 
-    const stamp = `blank-${Date.now().toString(36)}`;
-    const name = `Blank Fields E2E ${stamp}`;
-
-    try {
-      await page.goto(`${ADMIN_URL}/en/machines/new`);
-      await page.getByLabel('Name (English)').fill(name);
-      await page.getByLabel('Name (Arabic)').fill(`آلة ${stamp}`);
-      await page.getByLabel('Slug').fill(stamp);
-      await page.getByLabel('Category').selectOption({ index: 1 });
-      // Only the required short description is filled; the long-form fields
-      // are left blank and must save.
-      await page
-        .getByLabel('Short description (English)')
-        .fill('Short e2e description, over ten.');
-      await page
-        .getByLabel('Short description (Arabic)')
-        .fill('وصف قصير يزيد عن عشرة.');
-      await page.getByRole('button', { name: 'Create machine' }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);
-
+  test('the removed hero ids are gone from every category, photographed or not', async ({
+    page,
+  }) => {
+    for (const slug of [WITH_PHOTO, NO_DESCRIPTION, SEEDED]) {
       for (const locale of ['en', 'ar'] as const) {
-        await page.goto(`${WEB_URL}/${locale}/machines/${stamp}`);
-        // Blank long-form fields = no section at all, in both locales.
-        await expect(page.locator('#description-heading')).toHaveCount(0);
-        await expect(page.locator('#specs-heading')).toHaveCount(0);
-        // The lead paragraph (short description) and the quote panel are
-        // untouched.
-        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-        await expect(page.locator('#quote-heading')).toBeVisible();
+        await page.goto(`${WEB_URL}/${locale}/categories/${slug}`);
+        await expect(page.locator('#category-hero-photo')).toHaveCount(0);
+        await expect(page.locator('#category-hero-backdrop')).toHaveCount(0);
+      }
+    }
+  });
+
+  test('breadcrumb, title, count pill and description are centered, in both locales', async ({
+    page,
+  }) => {
+    for (const locale of ['en', 'ar'] as const) {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(`${WEB_URL}/${locale}/categories/${WITH_PHOTO}`);
+      const expectedName =
+        locale === 'en' ? `Hero Photo ${STAMP}` : `صورة البطل ${STAMP}`;
+
+      // The trail, the heading and the pill are all present...
+      const trail = hero(page).getByRole('navigation');
+      await expect(trail).toBeVisible();
+      await expect(trail.locator('[aria-current="page"]')).toHaveCount(1);
+      await expect(
+        page.getByRole('heading', { level: 1, name: expectedName })
+      ).toBeVisible();
+      await expect(
+        hero(page).getByRole('link', { name: expectedName })
+      ).toHaveCount(0);
+
+      // ...and each one's horizontal centre sits on the band's centre. The
+      // stack is symmetric, so RTL needs confirming, not mirroring.
+      const geometry = await page.evaluate(() => {
+        const band = document
+          .querySelector('#category-hero')!
+          .getBoundingClientRect();
+        const centreOf = (selector: string) => {
+          const el = document.querySelector(selector)!;
+          const rect = el.getBoundingClientRect();
+          return rect.left + rect.width / 2;
+        };
+        return {
+          bandCentre: band.left + band.width / 2,
+          title: centreOf('#category-hero h1'),
+          pill: centreOf('#category-hero-count'),
+          description: centreOf('#category-description'),
+        };
+      });
+      const bandCentre = geometry.bandCentre;
+      expect(Math.abs(geometry.title - bandCentre)).toBeLessThanOrEqual(2);
+      expect(Math.abs(geometry.pill - bandCentre)).toBeLessThanOrEqual(2);
+      expect(Math.abs(geometry.description - bandCentre)).toBeLessThanOrEqual(
+        2
+      );
+    }
+  });
+
+  test('the machine-count pill is present and pluralised per locale', async ({
+    page,
+  }) => {
+    // Both fixtures are empty categories, which is the interesting count: the
+    // pill must say so rather than rendering a bare "0" or disappearing.
+    for (const locale of ['en', 'ar'] as const) {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(`${WEB_URL}/${locale}/categories/${NO_DESCRIPTION}`);
+      const pill = page.locator('#category-hero-count');
+      await expect(pill).toBeVisible();
+      const text = (await pill.textContent())!.trim();
+      expect(text.length).toBeGreaterThan(0);
+      // Arabic pluralises "no machines" into its own phrase; English says
+      // "No machines". Either way it must not be a lone digit.
+      if (locale === 'en') {
+        expect(text).toBe('No machines');
+      } else {
+        expect(text).toBe('لا آلات');
       }
 
-      // Sanity: a machine that does have specs still shows its sections, so
-      // the selectors above prove absence rather than a broken page.
-      await page.goto(`${WEB_URL}/en/machines/colina-pro-1000`);
-      await expect(page.locator('#description-heading')).toBeVisible();
-      await expect(page.locator('#specs-heading')).toBeVisible();
-    } finally {
-      await page.goto(`${ADMIN_URL}/en/machines?q=${stamp}`);
-      await page
-        .locator('tr', { hasText: name })
-        .getByRole('link', { name: 'Edit' })
-        .click();
-      await expect(page).toHaveURL(/\/machines\/[^/]+\/edit$/);
-      await page
-        .getByRole('button', { name: new RegExp(`^Delete ${name}`) })
-        .click();
-      await page
-        .getByRole('dialog')
-        .getByRole('button', { name: 'Delete' })
-        .click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);
-      await context.close();
+      // A category that does hold machines states how many, in words.
+      await page.goto(`${WEB_URL}/${locale}/categories/${SEEDED}`);
+      const seeded = (await page
+        .locator('#category-hero-count')
+        .textContent())!.trim();
+      if (locale === 'en') {
+        expect(seeded).toMatch(/^\d+ machines?$/);
+      } else {
+        expect(seeded).toMatch(/^آلة|آلتان|آلات/);
+      }
+    }
+  });
+
+  test('the description renders in full only when it is non-empty', async ({
+    page,
+  }) => {
+    for (const locale of ['en', 'ar'] as const) {
+      await page.setViewportSize({ width: 1280, height: 900 });
+
+      // Present, and not truncated: every word of the fixture's copy survives.
+      await page.goto(`${WEB_URL}/${locale}/categories/${WITH_PHOTO}`);
+      const description = page.locator('#category-description');
+      await expect(description).toHaveCount(1);
+      await expect(description).toBeVisible();
+      if (locale === 'en') {
+        await expect(description).toHaveText(WITH_PHOTO_DESCRIPTION);
+      }
+      // Visible, not clipped by a fixed height: the element is at least as tall
+      // as the text it wraps, with no overflow hiding any of it.
+      const clipped = await description.evaluate((el) => {
+        const style = getComputedStyle(el);
+        return {
+          overflow: style.overflow,
+          lineClamp: style.webkitLineClamp,
+        };
+      });
+      expect(['visible', 'clip']).toContain(clipped.overflow);
+      expect(clipped.lineClamp).toBe('none');
+
+      // Blank description: no block at all.
+      await page.goto(`${WEB_URL}/${locale}/categories/${NO_DESCRIPTION}`);
+      await expect(page.locator('#category-description')).toHaveCount(0);
+    }
+  });
+
+  test('no horizontal overflow at 390/768/1280/1920, in both locales', async ({
+    page,
+  }) => {
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const locale of ['en', 'ar'] as const) {
+        for (const slug of [WITH_PHOTO, NO_DESCRIPTION, SEEDED]) {
+          await page.goto(`${WEB_URL}/${locale}/categories/${slug}`);
+          const widths = await page.evaluate(() => ({
+            scroll: document.scrollingElement!.scrollWidth,
+            client: document.documentElement.clientWidth,
+            heroWidth: document
+              .querySelector('#category-hero')!
+              .getBoundingClientRect().width,
+          }));
+          expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+          // The band never exceeds the viewport either.
+          expect(widths.heroWidth).toBeLessThanOrEqual(widths.client + 1);
+        }
+      }
+    }
+  });
+
+  test('a category without a photo renders the same band as one with', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    for (const locale of ['en', 'ar'] as const) {
+      await page.goto(`${WEB_URL}/${locale}/categories/${NO_DESCRIPTION}`);
+      await expectNoImagesInHero(page);
+      await expect(hero(page)).toHaveCount(1);
+      // Same band colour as the photographed category: no second visual
+      // treatment survived the change.
+      const band = await hero(page).evaluate(
+        (el) => getComputedStyle(el).backgroundColor
+      );
+      expect(band).toBe('rgb(110, 23, 17)'); // brand-900
     }
   });
 });

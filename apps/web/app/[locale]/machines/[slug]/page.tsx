@@ -182,10 +182,12 @@ export default async function MachineDetailPage({ params }: Props) {
               aria-labelledby="gallery-heading"
               className="lg:col-start-1 lg:row-start-1"
             >
-              <h2
-                id="gallery-heading"
-                className="text-xl font-semibold text-stone-900"
-              >
+              {/* Screen-reader only. The frame's photo and its thumbnails say
+                  what this section is; the visible heading was a second label
+                  sitting above them and pushed the photo down the page. The id
+                  and the section's `aria-labelledby` are unchanged, so the
+                  region still has its accessible name. */}
+              <h2 id="gallery-heading" className="sr-only">
                 {t('galleryHeading')}
               </h2>
               <MachineGallery

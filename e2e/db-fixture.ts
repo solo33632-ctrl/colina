@@ -147,10 +147,19 @@ export type MachineFixture = {
   shortDescriptionAr: string;
   categorySlug: string;
   imageUrl?: string;
+  /**
+   * Several photos, in display order. Takes precedence over `imageUrl`, which
+   * stays for the single-photo case the card specs use.
+   */
+  images?: { url: string; position: number }[];
 };
 
-/** Creates a machine in an existing category, optionally with one photo. */
+/** Creates a machine in an existing category, optionally with photos. */
 export function createMachine(fixture: MachineFixture) {
+  const rows =
+    fixture.images ??
+    (fixture.imageUrl ? [{ url: fixture.imageUrl, position: 0 }] : []);
+
   runInDb(`
     const category = await prisma.machineCategory.findUniqueOrThrow({
       where: { slug: ${JSON.stringify(fixture.categorySlug)} },
@@ -167,18 +176,9 @@ export function createMachine(fixture: MachineFixture) {
         specsEn: '',
         specsAr: '',
         categoryId: category.id,
-        ...(${JSON.stringify(fixture.imageUrl ?? null)} === null
-          ? {}
-          : {
-              images: {
-                create: [
-                  {
-                    url: ${JSON.stringify(fixture.imageUrl ?? '')},
-                    position: 0,
-                  },
-                ],
-              },
-            }),
+        images: {
+          create: ${JSON.stringify(rows)},
+        },
       },
     });
   `);

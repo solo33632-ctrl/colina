@@ -1,49 +1,84 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  coverGeometry,
+  containGeometry,
+  contentBox,
   lensSize,
   lensStyle,
   MAX_LENS_SIZE,
+  translatePoint,
 } from './image-zoom';
 
-const CONTAINER = { width: 800, height: 450 }; // 16:9, the hero frame
-const SQUARE = { width: 1000, height: 1000 }; // crops top and bottom
-const MATCHING = { width: 1600, height: 900 }; // crops nothing
-const PANORAMA = { width: 2000, height: 800 }; // crops left and right
-const TALL = { width: 600, height: 1800 }; // crops top and bottom hard
+// The container here is the frame's CONTENT box — the frame less its padding —
+// because that is the box the photo is letterboxed into.
+const CONTAINER = { width: 800, height: 450 }; // 16:9 content area
+const SQUARE = { width: 1000, height: 1000 }; // letterboxes left and right
+const MATCHING = { width: 1600, height: 900 }; // letterboxes not at all
+const PANORAMA = { width: 2000, height: 800 }; // letterboxes top and bottom
+const TALL = { width: 600, height: 1800 }; // letterboxes hard on both sides
 
-// `cover` always paints the image at least as large as the container on
-// both axes, so the scaled image is guaranteed to cover the whole lens.
+// `contain` never paints the photo larger than the box, so the lens is capped
+// by the PHOTO's own axes — see the TALL case, where a 150px-wide picture in a
+// 450px-tall box limits the lens to 150.
 const LENS = lensSize(CONTAINER);
 const CENTRE = LENS / 2;
 
-describe('coverGeometry', () => {
-  it('scales to cover and centres the overflow axis', () => {
-    expect(coverGeometry(CONTAINER, SQUARE)).toEqual({
-      rendered: { width: 800, height: 800 },
-      offset: { x: 0, y: -175 },
+describe('containGeometry', () => {
+  it('scales to fit and centres the overflow axis', () => {
+    expect(containGeometry(CONTAINER, SQUARE)).toEqual({
+      rendered: { width: 450, height: 450 },
+      offset: { x: 175, y: 0 },
     });
   });
 
-  it('crops left and right for an image wider than the box', () => {
-    expect(coverGeometry(CONTAINER, PANORAMA)).toEqual({
-      rendered: { width: 1125, height: 450 },
-      offset: { x: -162.5, y: 0 },
+  it('letterboxes top and bottom for an image wider than the box', () => {
+    expect(containGeometry(CONTAINER, PANORAMA)).toEqual({
+      rendered: { width: 800, height: 320 },
+      offset: { x: 0, y: 65 },
     });
   });
 
   it('leaves a matching aspect ratio untouched', () => {
-    expect(coverGeometry(CONTAINER, MATCHING)).toEqual({
+    expect(containGeometry(CONTAINER, MATCHING)).toEqual({
       rendered: { width: 800, height: 450 },
       offset: { x: 0, y: 0 },
     });
   });
 
-  it('scales by the overflowing axis for a very tall image', () => {
-    expect(coverGeometry(CONTAINER, TALL)).toEqual({
-      rendered: { width: 800, height: 2400 },
-      offset: { x: 0, y: -975 },
+  it('scales by the limiting axis for a very tall image', () => {
+    expect(containGeometry(CONTAINER, TALL)).toEqual({
+      rendered: { width: 150, height: 450 },
+      offset: { x: 325, y: 0 },
+    });
+  });
+});
+
+describe('contentBox', () => {
+  it('subtracts all four insets from the box', () => {
+    expect(
+      contentBox(
+        { width: 800, height: 450 },
+        { top: 24, right: 16, bottom: 24, left: 16 }
+      )
+    ).toEqual({ width: 768, height: 402 });
+  });
+
+  it('is the box itself when there is no padding', () => {
+    expect(
+      contentBox(CONTAINER, { top: 0, right: 0, bottom: 0, left: 0 })
+    ).toEqual(CONTAINER);
+  });
+});
+
+describe('translatePoint', () => {
+  it('moves a point by a delta, in both directions', () => {
+    expect(translatePoint({ x: 100, y: 50 }, -16, -24)).toEqual({
+      x: 84,
+      y: 26,
+    });
+    expect(translatePoint({ x: 84, y: 26 }, 16, 24)).toEqual({
+      x: 100,
+      y: 50,
     });
   });
 });
@@ -68,11 +103,12 @@ describe('lensStyle', () => {
     });
 
     expect(style.size).toBe(LENS);
+    expect(style.overPhoto).toBe(true);
     expect(style.offset).toEqual({ x: 270, y: 95 });
     expect(style.backgroundSize).toBe('2000px 1125px');
-    // The container maps 1:1 onto the image, so the cursor at 400/225 sits
-    // at 1000/562.5 in the 2.5x-scaled image, which is 130px (the lens
-    // centre) from where the image is drawn.
+    // The content box maps 1:1 onto the photo, so the cursor at 400/225 sits
+    // at 1000/562.5 in the 2.5x-scaled photo, which is 130px (the lens
+    // centre) from where the photo is drawn.
     expect(style.backgroundPosition).toBe('-870px -432.5px');
   });
 
@@ -89,10 +125,10 @@ describe('lensStyle', () => {
     expect(at(800)).toBe('-1470px -320px');
   });
 
-  it('compensates for a cover crop so the lens matches what is on screen', () => {
-    // A square image in a 16:9 box loses 175px off the top and bottom at
-    // 1x. Without adding that back, hovering the top edge would magnify a
-    // part of the image the visitor cannot see.
+  it('compensates for a letterbox so the lens matches what is on screen', () => {
+    // A square photo in a 16:9 box is painted 450x450 with 175px bars down
+    // each side. Measuring from the frame instead of the photo would magnify
+    // the bar: the cursor at x=400 is 225px into the picture, not 400.
     const style = (y: number) =>
       lensStyle({
         container: CONTAINER,
@@ -101,13 +137,40 @@ describe('lensStyle', () => {
         zoom: 2,
       });
 
-    expect(style(0).backgroundSize).toBe('1600px 1600px');
-    // Top of the box shows image row 175, i.e. row 350 once scaled.
-    expect(style(0).backgroundPosition).toBe('-670px -220px');
-    expect(style(225).backgroundPosition).toBe('-670px -670px');
+    expect(style(0).backgroundSize).toBe('900px 900px');
+    // 130 (centre) - (400 - 175) * 2 => -320 across; the cursor at the photo's
+    // very top is 130 from the pane's own top edge.
+    expect(style(0).backgroundPosition).toBe('-320px 130px');
+    expect(style(225).backgroundPosition).toBe('-320px -320px');
   });
 
-  it('keeps the lens inside the image on both axes', () => {
+  it('reports a letterbox bar as "not over the photo" and clamps onto it', () => {
+    // Hovering the grey bar beside a square photo: there is nothing to magnify,
+    // so `overPhoto` is false, and the pane is pinned to the photo's near edge
+    // instead of floating out in the bar.
+    const left = lensStyle({
+      container: CONTAINER,
+      natural: SQUARE,
+      cursor: { x: 20, y: 225 },
+      zoom: 2,
+    });
+    expect(left.overPhoto).toBe(false);
+    // The photo starts at x=175 and the pane is 260 wide, so it cannot start
+    // before 175.
+    expect(left.offset.x).toBe(175);
+
+    // Same for the bar above a panorama.
+    const top = lensStyle({
+      container: CONTAINER,
+      natural: PANORAMA,
+      cursor: { x: 400, y: 10 },
+      zoom: 2,
+    });
+    expect(top.overPhoto).toBe(false);
+    expect(top.offset.y).toBe(65);
+  });
+
+  it('keeps the lens inside the photo on both axes', () => {
     const at = (x: number, y: number) =>
       lensStyle({
         container: CONTAINER,
@@ -118,6 +181,21 @@ describe('lensStyle', () => {
 
     expect(at(0, 0)).toEqual({ x: 0, y: 0 });
     expect(at(800, 450)).toEqual({ x: 540, y: 190 });
+  });
+
+  it('caps the lens by the photo, not the frame', () => {
+    // A 600x1800 photo paints 150x450 in the box: the 150px width is what
+    // limits the lens, even though the frame is 800 wide.
+    const style = lensStyle({
+      container: CONTAINER,
+      natural: TALL,
+      cursor: { x: 400, y: 225 },
+      zoom: 2,
+    });
+
+    expect(style.size).toBe(150);
+    // Centred on the 150px-wide picture, which sits at x=325..475.
+    expect(style.offset).toEqual({ x: 325, y: 150 });
   });
 
   it('centres the lens when it is larger than the container axis', () => {
@@ -132,13 +210,15 @@ describe('lensStyle', () => {
     expect(style.offset).toEqual({ x: 0, y: 0 });
   });
 
-  it('produces a scaled image that always covers the lens', () => {
-    // Otherwise the pane would show empty space next to the crop edges.
+  it('produces a scaled photo that always covers the lens', () => {
+    // Otherwise the pane would show empty space beside the photo's edges. With
+    // `contain` this holds because the lens is capped by the photo's own axes,
+    // so any zoom of 1 or more covers it.
     for (const natural of [MATCHING, SQUARE, PANORAMA, TALL]) {
       const style = lensStyle({
         container: CONTAINER,
         natural,
-        cursor: { x: 0, y: 0 },
+        cursor: { x: 400, y: 225 },
         zoom: 1.5,
       });
       const [width, height] = style.backgroundSize
@@ -169,5 +249,23 @@ describe('lensStyle', () => {
         5
       );
     }
+  });
+
+  it('stays symmetric for a letterboxed photo too', () => {
+    // The same no-bias guarantee has to hold when the photo does not fill the
+    // box, since that is the case the gallery actually renders.
+    const at = (x: number) =>
+      Number.parseFloat(
+        lensStyle({
+          container: CONTAINER,
+          natural: SQUARE,
+          cursor: { x, y: 225 },
+          zoom: 2,
+        }).backgroundPosition
+      );
+
+    // Mirrored points sum to `2 * centre - painted width * zoom`, exactly as for
+    // a photo that fills the box: 2 * 130 - 450 * 2 = -640.
+    expect(at(175) + at(625)).toBeCloseTo(2 * CENTRE - 450 * 2, 5);
   });
 });

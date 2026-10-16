@@ -11,8 +11,10 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { ImageWithFallback } from './image-with-fallback';
 import {
+  contentBox,
   lensStyle,
   MIN_LENS_SIZE,
+  translatePoint,
   type Point,
   type Size,
 } from '@/lib/image-zoom';
@@ -43,8 +45,25 @@ function hasFinePointer() {
 // re-renders with the real value straight after hydration.
 const NO_POINTER = () => false;
 
+// The frame owns the picture's proportions. `aspect-[4/3]` lives HERE and never
+// on the <img>, which is the rule the category tiles and machine cards already
+// follow: `ImageWithFallback` only applies `aspect-video` itself in its default
+// `cover` mode, so asking the image for a ratio as well would put two
+// `aspect-ratio` declarations on one element and leave stylesheet order to
+// decide which wins — which is how this hero ended up cropping production-line
+// photos to 16:9 in the first place.
+//
+// Because the ratio is on the frame, the frame's height is identical for every
+// photo whatever its proportions, so switching between a 400x900 portrait, a
+// 1600x500 panorama and a square shot moves nothing on the page.
 const FRAME_CLASSES =
-  'w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100';
+  'block aspect-[4/3] w-full overflow-hidden rounded-2xl bg-gradient-to-b from-stone-50 to-stone-100 ring-1 ring-stone-200';
+
+// The photo's margin, carried on the image itself: Tailwind's preflight sets
+// `box-sizing: border-box`, so this padding is carved out of the image's own
+// box and `object-contain` fits the picture inside what is left — the artwork
+// keeps an air gap without a wrapper element in between.
+const PHOTO_CLASSES = 'p-3 sm:p-4';
 
 type ZoomableImageProps = {
   src: string;
@@ -56,6 +75,12 @@ type ZoomableImageProps = {
 
 /**
  * The gallery's hero image.
+ *
+ * The photo is shown COMPLETE: the frame owns a fixed `aspect-[4/3]` ratio and
+ * the image is `object-contain` inside it, letterboxed rather than cropped. A
+ * production-line photo cropped to fill its frame loses the top of the machine
+ * — which is exactly what the owner reported — so `contain` is not a stylistic
+ * preference here, it is the correction.
  *
  * On a hover-capable pointer, moving over the image shows a lens that
  * magnifies the part under the cursor. On a touch pointer the lens is
@@ -132,25 +157,50 @@ export function ZoomableImage({
     const frame = frameRef.current;
     const lens = lensRef.current;
     const cursor = cursorRef.current;
-    if (!frame || !lens || !cursor || !natural) {
+    const image = imgRef.current;
+    if (!frame || !lens || !cursor || !natural || !image) {
       return;
     }
-    // Read the box first, then write: no interleaved read/write within a
-    // frame, so no forced synchronous layout.
+    // Read first, then write: no interleaved read/write within a frame, so no
+    // forced synchronous layout.
     const rect = frame.getBoundingClientRect();
-    const style = lensStyle({
-      container: { width: rect.width, height: rect.height },
-      natural,
-      cursor,
-      zoom: ZOOM,
-    });
-    if (style.size < MIN_LENS_SIZE) {
+    // The photo is letterboxed inside the IMAGE's content box, which is the
+    // frame less the padding that keeps the artwork off the edges. Using the
+    // frame itself here would magnify the padding as if it were part of the
+    // picture, so both the geometry and the cursor are converted into content
+    // coordinates before any maths happens — and the lens position is
+    // converted back on the way out.
+    const imageStyle = getComputedStyle(image);
+    const insets = {
+      top: Number.parseFloat(imageStyle.paddingTop) || 0,
+      right: Number.parseFloat(imageStyle.paddingRight) || 0,
+      bottom: Number.parseFloat(imageStyle.paddingBottom) || 0,
+      left: Number.parseFloat(imageStyle.paddingLeft) || 0,
+    };
+    const container = contentBox(
+      { width: rect.width, height: rect.height },
+      insets
+    );
+    if (container.width <= 0 || container.height <= 0) {
       updateMeasure({ visible: false });
       return;
     }
+    const style = lensStyle({
+      container,
+      natural,
+      cursor: translatePoint(cursor, -insets.left, -insets.top),
+      zoom: ZOOM,
+    });
+    // `overPhoto` is false on a letterbox bar: there is nothing there to
+    // magnify, so the lens is hidden rather than showing a pane of grey.
+    if (style.size < MIN_LENS_SIZE || !style.overPhoto) {
+      updateMeasure({ visible: false });
+      return;
+    }
+    const pane = translatePoint(style.offset, insets.left, insets.top);
     lens.style.setProperty('--lens-size', `${style.size}px`);
-    lens.style.setProperty('--lens-x', `${style.offset.x}px`);
-    lens.style.setProperty('--lens-y', `${style.offset.y}px`);
+    lens.style.setProperty('--lens-x', `${pane.x}px`);
+    lens.style.setProperty('--lens-y', `${pane.y}px`);
     lens.style.setProperty('--zoom-size', style.backgroundSize);
     lens.style.setProperty('--zoom-position', style.backgroundPosition);
     updateMeasure({ visible: true });
@@ -211,9 +261,19 @@ export function ZoomableImage({
     <ImageWithFallback
       src={src}
       alt={alt}
+      // `contain` is the whole point of this component now: the photo is shown
+      // whole, letterboxed inside the frame's fixed ratio, instead of cropped to
+      // fill it.
+      fit="contain"
+      // The frame is the page's largest contentful paint candidate, so this one
+      // image is fetched eagerly at high priority. The thumbnails — and this
+      // photo once it is not the one on screen — stay lazy.
       loading="eager"
+      fetchPriority="high"
+      sizes="(min-width: 1024px) 46rem, 100vw"
       imgRef={imgRef}
       onLoad={handleLoaded}
+      className={PHOTO_CLASSES}
     />
   );
 

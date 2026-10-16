@@ -15,8 +15,8 @@ type MachineGalleryProps = {
 };
 
 /**
- * Machine detail gallery: one large hero image with a clickable thumbnail
- * strip. Picking a thumbnail swaps the hero (and therefore the magnifier and
+ * Machine detail gallery: one large hero image with a row of thumbnails below
+ * it. Picking a thumbnail swaps the hero (and therefore the magnifier and
  * the lightbox) without leaving the page.
  *
  * Used only by the machine detail page — category cards and the home grid
@@ -37,7 +37,7 @@ export function MachineGallery({ images, alt }: MachineGalleryProps) {
   const active = images[activeIndex] ?? images[0];
 
   return (
-    <div className="mt-4 flex flex-col gap-4 lg:flex-row-reverse lg:items-start">
+    <div className="mt-4 flex flex-col gap-4">
       <ZoomableImage
         src={active.url}
         alt={alt}
@@ -45,29 +45,57 @@ export function MachineGallery({ images, alt }: MachineGalleryProps) {
         onOpen={heroLoaded ? () => setLightboxOpen(true) : undefined}
       />
 
-      <ul className="flex flex-wrap gap-3 lg:w-24 lg:max-h-[30rem] lg:shrink-0 lg:flex-col lg:flex-nowrap lg:overflow-y-auto">
-        {images.map((image, index) => {
-          const isActive = index === activeIndex;
-          return (
-            <li key={image.id} className="w-24 lg:w-full">
-              <button
-                type="button"
-                onClick={() => setActiveIndex(index)}
-                aria-current={isActive ? 'true' : undefined}
-                aria-label={t('showImage', { number: index + 1 })}
-                className={`block w-full overflow-hidden rounded-lg border-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
-                  isActive
-                    ? 'border-brand-600'
-                    : 'border-transparent hover:border-stone-300'
-                }`}
-              >
-                {/* Decorative: the button already names the image. */}
-                <ImageWithFallback src={image.url} alt="" />
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {/* One horizontal row of thumbnails BELOW the frame.
+          It used to be a vertical strip beside the hero (`lg:flex-row-reverse`
+          with a fixed `lg:w-24` column), which on a wide screen left a narrow
+          column of thumbnails beside a much wider photo and a band of dead
+          space between them — the frame never used the width it had. A row
+          under the frame gives the photo the full column and still keeps every
+          thumbnail reachable.
+
+          `overflow-x-auto` with `flex-nowrap` means a machine with many photos
+          scrolls sideways inside this row instead of widening the document, so
+          nothing on the page shifts at 390px.
+
+          Each thumbnail shows its photo WHOLE, like the main frame: the same
+          neutral gradient plate, `fit="contain"` and a little padding. A
+          cropped thumbnail gives no clue what the full photo shows, which is
+          the one job a thumbnail has.
+
+          A single-photo machine renders no row at all — a one-item "gallery"
+          of thumbnails is just a smaller copy of the photo above it. */}
+      {images.length > 1 ? (
+        <ul className="flex flex-nowrap gap-3 overflow-x-auto">
+          {images.map((image, index) => {
+            const isActive = index === activeIndex;
+            return (
+              <li key={image.id} className="w-20 shrink-0 sm:w-24">
+                <button
+                  type="button"
+                  onClick={() => setActiveIndex(index)}
+                  aria-current={isActive ? 'true' : undefined}
+                  aria-label={t('showImage', { number: index + 1 })}
+                  className={`block aspect-[4/3] w-full overflow-hidden rounded-lg bg-gradient-to-b from-stone-50 to-stone-100 ring-2 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+                    isActive
+                      ? 'ring-brand-600'
+                      : 'ring-transparent hover:ring-stone-300'
+                  }`}
+                >
+                  {/* Decorative: the button already names the image. Lazy: a
+                      thumbnail is never the largest thing on screen. */}
+                  <ImageWithFallback
+                    src={image.url}
+                    alt=""
+                    fit="contain"
+                    loading="lazy"
+                    className="h-full w-full p-1"
+                  />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
 
       <p className="sr-only" role="status">
         {t('imagePosition', {

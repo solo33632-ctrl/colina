@@ -134,6 +134,34 @@ model MaintenanceRequest {
   status       LeadStatus @default(NEW)
 }
 
+// One maintenance job shown to a visitor as a before/after comparison: the
+// same machine photographed twice. Both photos are stored as absolute URLs and
+// BOTH are required — a comparison with one half missing is not a comparison,
+// so the row is only ever written once the pair exists.
+//
+// No slug and no relations: the item is identified by its id, like Partner and
+// Agent, and nothing else in the schema points at it. Public consumption (the
+// home page section) arrived after this entity, so for now only the admin
+// writes these rows.
+model MaintenanceShowcase {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  nameEn    String
+  nameAr    String
+  // Optional long form. Nullable rather than an empty-string default: "this
+  // job has no written description" and "the description is the empty string"
+  // are the same thing to a reader, so the column stays honest about which
+  // rows were ever given one.
+  descriptionEn String? @db.Text
+  descriptionAr String? @db.Text
+  // The pair, in the order they must be read. Stored on the row rather than in
+  // a child table because the comparison is an atomic unit: there is exactly
+  // one before and one after, and nothing else can point at either half.
+  beforeImageUrl String
+  afterImageUrl  String
+}
+
 model Partner {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())

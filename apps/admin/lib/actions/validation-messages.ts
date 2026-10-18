@@ -7,6 +7,7 @@ import type {
   NewsFieldMessages,
   PartnerFieldMessages,
   ServiceFieldMessages,
+  ShowcaseFieldMessages,
 } from '../schemas';
 
 // Validation messages, localized — and defined exactly once.
@@ -100,5 +101,16 @@ export function agentMessages(t: Translator<'Agents'>): AgentFieldMessages {
   return {
     countryAr: t('validation.countryAr'),
     countryEn: t('validation.countryEn'),
+  };
+}
+
+export function showcaseMessages(
+  t: Translator<'MaintenanceShowcase'>
+): ShowcaseFieldMessages {
+  return {
+    nameAr: t('validation.nameAr'),
+    nameEn: t('validation.nameEn'),
+    beforeImageUrl: t('validation.beforeImageUrl'),
+    afterImageUrl: t('validation.afterImageUrl'),
   };
 }

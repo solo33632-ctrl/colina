@@ -174,6 +174,33 @@ export function partnerInputSchema(messages: PartnerFieldMessages) {
 
 export type PartnerInput = z.infer<ReturnType<typeof partnerInputSchema>>;
 
+export type ShowcaseFieldMessages = {
+  nameAr: string;
+  nameEn: string;
+  beforeImageUrl: string;
+  afterImageUrl: string;
+};
+
+export function showcaseInputSchema(messages: ShowcaseFieldMessages) {
+  return z.object({
+    nameAr: z.string().min(2, { error: messages.nameAr }),
+    nameEn: z.string().min(2, { error: messages.nameEn }),
+    // Fully optional, same rule as the category and machine long-form fields:
+    // a blank description saves and simply renders nothing.
+    descriptionAr: z.string().optional(),
+    descriptionEn: z.string().optional(),
+    // BOTH photos required, with the same absolute-http(s) rule every other
+    // stored image uses. Required — not optional like a partner's logo — on
+    // purpose: the row exists to be a before/after comparison, so a single
+    // photo is not a half-finished record but a different thing entirely, and
+    // saving it would only produce a card the public section cannot render.
+    beforeImageUrl: requiredHttpUrl(messages.beforeImageUrl),
+    afterImageUrl: requiredHttpUrl(messages.afterImageUrl),
+  });
+}
+
+export type ShowcaseInput = z.infer<ReturnType<typeof showcaseInputSchema>>;
+
 export type ServiceFieldMessages = {
   slug: string;
   titleAr: string;

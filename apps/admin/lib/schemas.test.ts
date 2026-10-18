@@ -6,6 +6,7 @@ import {
   newsInputSchema,
   partnerInputSchema,
   serviceInputSchema,
+  showcaseInputSchema,
 } from './schemas';
 
 // Short fixed messages: these tests pin the RULES, not the copy.
@@ -35,6 +36,8 @@ const M = {
   publishedAt: 'e',
   countryAr: 'e',
   countryEn: 'e',
+  beforeImageUrl: 'e',
+  afterImageUrl: 'e',
 };
 
 function expectInvalid(
@@ -280,6 +283,106 @@ describe('URL rules (Phase 13 table, now automated)', () => {
       newsInputSchema(M).safeParse({ ...base, image: 'javascript:alert(1)' })
         .success
     ).toBe(false);
+  });
+});
+
+describe('showcaseInputSchema', () => {
+  const valid = {
+    nameAr: 'ماكينة',
+    nameEn: 'Machine',
+    descriptionAr: 'وصف اختياري.',
+    descriptionEn: 'Optional description.',
+    beforeImageUrl: 'https://cdn.test/before.jpg',
+    afterImageUrl: 'https://cdn.test/after.jpg',
+  };
+
+  it('accepts valid input', () => {
+    expect(showcaseInputSchema(M).safeParse(valid).success).toBe(true);
+  });
+
+  it('requires both names', () => {
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, nameAr: '' }),
+      'nameAr'
+    );
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, nameEn: '' }),
+      'nameEn'
+    );
+    // One character is still under the min-2 rule the other entities use.
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, nameEn: 'x' }),
+      'nameEn'
+    );
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, nameEn: undefined }),
+      'nameEn'
+    );
+  });
+
+  it('requires BOTH photos — one half of a comparison is not a record', () => {
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, beforeImageUrl: '' }),
+      'beforeImageUrl'
+    );
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, afterImageUrl: '' }),
+      'afterImageUrl'
+    );
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, beforeImageUrl: undefined }),
+      'beforeImageUrl'
+    );
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, afterImageUrl: undefined }),
+      'afterImageUrl'
+    );
+  });
+
+  it('both photos follow the shared absolute-http(s) rule', () => {
+    // The same table the other stored images use, except `''` now FAILS: this
+    // field is required, so the empty case the optional rules allow is the one
+    // entry whose expectation is inverted. Declared locally rather than shared,
+    // because the shared `cases` lives inside the URL-rules describe.
+    const urlCases: Array<[string, boolean]> = [
+      ['https://cdn.test/a.jpg', true],
+      ['http://cdn.test/a.png', true],
+      ['javascript:alert(1)', false],
+      ['data:text/html,<h1>x</h1>', false],
+      ['/images/seed/x.jpg', false],
+      ['', false],
+      ['ftp://files.test/x', false],
+      ['not a url', false],
+    ];
+    for (const [url, expected] of urlCases) {
+      for (const field of ['beforeImageUrl', 'afterImageUrl'] as const) {
+        const result = showcaseInputSchema(M).safeParse({
+          ...valid,
+          [field]: url,
+        });
+        expect(result.success, `${field}=${url}`).toBe(expected);
+      }
+    }
+  });
+
+  it('descriptions are optional in every form they can arrive in', () => {
+    // Blank, the empty string the form posts, and omitted entirely (the Server
+    // Action normalises undefined to null before writing).
+    expect(
+      showcaseInputSchema(M).safeParse({
+        ...valid,
+        descriptionAr: '',
+        descriptionEn: '',
+      }).success
+    ).toBe(true);
+    const {
+      descriptionAr: _droppedAr,
+      descriptionEn: _droppedEn,
+      ...rest
+    } = valid;
+    void _droppedAr;
+    void _droppedEn;
+    expect(showcaseInputSchema(M).safeParse(rest).success).toBe(true);
   });
 });
 

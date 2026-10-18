@@ -12,6 +12,7 @@
     "machines": "Machines",
     "partners": "Partners",
     "services": "Services",
+    "maintenanceShowcase": "Maintenance machines",
     "news": "News",
     "agents": "Agents",
     "leads": "Leads",
@@ -298,6 +299,37 @@
       "scopeAr": "Arabic scope must be at least 10 characters.",
       "scopeEn": "English scope must be at least 10 characters.",
       "icon": "Icon must not be empty."
+    }
+  },
+  "MaintenanceShowcase": {
+    "heading": "Maintenance machines",
+    "new": "New machine",
+    "createFirst": "Create the first machine",
+    "empty": "No maintenance machines yet.",
+    "form": {
+      "createTitle": "New machine",
+      "editTitle": "Edit machine",
+      "nameEn": "Name (English)",
+      "nameAr": "Name (Arabic)",
+      "descriptionEn": "Description (English, optional)",
+      "descriptionAr": "Description (Arabic, optional)",
+      "beforeImageUrl": "Before photo",
+      "afterImageUrl": "After photo",
+      "photoHint": "Use the same angle and the same aspect ratio for both photos",
+      "uploadBeforePhoto": "Upload the before photo",
+      "uploadAfterPhoto": "Upload the after photo",
+      "pasteUrlBeforePhoto": "Paste a URL for the before photo",
+      "pasteUrlAfterPhoto": "Paste a URL for the after photo",
+      "removeBeforePhoto": "Remove the before photo",
+      "removeAfterPhoto": "Remove the after photo",
+      "submitCreate": "Create machine",
+      "submitEdit": "Save changes"
+    },
+    "validation": {
+      "nameAr": "Arabic name must be at least 2 characters.",
+      "nameEn": "English name must be at least 2 characters.",
+      "beforeImageUrl": "The before photo must be an absolute http(s) URL.",
+      "afterImageUrl": "The after photo must be an absolute http(s) URL."
     }
   },
   "News": {

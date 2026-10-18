@@ -21,6 +21,7 @@ export type SidebarLabelKey =
   | 'machines'
   | 'partners'
   | 'services'
+  | 'maintenanceShowcase'
   | 'news'
   | 'agents'
   | 'leads'
@@ -70,6 +71,15 @@ export function sidebarGroups(options: {
       items: [
         { href: '/partners', label: t('partners'), icon: 'partners' },
         { href: '/services', label: t('services'), icon: 'services' },
+        // Beside Maintenance services rather than in the catalog: this holds
+        // photos of finished work, which is content, not part of the product
+        // range. It reuses the services wrench on purpose — one more glyph for
+        // one more entry would grow the icon set for no added meaning.
+        {
+          href: '/maintenance-showcase',
+          label: t('maintenanceShowcase'),
+          icon: 'services',
+        },
         { href: '/news', label: t('news'), icon: 'news' },
         { href: '/agents', label: t('agents'), icon: 'agents' },
       ],

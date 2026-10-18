@@ -185,6 +185,33 @@ export function createMachine(fixture: MachineFixture) {
 }
 
 /**
+ * Removes showcase rows a spec created, matched by the same tag.
+ *
+ * Kept separate from `cleanupFixtures` because the admin specs drive these
+ * rows through the real form and their own delete dialog: if an assertion
+ * fails partway, the row is still sitting there and the next run would meet
+ * it. Deleting by name rather than by slug because this entity has no slug —
+ * it is identified by its cuid, which a spec that created the row through the
+ * UI cannot predict.
+ */
+export function deleteShowcasesByTag(tag = FIXTURE_TAG) {
+  try {
+    runInDb(`
+      await prisma.maintenanceShowcase.deleteMany({
+        where: {
+          OR: [
+            { nameEn: { contains: ${JSON.stringify(tag)} } },
+            { nameAr: { contains: ${JSON.stringify(tag)} } },
+          ],
+        },
+      });
+    `);
+  } catch {
+    // Intentionally ignored: cleanup must never mask a test result.
+  }
+}
+
+/**
  * Removes every fixture these specs made. Safe to call twice and safe to call
  * when nothing was created — deleting a prefix that matches no rows is a
  * no-op, so cleanup never needs to know how far the run got.

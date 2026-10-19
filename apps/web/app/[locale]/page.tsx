@@ -2,13 +2,13 @@ import type { Metadata } from 'next';
 import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { prisma, FEATURED_MACHINES_LIMIT } from '@colina/db';
+import { prisma } from '@colina/db';
 import { CategoriesGrid } from '@/components/categories-grid';
 import { ContactSection } from '@/components/contact-section';
-import { FeaturedMachines } from '@/components/featured-machines';
 import { HeroSection } from '@/components/hero-section';
 import { IntroOverlay } from '@/components/intro-overlay';
 import { IntroProvider } from '@/components/intro-provider';
+import { MaintenanceShowcase } from '@/components/maintenance-showcase';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { PartnersStrip } from '@/components/partners-strip';
 import { WhyUsSection } from '@/components/why-us-section';
@@ -21,6 +21,12 @@ type Props = {
 
 // Interim freshness: revalidate DB-driven content hourly. Full on-demand
 // revalidation (revalidatePath/Tag from admin writes) lands in Phase 9-12.
+// How many comparisons the home page renders. Six fills the `lg:grid-cols-3`
+// grid as two clean rows, the same shape the categories section above already
+// has. Local rather than shared: only this page reads it, unlike the limit it
+// replaced, which the admin form also had to quote.
+const MAINTENANCE_SHOWCASE_LIMIT = 6;
+
 export const revalidate = 3600;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -47,24 +53,26 @@ export default async function HomePage({ params }: Props) {
 
   // Read-only content queries in a Server Component — no API route needed.
   // (Phase 8's backend API covers form submissions/writes, not reads.)
-  const [categories, partners, machines] = await Promise.all([
+  const [categories, partners, showcases] = await Promise.all([
     prisma.machineCategory.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.partner.findMany({ orderBy: { createdAt: 'asc' } }),
-    // Admin-curated featured strip. Ordered most-recently-saved first so an
-    // admin can promote a machine simply by saving it, with `nameEn` as a
-    // deterministic tiebreaker for rows saved in the same millisecond (the
-    // seed loop can produce those). Capped, not validated: featuring more than
-    // the cap is allowed, the extra rows just fall past the limit, and the
-    // admin form states that rule.
-    prisma.machine.findMany({
-      where: { featured: true },
-      orderBy: [{ updatedAt: 'desc' }, { nameEn: 'asc' }],
-      take: FEATURED_MACHINES_LIMIT,
-      // The card labels each machine with its category, so the parent row
-      // comes along with the first photo.
-      include: {
-        category: true,
-        images: { orderBy: { position: 'asc' }, take: 1 },
+    // The before/after comparisons. Newest first — the most recent job is the
+    // one a visitor is most likely to have come to see — and capped so the row
+    // keeps the same shape as the categories grid above it. `nameEn` is the
+    // tiebreaker for rows saved in the same millisecond.
+    //
+    // Only the five columns the card actually prints or hands to the slider:
+    // the descriptions are admin-facing long form and no public page reads
+    // them, and `createdAt` is not rendered either, only ordered by.
+    prisma.maintenanceShowcase.findMany({
+      orderBy: [{ createdAt: 'desc' }, { nameEn: 'asc' }],
+      take: MAINTENANCE_SHOWCASE_LIMIT,
+      select: {
+        id: true,
+        nameEn: true,
+        nameAr: true,
+        beforeImageUrl: true,
+        afterImageUrl: true,
       },
     }),
   ]);
@@ -94,7 +102,7 @@ export default async function HomePage({ params }: Props) {
         <IntroOverlay />
         <HeroSection />
         <CategoriesGrid categories={categories} locale={locale} />
-        <FeaturedMachines machines={machines} locale={locale} />
+        <MaintenanceShowcase showcases={showcases} locale={locale} />
       </IntroProvider>
       <WhyUsSection />
       <PartnersStrip partners={partners} locale={locale} />

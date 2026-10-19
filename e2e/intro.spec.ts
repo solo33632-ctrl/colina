@@ -108,7 +108,7 @@ test.describe('home page brand intro', () => {
 
     // ...the page is already rendered and interactive beneath it...
     await expect(page.locator('#categories-heading')).toBeAttached();
-    await expect(page.locator('#featured-machines-heading')).toBeAttached();
+    await expect(page.locator('#why-us-heading')).toBeAttached();
 
     // ...and a click reaches the page rather than the overlay.
     const cta = page.getByRole('link', { name: 'Get in touch' }).first();

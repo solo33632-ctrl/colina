@@ -21,9 +21,15 @@
     "subheading": "Browse our machine families.",
     "empty": "No categories yet — check back soon."
   },
-  "FeaturedMachines": {
-    "heading": "Featured machines",
-    "subheading": "A few of the lines we build."
+  "MaintenanceShowcase": {
+    "heading": "Maintenance machines",
+    "subheading": "Before and after the work, on the same machine.",
+    "before": "Before",
+    "after": "After",
+    "compare": "Compare before and after",
+    "valueText": "{percent}% before",
+    "photoAlt": "{name} — before the work",
+    "photoAltAfter": "{name} — after the work"
   },
   "CategoryPage": {
     "backToCategories": "All categories",

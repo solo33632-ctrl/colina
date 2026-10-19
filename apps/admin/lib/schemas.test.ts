@@ -155,7 +155,6 @@ describe('URL rules (Phase 13 table, now automated)', () => {
       specsAr: 's',
       specsEn: 's',
       relatedIds: [],
-      featured: false,
     };
     const gallery = (url: string) =>
       machineInputSchema(M).safeParse({
@@ -176,7 +175,11 @@ describe('URL rules (Phase 13 table, now automated)', () => {
     expect(sheet('data:application/pdf,zzz')).toBe(false);
   });
 
-  it('machine featured must be a real boolean, and never blocks on the cap', () => {
+  it('machine input carries no featured flag, whatever the caller sends', () => {
+    // The home page's featured strip is gone, so the form no longer asks and
+    // the action no longer writes. The column stays in the database; this pins
+    // that the schema has stopped talking about it, so a stray checkbox cannot
+    // come back unnoticed.
     const base = {
       nameAr: 'آلة',
       nameEn: 'Machine',
@@ -192,18 +195,18 @@ describe('URL rules (Phase 13 table, now automated)', () => {
       images: [],
       relatedIds: [],
     };
-    const parse = (featured: unknown) =>
-      machineInputSchema(M).safeParse({ ...base, featured });
 
-    expect(parse(true).success).toBe(true);
-    expect(parse(false).success).toBe(true);
-    // A checkbox posts its value as a string when it is not registered with
-    // react-hook-form, so a non-boolean has to be refused rather than coerced.
-    expect(parse('true').success).toBe(false);
-    expect(parse(undefined).success).toBe(false);
-    // The cap is a homepage display limit, not a validation rule: featuring
-    // a machine is never rejected, however many others are already featured.
-    expect(parse(true).success).toBe(true);
+    // No `featured` key at all: the ordinary shape of every save now.
+    expect(machineInputSchema(M).safeParse(base).success).toBe(true);
+    // And an extra one is simply ignored by Zod rather than demanded — the
+    // point being that nothing requires it any more, in either direction.
+    expect(
+      machineInputSchema(M).safeParse({ ...base, featured: true }).success
+    ).toBe(true);
+    expect(
+      machineInputSchema(M).safeParse({ ...base, featured: undefined }).success
+    ).toBe(true);
+    expect(machineInputSchema(M).shape).not.toHaveProperty('featured');
   });
 
   it('machine long-form fields are optional; identity and short description stay required', () => {
@@ -217,7 +220,6 @@ describe('URL rules (Phase 13 table, now automated)', () => {
       datasheetUrl: '',
       images: [],
       relatedIds: [],
-      featured: false,
     };
 
     // Blank full description and specs (both locales) must save (Phase 26).

@@ -32,17 +32,6 @@ type MachineFormProps = {
   categories: CategoryOption[];
   machines: MachineOption[];
   defaultValues?: MachineInput;
-  /**
-   * How many machines are flagged featured right now, so the form can state
-   * the cap instead of letting an admin discover it on the home page.
-   */
-  featuredCount: number;
-  /**
-   * The home page's display cap, passed in rather than imported: this is a
-   * client component, and reading it from @colina/db here would pull the
-   * Prisma/pg client into the browser bundle (it needs node's dns/fs/net).
-   */
-  featuredLimit: number;
 };
 
 export function MachineForm({
@@ -51,8 +40,6 @@ export function MachineForm({
   categories,
   machines,
   defaultValues,
-  featuredCount,
-  featuredLimit,
 }: MachineFormProps) {
   const t = useTranslations('Machines');
   const common = useTranslations('Common');
@@ -86,7 +73,6 @@ export function MachineForm({
       datasheetUrl: '',
       images: [],
       relatedIds: [],
-      featured: false,
     },
   });
 
@@ -185,40 +171,10 @@ export function MachineForm({
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title={common('sectionBasic')}>
           <div className="grid gap-5">
-            {/* First in the card because it is the only field here that is not
-                an identity field: it decides whether the machine is promoted
-                onto the public home page at all. */}
-            <div>
-              <label
-                htmlFor="machine-featured"
-                className="flex items-center gap-2 text-sm font-medium text-stone-800"
-              >
-                <input
-                  id="machine-featured"
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-stone-300 text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-                  {...register('featured')}
-                />
-                {t('form.featured')}
-              </label>
-              {/* The cap is not enforced anywhere, so it is stated here rather
-                  than left as a surprise on the public site. Over the limit the
-                  hint switches to the warning tone; at or under it, it is
-                  informational. */}
-              <p
-                className={[
-                  'mt-2 text-sm',
-                  featuredCount > featuredLimit
-                    ? 'font-medium text-amber-800'
-                    : 'text-stone-600',
-                ].join(' ')}
-              >
-                {t('form.featuredHint', {
-                  count: featuredCount,
-                  limit: featuredLimit,
-                })}
-              </p>
-            </div>
+            {/* The "featured on homepage" checkbox used to sit here. It went
+                with the home page's featured strip: the flag still exists as a
+                column, but nothing reads it, so a control for it would only
+                pretend to do something. */}
             <Field
               id="machine-slug"
               label={t('form.slug')}

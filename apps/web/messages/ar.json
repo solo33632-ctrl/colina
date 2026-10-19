@@ -21,9 +21,15 @@
     "subheading": "تصفح عائلات الآلات لدينا.",
     "empty": "لا توجد فئات بعد — عُد قريباً."
   },
-  "FeaturedMachines": {
-    "heading": "آلات مميزة",
-    "subheading": "نماذج من خطوط الإنتاج التي نبنيها."
+  "MaintenanceShowcase": {
+    "heading": "ماكينات الصيانة",
+    "subheading": "قبل الصيانة وبعدها، على الماكينة نفسها.",
+    "before": "قبل",
+    "after": "بعد",
+    "compare": "قارن بين ما قبل الصيانة وما بعدها",
+    "valueText": "{percent}% قبل",
+    "photoAlt": "{name} — قبل الصيانة",
+    "photoAltAfter": "{name} — بعد الصيانة"
   },
   "CategoryPage": {
     "backToCategories": "كل الفئات",

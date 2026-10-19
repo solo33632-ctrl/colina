@@ -61,7 +61,10 @@ export async function createMachine(
           specsAr: parsed.data.specsAr ?? '',
           specsEn: parsed.data.specsEn ?? '',
           datasheetUrl: parsed.data.datasheetUrl || null,
-          featured: parsed.data.featured,
+          // `featured` is deliberately not written. The column stays in the
+          // schema untouched, and omitting it leaves whatever is stored there
+          // exactly as it was, so a create takes the column's default and an
+          // edit cannot silently un-feature a row.
           relatedMachines:
             relatedIds.length > 0
               ? { connect: relatedIds.map((id) => ({ id })) }
@@ -162,7 +165,10 @@ export async function updateMachine(
           specsAr: parsed.data.specsAr ?? '',
           specsEn: parsed.data.specsEn ?? '',
           datasheetUrl: parsed.data.datasheetUrl || null,
-          featured: parsed.data.featured,
+          // `featured` is deliberately not written. The column stays in the
+          // schema untouched, and omitting it leaves whatever is stored there
+          // exactly as it was, so a create takes the column's default and an
+          // edit cannot silently un-feature a row.
           relatedMachines: {
             set: relatedIds.map((relatedId) => ({ id: relatedId })),
           },

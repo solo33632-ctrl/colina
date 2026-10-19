@@ -145,10 +145,11 @@ export function machineInputSchema(messages: MachineFieldMessages) {
       })
     ),
     relatedIds: z.array(z.string().min(1)),
-    // Plain boolean, no rule attached. The home page caps how many it renders
-    // (FEATURED_MACHINES_LIMIT) rather than the form refusing a save, so the
-    // cap is surfaced as a hint in the form, not enforced here.
-    featured: z.boolean(),
+    // No `featured` field. The column still exists in the database and is
+    // deliberately left alone (see Machine.featured in the Prisma schema),
+    // but nothing in the admin reads or writes it any more, so a form control
+    // for it would only look like it did something. Leaving the key out of the
+    // update also means an ordinary edit never resets the stored value.
   });
 }
 

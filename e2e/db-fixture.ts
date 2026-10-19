@@ -18,6 +18,24 @@ import { join, resolve } from 'node:path';
 
 export const DATABASE_URL = process.env.DATABASE_URL;
 
+// The web app serves three real photographs, and the showcase fixtures point at
+// two of them. Same-origin on purpose: apps/web sends
+// `Content-Security-Policy: img-src 'self' data: https:` (see
+// apps/web/next.config.mjs), so a fixture URL from the admin app's http://localhost:3001
+// is refused by the browser and every photo-based assertion would fail on a
+// blank tile. The admin app's icons do NOT work here, unlike in the 30a admin
+// specs, where they are same-origin and therefore allowed by 'self'.
+const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
+
+/** The before/after pair the showcase fixtures use: two real, different-size photos. */
+export const SHOWCASE_PHOTOS = {
+  before: `${WEB_URL}/logo.png`,
+  after: `${WEB_URL}/icon.png`,
+  /** Intrinsic widths, so a spec can tell a decoded photo from a broken one. */
+  beforeWidth: 773,
+  afterWidth: 512,
+};
+
 const DB_DIR = resolve(__dirname, '../packages/db');
 
 /**
@@ -179,6 +197,81 @@ export function createMachine(fixture: MachineFixture) {
         images: {
           create: ${JSON.stringify(rows)},
         },
+      },
+    });
+  `);
+}
+
+/**
+ * Like `runInDb`, but hands back the value the body `return`s.
+ *
+ * `runInDb` discards stdout, which is right for a fixture that only writes. A
+ * spec that has to ASK the database something — "how many rows are left that
+ * are not mine?" — needs the answer back, so the body is wrapped to print it
+ * as JSON and the child's stdout is parsed.
+ */
+export function runInDbValue<T>(body: string): T | null {
+  const dir = mkdtempSync(join(tmpdir(), 'colina-e2e-'));
+  const file = join(dir, 'query.ts');
+  const entry = require.resolve('@colina/db', { paths: [DB_DIR] });
+  writeFileSync(
+    file,
+    [
+      `const { prisma } = require(${JSON.stringify(entry)});`,
+      '(async () => {',
+      'const __value = await (async () => {',
+      body,
+      '})();',
+      'await prisma.$disconnect();',
+      'console.log("__RESULT__" + JSON.stringify(__value ?? null));',
+      '})().catch((e) => { console.error(e); process.exit(1); });',
+      '',
+    ].join('\n')
+  );
+
+  try {
+    const stdout = execFileSync('npx', ['tsx', file], {
+      cwd: DB_DIR,
+      env: { ...process.env, DATABASE_URL },
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    const line = stdout
+      .split('\n')
+      .find((value) => value.startsWith('__RESULT__'));
+    return line ? (JSON.parse(line.slice('__RESULT__'.length)) as T) : null;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Creates a maintenance showcase row: one comparison, one before/after pair.
+ *
+ * The photos are two real PNGs the WEB app serves (see SHOWCASE_PHOTOS), not
+ * `photoOf()` data URIs. The admin form's URL rule only ever applies to what an
+ * admin types, so a data URI would be accepted here — but the public section
+ * has to render two actual images for a test to prove anything about the
+ * slider, and these are genuine responses the page is allowed to load.
+ */
+export type ShowcaseFixture = {
+  nameEn: string;
+  nameAr: string;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
+};
+
+/** Creates a maintenance showcase row, for the public home-page specs. */
+export function createShowcase(fixture: ShowcaseFixture) {
+  const before = fixture.beforeImageUrl ?? SHOWCASE_PHOTOS.before;
+  const after = fixture.afterImageUrl ?? SHOWCASE_PHOTOS.after;
+  runInDb(`
+    await prisma.maintenanceShowcase.create({
+      data: {
+        nameEn: ${JSON.stringify(fixture.nameEn)},
+        nameAr: ${JSON.stringify(fixture.nameAr)},
+        beforeImageUrl: ${JSON.stringify(before)},
+        afterImageUrl: ${JSON.stringify(after)},
       },
     });
   `);

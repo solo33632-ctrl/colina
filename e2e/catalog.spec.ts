@@ -625,10 +625,10 @@ test.describe('machine cards show the complete photo and line up in a row', () =
     }
   }
 
-  test('the same card markup is used by the featured strip, the listing and related machines', async ({
+  test('the same card markup is used by the listing, the category page and related machines', async ({
     page,
   }) => {
-    // One card, four places. If any of them ever grows its own variant this
+    // One card, three places. If any of them ever grows its own variant this
     // stops matching, which is the whole point of there being a single card.
     const countCards = async (url: string, hrefFragment: string) => {
       await page.goto(url);

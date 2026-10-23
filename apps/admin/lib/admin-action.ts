@@ -39,4 +39,5 @@ export type ActionResult<
       error: string;
       issues?: { field: string; message: string }[];
       machineCount?: number;
+      itemCount?: number;
     };

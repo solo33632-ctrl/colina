@@ -3,6 +3,7 @@ import {
   agentInputSchema,
   categoryInputSchema,
   machineInputSchema,
+  maintenanceCategoryInputSchema,
   newsInputSchema,
   partnerInputSchema,
   serviceInputSchema,
@@ -17,12 +18,13 @@ const M = {
   descriptionAr: 'e',
   descriptionEn: 'e',
   image: 'e',
+  imageUrl: 'e',
+  sortOrder: 'e',
   categoryId: 'e',
   shortDescriptionAr: 'e',
   shortDescriptionEn: 'e',
   specsAr: 'e',
   specsEn: 'e',
-  imageUrl: 'e',
   imagePosition: 'e',
   datasheetUrl: 'e',
   logo: 'e',
@@ -96,6 +98,90 @@ describe('categoryInputSchema', () => {
     void _droppedAr;
     void _droppedEn;
     expect(categoryInputSchema(M).safeParse(rest).success).toBe(true);
+  });
+});
+
+describe('maintenanceCategoryInputSchema', () => {
+  const valid = {
+    nameAr: 'خط إنتاج',
+    nameEn: 'Production line',
+    slug: 'production-line',
+    descriptionAr: '',
+    descriptionEn: '',
+    imageUrl: '',
+    sortOrder: 0,
+  };
+
+  it('accepts valid input and defaults the display order to 0', () => {
+    expect(maintenanceCategoryInputSchema(M).safeParse(valid).success).toBe(
+      true
+    );
+    const { sortOrder: _dropped, ...withoutOrder } = valid;
+    void _dropped;
+    const parsed = maintenanceCategoryInputSchema(M).safeParse(withoutOrder);
+    expect(parsed.success).toBe(true);
+    assert(parsed.success);
+    expect(parsed.data.sortOrder).toBe(0);
+  });
+
+  it('requires both names and uses the shared slug rule', () => {
+    expectInvalid(
+      maintenanceCategoryInputSchema(M).safeParse({ ...valid, nameAr: '' }),
+      'nameAr'
+    );
+    expectInvalid(
+      maintenanceCategoryInputSchema(M).safeParse({ ...valid, nameEn: 'x' }),
+      'nameEn'
+    );
+    expectInvalid(
+      maintenanceCategoryInputSchema(M).safeParse({
+        ...valid,
+        slug: 'Bad Slug!',
+      }),
+      'slug'
+    );
+    expectInvalid(
+      maintenanceCategoryInputSchema(M).safeParse({ ...valid, slug: 'x' }),
+      'slug'
+    );
+  });
+
+  it('leaves descriptions optional and validates the cover photo like other images', () => {
+    expect(
+      maintenanceCategoryInputSchema(M).safeParse({
+        ...valid,
+        descriptionAr: 'وصف اختياري.',
+        descriptionEn: 'Optional description.',
+        imageUrl: 'https://cdn.test/line.jpg',
+      }).success
+    ).toBe(true);
+    expect(
+      maintenanceCategoryInputSchema(M).safeParse({
+        ...valid,
+        imageUrl: 'javascript:alert(1)',
+      }).success
+    ).toBe(false);
+    expect(
+      maintenanceCategoryInputSchema(M).safeParse({
+        ...valid,
+        imageUrl: '/images/seed/line.jpg',
+      }).success
+    ).toBe(false);
+  });
+
+  it('requires a non-negative integer display order', () => {
+    expectInvalid(
+      maintenanceCategoryInputSchema(M).safeParse({ ...valid, sortOrder: -1 }),
+      'sortOrder'
+    );
+    expectInvalid(
+      maintenanceCategoryInputSchema(M).safeParse({ ...valid, sortOrder: 1.5 }),
+      'sortOrder'
+    );
+    expect(
+      maintenanceCategoryInputSchema(M).safeParse({ ...valid, sortOrder: 12 })
+        .success
+    ).toBe(true);
   });
 });
 
@@ -292,6 +378,7 @@ describe('showcaseInputSchema', () => {
   const valid = {
     nameAr: 'ماكينة',
     nameEn: 'Machine',
+    categoryId: 'category-1',
     descriptionAr: 'وصف اختياري.',
     descriptionEn: 'Optional description.',
     beforeImageUrl: 'https://cdn.test/before.jpg',
@@ -300,6 +387,17 @@ describe('showcaseInputSchema', () => {
 
   it('accepts valid input', () => {
     expect(showcaseInputSchema(M).safeParse(valid).success).toBe(true);
+  });
+
+  it('requires a maintenance category on every save', () => {
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, categoryId: '' }),
+      'categoryId'
+    );
+    expectInvalid(
+      showcaseInputSchema(M).safeParse({ ...valid, categoryId: undefined }),
+      'categoryId'
+    );
   });
 
   it('requires both names', () => {

@@ -49,6 +49,7 @@ export async function createShowcase(
         data: {
           nameAr: parsed.data.nameAr,
           nameEn: parsed.data.nameEn,
+          categoryId: parsed.data.categoryId,
           descriptionAr: emptyToNull(parsed.data.descriptionAr) ?? null,
           descriptionEn: emptyToNull(parsed.data.descriptionEn) ?? null,
           // Both photos are required by the schema, so neither is normalised
@@ -67,9 +68,9 @@ export async function createShowcase(
       return row;
     });
 
-    // Affected public page: the home page section, and nothing else — there is
-    // no public listing route for these rows.
-    revalidateWebPaths(['/']);
+    // Affected public pages: the home page section and the future maintenance
+    // listing that groups these rows by production line.
+    revalidateWebPaths(['/', '/maintenance']);
     return { ok: true, id: created.id };
   } catch (error) {
     console.error('[admin] createShowcase failed:', error);
@@ -112,6 +113,7 @@ export async function updateShowcase(
         data: {
           nameAr: parsed.data.nameAr,
           nameEn: parsed.data.nameEn,
+          categoryId: parsed.data.categoryId,
           descriptionAr: emptyToNull(parsed.data.descriptionAr),
           descriptionEn: emptyToNull(parsed.data.descriptionEn),
           beforeImageUrl: parsed.data.beforeImageUrl,
@@ -127,7 +129,7 @@ export async function updateShowcase(
       });
     });
 
-    revalidateWebPaths(['/']);
+    revalidateWebPaths(['/', '/maintenance']);
     return { ok: true };
   } catch (error) {
     console.error('[admin] updateShowcase failed:', error);
@@ -161,7 +163,7 @@ export async function deleteShowcase(id: string): Promise<ActionResult> {
       });
     });
 
-    revalidateWebPaths(['/']);
+    revalidateWebPaths(['/', '/maintenance']);
     return { ok: true };
   } catch (error) {
     console.error('[admin] deleteShowcase failed:', error);

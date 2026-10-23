@@ -27,9 +27,15 @@ export default async function EditMaintenanceShowcasePage({ params }: Props) {
   const locale = await getLocale();
   const nav = await getTranslations('Nav');
   const common = await getTranslations('Common');
-  const showcase = await prisma.maintenanceShowcase.findUnique({
-    where: { id },
-  });
+  const [showcase, categories] = await Promise.all([
+    prisma.maintenanceShowcase.findUnique({
+      where: { id },
+    }),
+    prisma.maintenanceCategory.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { nameEn: 'asc' }],
+      select: { id: true, nameEn: true, nameAr: true },
+    }),
+  ]);
   if (!showcase) {
     notFound();
   }
@@ -50,9 +56,13 @@ export default async function EditMaintenanceShowcasePage({ params }: Props) {
         <ShowcaseForm
           mode="edit"
           showcaseId={showcase.id}
+          categories={categories}
           defaultValues={{
             nameAr: showcase.nameAr,
             nameEn: showcase.nameEn,
+            // Rows created before categories existed start unselected; the
+            // schema refuses to save until the admin picks a line.
+            categoryId: showcase.categoryId ?? '',
             descriptionAr: showcase.descriptionAr ?? '',
             descriptionEn: showcase.descriptionEn ?? '',
             beforeImageUrl: showcase.beforeImageUrl,

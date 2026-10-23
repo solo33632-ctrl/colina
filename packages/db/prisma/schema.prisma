@@ -107,6 +107,27 @@ model MachineImage {
   @@index([machineId])
 }
 
+// One complete production line Colina has serviced (e.g. "Bakery line").
+// Mirrors MachineCategory's conventions, but the long-form descriptions are
+// optional here: a production line can be named and listed before anyone has
+// written copy for it. `sortOrder` is the admin's display order (lowest first)
+// and is independent of createdAt, so a line can be moved without being
+// re-created. The cover photo is optional; the public section falls back to
+// the first item's after-photo when it is empty.
+model MaintenanceCategory {
+  id            String                @id @default(cuid())
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  nameAr        String
+  nameEn        String
+  slug          String                @unique
+  descriptionAr String?               @db.Text
+  descriptionEn String?               @db.Text
+  imageUrl      String?
+  sortOrder     Int                   @default(0)
+  items         MaintenanceShowcase[]
+}
+
 model MaintenanceService {
   id            String   @id @default(cuid())
   createdAt     DateTime @default(now())
@@ -139,27 +160,33 @@ model MaintenanceRequest {
 // BOTH are required — a comparison with one half missing is not a comparison,
 // so the row is only ever written once the pair exists.
 //
-// No slug and no relations: the item is identified by its id, like Partner and
-// Agent, and nothing else in the schema points at it. Public consumption (the
-// home page section) arrived after this entity, so for now only the admin
-// writes these rows.
+// No slug: the item is identified by its id, like Partner and Agent. Each row
+// belongs to one maintenance category (a production line). `categoryId` is
+// nullable so the rows created before categories existed stay valid; the admin
+// form requires a choice before it will save one. The delete rule matches
+// Machine -> MachineCategory: Restrict, so a line with items cannot disappear
+// silently underneath them.
 model MaintenanceShowcase {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  nameEn    String
-  nameAr    String
+  id             String               @id @default(cuid())
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  categoryId     String?
+  category       MaintenanceCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  nameEn         String
+  nameAr         String
   // Optional long form. Nullable rather than an empty-string default: "this
   // job has no written description" and "the description is the empty string"
   // are the same thing to a reader, so the column stays honest about which
   // rows were ever given one.
-  descriptionEn String? @db.Text
-  descriptionAr String? @db.Text
+  descriptionEn  String?              @db.Text
+  descriptionAr  String?              @db.Text
   // The pair, in the order they must be read. Stored on the row rather than in
   // a child table because the comparison is an atomic unit: there is exactly
   // one before and one after, and nothing else can point at either half.
   beforeImageUrl String
   afterImageUrl  String
+
+  @@index([categoryId])
 }
 
 model Partner {

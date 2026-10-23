@@ -22,6 +22,7 @@ export type SidebarLabelKey =
   | 'partners'
   | 'services'
   | 'maintenanceShowcase'
+  | 'maintenanceCategories'
   | 'news'
   | 'agents'
   | 'leads'
@@ -79,6 +80,14 @@ export function sidebarGroups(options: {
           href: '/maintenance-showcase',
           label: t('maintenanceShowcase'),
           icon: 'services',
+        },
+        // The production lines the showcase machines belong to. The folder
+        // glyph marks it as a grouping entity, which also keeps it distinct
+        // from the services wrench beside it.
+        {
+          href: '/maintenance-categories',
+          label: t('maintenanceCategories'),
+          icon: 'categories',
         },
         { href: '/news', label: t('news'), icon: 'news' },
         { href: '/agents', label: t('agents'), icon: 'agents' },

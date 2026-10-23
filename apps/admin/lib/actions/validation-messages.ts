@@ -4,6 +4,7 @@ import type {
   AgentFieldMessages,
   CategoryFieldMessages,
   MachineFieldMessages,
+  MaintenanceCategoryFieldMessages,
   NewsFieldMessages,
   PartnerFieldMessages,
   ServiceFieldMessages,
@@ -41,6 +42,18 @@ export function categoryMessages(
     nameEn: t('validation.nameEn'),
     slug: t('validation.slug'),
     image: t('validation.image'),
+  };
+}
+
+export function maintenanceCategoryMessages(
+  t: Translator<'MaintenanceCategories'>
+): MaintenanceCategoryFieldMessages {
+  return {
+    nameAr: t('validation.nameAr'),
+    nameEn: t('validation.nameEn'),
+    slug: t('validation.slug'),
+    imageUrl: t('validation.imageUrl'),
+    sortOrder: t('validation.sortOrder'),
   };
 }
 
@@ -110,6 +123,7 @@ export function showcaseMessages(
   return {
     nameAr: t('validation.nameAr'),
     nameEn: t('validation.nameEn'),
+    categoryId: t('validation.categoryId'),
     beforeImageUrl: t('validation.beforeImageUrl'),
     afterImageUrl: t('validation.afterImageUrl'),
   };

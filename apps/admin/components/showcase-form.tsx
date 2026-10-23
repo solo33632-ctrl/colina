@@ -1,8 +1,8 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslations } from 'next-intl';
-import { useRouter } from '@/i18n/navigation';
+import { useLocale, useTranslations } from 'next-intl';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { Card } from '@colina/ui';
@@ -13,19 +13,28 @@ import { createShowcase, updateShowcase } from '@/lib/actions/showcase';
 import { showcaseMessages } from '@/lib/actions/validation-messages';
 import { showcaseInputSchema, type ShowcaseInput } from '@/lib/schemas';
 
+export type MaintenanceCategoryOption = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+};
+
 type ShowcaseFormProps = {
   mode: 'create' | 'edit';
   showcaseId?: string;
+  categories: MaintenanceCategoryOption[];
   defaultValues?: ShowcaseInput;
 };
 
 export function ShowcaseForm({
   mode,
   showcaseId,
+  categories,
   defaultValues,
 }: ShowcaseFormProps) {
   const t = useTranslations('MaintenanceShowcase');
   const common = useTranslations('Common');
+  const locale = useLocale();
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -44,6 +53,7 @@ export function ShowcaseForm({
     defaultValues: defaultValues ?? {
       nameAr: '',
       nameEn: '',
+      categoryId: '',
       descriptionAr: '',
       descriptionEn: '',
       beforeImageUrl: '',
@@ -87,6 +97,42 @@ export function ShowcaseForm({
       className="mt-6 grid gap-6 pb-24 text-start"
     >
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card title={common('sectionBasic')} className="lg:col-span-2">
+          <div className="grid gap-5">
+            <Field
+              id="showcase-category"
+              label={t('form.category')}
+              error={errors.categoryId?.message}
+            >
+              <select
+                id="showcase-category"
+                dir={locale === 'ar' ? 'rtl' : 'ltr'}
+                className={inputClasses}
+                {...register('categoryId')}
+              >
+                <option value="">{t('form.chooseCategory')}</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {locale === 'ar'
+                      ? category.nameAr || category.nameEn
+                      : category.nameEn || category.nameAr}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {categories.length === 0 ? (
+              <p className="text-sm text-stone-600">
+                {t('form.noCategories')}{' '}
+                <Link
+                  href="/maintenance-categories/new"
+                  className="font-medium text-brand-700 underline hover:text-brand-800"
+                >
+                  {t('form.createCategoryLink')}
+                </Link>
+              </p>
+            ) : null}
+          </div>
+        </Card>
         <Card title={common('sectionArabic')}>
           <div dir="rtl" className="grid gap-5">
             <Field

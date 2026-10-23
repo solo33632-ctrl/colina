@@ -22,32 +22,46 @@ export async function generateMetadata({
 }
 
 type Props = {
-  searchParams: Promise<{ q?: string; saved?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; saved?: string }>;
 };
 
 export default async function MaintenanceShowcasePage({ searchParams }: Props) {
   const locale = await getLocale();
   const t = await getTranslations('MaintenanceShowcase');
   const common = await getTranslations('Common');
-  const { q, saved } = await searchParams;
+  const { q, category: categoryFilter, saved } = await searchParams;
   const query = (q ?? '').trim();
-  const isFiltered = query.length > 0;
+  const isFiltered = query.length > 0 || Boolean(categoryFilter);
 
-  const showcases = await prisma.maintenanceShowcase.findMany({
-    where: isFiltered
+  const where = {
+    ...(categoryFilter ? { categoryId: categoryFilter } : {}),
+    ...(query
       ? {
           OR: [
-            { nameEn: { contains: query, mode: 'insensitive' } },
-            { nameAr: { contains: query, mode: 'insensitive' } },
+            { nameEn: { contains: query, mode: 'insensitive' as const } },
+            { nameAr: { contains: query, mode: 'insensitive' as const } },
           ],
         }
-      : undefined,
-    // Newest first, and the opposite of the Partner list. A showcase is a piece
-    // of finished work an admin adds as it happens, so the row just saved has to
-    // be the one at the top — an "oldest first" list would bury it under every
-    // earlier job and make a save look like it did nothing.
-    orderBy: { createdAt: 'desc' },
-  });
+      : {}),
+  };
+
+  const [categories, showcases] = await Promise.all([
+    prisma.maintenanceCategory.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { nameEn: 'asc' }],
+      select: { id: true, nameEn: true, nameAr: true },
+    }),
+    prisma.maintenanceShowcase.findMany({
+      where,
+      // Newest first, and the opposite of the Partner list. A showcase is a
+      // piece of finished work an admin adds as it happens, so the row just
+      // saved has to be the one at the top — an "oldest first" list would bury
+      // it under every earlier job and make a save look like it did nothing.
+      orderBy: { createdAt: 'desc' },
+      include: {
+        category: { select: { nameEn: true, nameAr: true } },
+      },
+    }),
+  ]);
   type ShowcaseRow = (typeof showcases)[number];
 
   const name = (row: ShowcaseRow) =>
@@ -81,6 +95,17 @@ export default async function MaintenanceShowcasePage({ searchParams }: Props) {
           {name(row)}
         </span>
       ),
+    },
+    {
+      key: 'category',
+      header: t('form.category'),
+      className: 'hidden md:table-cell',
+      render: (row) =>
+        row.category
+          ? locale === 'ar'
+            ? row.category.nameAr || row.category.nameEn
+            : row.category.nameEn || row.category.nameAr
+          : common('none'),
     },
     {
       key: 'actions',
@@ -124,7 +149,31 @@ export default async function MaintenanceShowcasePage({ searchParams }: Props) {
           query={query}
           filtered={isFiltered && showcases.length > 0}
           clearHref="/maintenance-showcase"
-        />
+        >
+          <div>
+            <label
+              htmlFor="showcase-category-filter"
+              className="mb-1 block text-sm font-medium text-stone-700"
+            >
+              {common('filterByCategory')}
+            </label>
+            <select
+              id="showcase-category-filter"
+              name="category"
+              defaultValue={categoryFilter ?? ''}
+              className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
+            >
+              <option value="">{common('allCategories')}</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {locale === 'ar'
+                    ? category.nameAr || category.nameEn
+                    : category.nameEn || category.nameAr}
+                </option>
+              ))}
+            </select>
+          </div>
+        </ListFilters>
         {saved ? <SaveBanner message={common('saved')} /> : null}
         {showcases.length === 0 ? (
           <ListEmptyState

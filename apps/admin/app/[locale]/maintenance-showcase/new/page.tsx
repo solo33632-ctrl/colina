@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
 import { Container } from '@colina/ui';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -15,9 +16,13 @@ export async function generateMetadata({
 }
 
 export default async function NewMaintenanceShowcasePage() {
-  const [nav, t] = await Promise.all([
+  const [nav, t, categories] = await Promise.all([
     getTranslations('Nav'),
     getTranslations('MaintenanceShowcase'),
+    prisma.maintenanceCategory.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { nameEn: 'asc' }],
+      select: { id: true, nameEn: true, nameAr: true },
+    }),
   ]);
 
   return (
@@ -28,7 +33,7 @@ export default async function NewMaintenanceShowcasePage() {
           sectionLabel={nav('maintenanceShowcase')}
           current={t('form.createTitle')}
         />
-        <ShowcaseForm mode="create" />
+        <ShowcaseForm mode="create" categories={categories} />
       </Container>
     </main>
   );

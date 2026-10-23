@@ -13,6 +13,7 @@
     "partners": "Partners",
     "services": "Services",
     "maintenanceShowcase": "Maintenance machines",
+    "maintenanceCategories": "Maintenance categories",
     "news": "News",
     "agents": "Agents",
     "leads": "Leads",
@@ -194,6 +195,39 @@
       "hasMachines": "Cannot delete: this category still has {count, plural, one {# machine} other {# machines}}. Move or delete them first."
     }
   },
+  "MaintenanceCategories": {
+    "heading": "Maintenance categories",
+    "new": "New category",
+    "createFirst": "Create the first maintenance category",
+    "empty": "No maintenance categories yet.",
+    "itemCount": "{count, plural, one {# machine} other {# machines}}",
+    "itemsHeading": "Machines",
+    "slugTaken": "That slug is already used by another maintenance category.",
+    "form": {
+      "createTitle": "New maintenance category",
+      "editTitle": "Edit maintenance category",
+      "nameEn": "Name",
+      "nameAr": "الاسم",
+      "slug": "Slug",
+      "descriptionEn": "Description (English, optional)",
+      "descriptionAr": "الوصف (بالعربية، اختياري)",
+      "imageUrl": "Cover photo (optional)",
+      "imageHint": "If left empty, the first machine's after-photo is used.",
+      "sortOrder": "Display order",
+      "submitCreate": "Create category",
+      "submitEdit": "Save changes"
+    },
+    "validation": {
+      "nameAr": "Arabic name must be at least 2 characters.",
+      "nameEn": "English name must be at least 2 characters.",
+      "slug": "Slug must be at least 2 lowercase letters, numbers or dashes.",
+      "imageUrl": "Cover photo must be an absolute http(s) URL or empty.",
+      "sortOrder": "Display order must be 0 or higher."
+    },
+    "delete": {
+      "hasItems": "Cannot delete: this category still has {count, plural, one {# machine} other {# machines}}. Move or delete them first."
+    }
+  },
   "Machines": {
     "heading": "Machines",
     "new": "New machine",
@@ -306,8 +340,12 @@
     "form": {
       "createTitle": "New machine",
       "editTitle": "Edit machine",
-      "nameEn": "Name (English)",
-      "nameAr": "Name (Arabic)",
+      "nameEn": "Machine name",
+      "nameAr": "اسم الماكينة",
+      "category": "Category",
+      "chooseCategory": "Choose a category…",
+      "noCategories": "No maintenance categories exist yet. Create one before saving a machine.",
+      "createCategoryLink": "Create a maintenance category",
       "descriptionEn": "Description (English, optional)",
       "descriptionAr": "Description (Arabic, optional)",
       "beforeImageUrl": "Before photo",
@@ -325,6 +363,7 @@
     "validation": {
       "nameAr": "Arabic name must be at least 2 characters.",
       "nameEn": "English name must be at least 2 characters.",
+      "categoryId": "Choose a category.",
       "beforeImageUrl": "The before photo must be an absolute http(s) URL.",
       "afterImageUrl": "The after photo must be an absolute http(s) URL."
     }

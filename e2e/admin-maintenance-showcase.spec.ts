@@ -6,7 +6,11 @@ import {
   copyFor,
   loginState,
 } from './admin-session';
-import { deleteShowcasesByTag } from './db-fixture';
+import {
+  createMaintenanceCategory,
+  deleteMaintenanceCategoriesByTag,
+  deleteShowcasesByTag,
+} from './db-fixture';
 
 const en = copyFor('en');
 const ar = copyFor('ar');
@@ -31,6 +35,7 @@ const AFTER_PHOTO = `${ADMIN_URL}/apple-icon.png`;
 const STAMP = `${TAG}-${Date.now().toString(36)}`;
 const NAME_EN = `Showcase E2E ${STAMP}`;
 const NAME_AR = `ماكينة عرض ${STAMP}`;
+const CATEGORY_NAME_EN = `Showcase line ${STAMP}`;
 
 async function pastePhoto(
   page: import('@playwright/test').Page,
@@ -50,12 +55,25 @@ async function pastePhoto(
 test.describe('maintenance showcase CRUD', () => {
   test.skip(!ADMIN_PASSWORD, 'ADMIN_PASSWORD env is required');
 
+  // A production line is now required on every showcase item. It is created
+  // directly in the database because the category CRUD has its own spec; this
+  // one is about the machine and its photos.
+  test.beforeAll(() => {
+    createMaintenanceCategory({
+      slug: `showcase-line-${STAMP}`,
+      nameEn: CATEGORY_NAME_EN,
+      nameAr: `خط عرض ${STAMP}`,
+      sortOrder: 1,
+    });
+  });
+
   // Driven through the UI rather than seeded, so the assertions cover the whole
   // path: form validation, the Server Action, the audit log and the row that
   // comes back. Cleanup goes through the database rather than the delete
   // dialog, so a failed assertion cannot leave a row behind for the next run.
   test.afterAll(async () => {
     deleteShowcasesByTag(TAG);
+    deleteMaintenanceCategoriesByTag(TAG);
   });
 
   test('create with two photos, list, edit, delete', async ({ browser }) => {
@@ -75,8 +93,11 @@ test.describe('maintenance showcase CRUD', () => {
     // <a> whenever it is given an href.
     await page.getByRole('link', { name: 'New machine' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/maintenance-showcase/new`);
-    await page.getByLabel('Name (English)').fill(NAME_EN);
-    await page.getByLabel('Name (Arabic)').fill(NAME_AR);
+    await page.getByLabel('Machine name').fill(NAME_EN);
+    await page.getByLabel('اسم الماكينة').fill(NAME_AR);
+    await page.getByLabel('Category').selectOption({
+      label: CATEGORY_NAME_EN,
+    });
     await page
       .getByLabel('Description (English, optional)')
       .fill('E2E description of the finished job, over ten characters.');
@@ -107,7 +128,10 @@ test.describe('maintenance showcase CRUD', () => {
     // being read, the way an admin replacing one half would.
     await row.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/maintenance-showcase\/[^/]+\/edit$/);
-    await expect(page.getByLabel('Name (English)')).toHaveValue(NAME_EN);
+    await expect(page.getByLabel('Machine name')).toHaveValue(NAME_EN);
+    await expect(
+      page.getByLabel('Category').locator('option:checked')
+    ).toHaveText(CATEGORY_NAME_EN);
     await page
       .getByRole('button', { name: 'Paste a URL for the before photo' })
       .click();
@@ -118,7 +142,7 @@ test.describe('maintenance showcase CRUD', () => {
       BEFORE_PHOTO
     );
     await expect(page.locator('#showcase-after-url')).toHaveValue(AFTER_PHOTO);
-    await page.getByLabel('Name (English)').fill(`${NAME_EN} renamed`);
+    await page.getByLabel('Machine name').fill(`${NAME_EN} renamed`);
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/maintenance-showcase`);
     await expect(page.getByText(`${NAME_EN} renamed`)).toBeVisible();
@@ -155,8 +179,11 @@ test.describe('maintenance showcase CRUD', () => {
     const page = await context.newPage();
 
     await page.goto(`${ADMIN_URL}/en/maintenance-showcase/new`);
-    await page.getByLabel('Name (English)').fill(`${NAME_EN} no-photo`);
-    await page.getByLabel('Name (Arabic)').fill(`${NAME_AR} بدون صورة`);
+    await page.getByLabel('Machine name').fill(`${NAME_EN} no-photo`);
+    await page.getByLabel('اسم الماكينة').fill(`${NAME_AR} بدون صورة`);
+    await page.getByLabel('Category').selectOption({
+      label: CATEGORY_NAME_EN,
+    });
     // Only the before photo: the after half is what is missing.
     await pastePhoto(page, 'before', BEFORE_PHOTO);
     await page.getByRole('button', { name: 'Create machine' }).click();
@@ -194,6 +221,10 @@ test.describe('maintenance showcase CRUD', () => {
     await expect(page.getByText('لا توجد ماكينات صيانة بعد.')).toBeVisible();
 
     await page.goto(`${ADMIN_URL}/ar/maintenance-showcase/new`);
+    await expect(
+      page.getByLabel('اسم الماكينة', { exact: true })
+    ).toBeAttached();
+    await expect(page.getByLabel('الفئة (الخط)')).toBeVisible();
     // `exact` because the two controls inside each upload field carry the
     // field's own wording in their aria-labels, and a substring match would
     // resolve to three elements at once.

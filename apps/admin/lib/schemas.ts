@@ -104,6 +104,43 @@ export function categoryInputSchema(messages: CategoryFieldMessages) {
 
 export type CategoryInput = z.infer<ReturnType<typeof categoryInputSchema>>;
 
+export type MaintenanceCategoryFieldMessages = CategoryBaseMessages & {
+  imageUrl: string;
+  sortOrder: string;
+};
+
+// A maintenance category is one complete production line. It follows the
+// machine-category shape (same slug rule, same optional absolute-URL cover),
+// plus an explicit display order. Descriptions are optional because a line can
+// be named and assigned before anyone writes copy for it.
+export function maintenanceCategoryInputSchema(
+  messages: MaintenanceCategoryFieldMessages
+) {
+  return z.object({
+    nameAr: z.string().min(2, { error: messages.nameAr }),
+    nameEn: z.string().min(2, { error: messages.nameEn }),
+    slug: slugRule(messages.slug),
+    descriptionAr: z.string().optional(),
+    descriptionEn: z.string().optional(),
+    imageUrl: optionalHttpUrl(messages.imageUrl),
+    sortOrder: z
+      .number()
+      .int()
+      .min(0, { error: messages.sortOrder })
+      .default(0),
+  });
+}
+
+export type MaintenanceCategoryInput = z.infer<
+  ReturnType<typeof maintenanceCategoryInputSchema>
+>;
+
+// The form's field values: `sortOrder` has a schema default, so it is optional
+// on the way in but always a number on the way out.
+export type MaintenanceCategoryFormInput = z.input<
+  ReturnType<typeof maintenanceCategoryInputSchema>
+>;
+
 export type MachineFieldMessages = CategoryBaseMessages & {
   categoryId: string;
   shortDescriptionAr: string;
@@ -178,6 +215,7 @@ export type PartnerInput = z.infer<ReturnType<typeof partnerInputSchema>>;
 export type ShowcaseFieldMessages = {
   nameAr: string;
   nameEn: string;
+  categoryId: string;
   beforeImageUrl: string;
   afterImageUrl: string;
 };
@@ -186,6 +224,11 @@ export function showcaseInputSchema(messages: ShowcaseFieldMessages) {
   return z.object({
     nameAr: z.string().min(2, { error: messages.nameAr }),
     nameEn: z.string().min(2, { error: messages.nameEn }),
+    // Required on every save: an item belongs to exactly one production line.
+    // The column stays nullable for rows that predate categories, and the edit
+    // form starts those with an empty select — which fails this rule until the
+    // admin chooses one.
+    categoryId: z.string().min(1, { error: messages.categoryId }),
     // Fully optional, same rule as the category and machine long-form fields:
     // a blank description saves and simply renders nothing.
     descriptionAr: z.string().optional(),

@@ -157,6 +157,33 @@ export function createCategory(fixture: CategoryFixture) {
   `);
 }
 
+export type MaintenanceCategoryFixture = {
+  slug: string;
+  nameEn: string;
+  nameAr: string;
+  descriptionEn?: string;
+  descriptionAr?: string;
+  imageUrl?: string;
+  sortOrder?: number;
+};
+
+/** Creates a maintenance category (one production line). */
+export function createMaintenanceCategory(fixture: MaintenanceCategoryFixture) {
+  runInDb(`
+    await prisma.maintenanceCategory.create({
+      data: {
+        slug: ${JSON.stringify(fixture.slug)},
+        nameEn: ${JSON.stringify(fixture.nameEn)},
+        nameAr: ${JSON.stringify(fixture.nameAr)},
+        descriptionEn: ${JSON.stringify(fixture.descriptionEn ?? null)},
+        descriptionAr: ${JSON.stringify(fixture.descriptionAr ?? null)},
+        imageUrl: ${JSON.stringify(fixture.imageUrl ?? null)},
+        sortOrder: ${JSON.stringify(fixture.sortOrder ?? 0)},
+      },
+    });
+  `);
+}
+
 export type MachineFixture = {
   slug: string;
   nameEn: string;
@@ -305,6 +332,34 @@ export function deleteShowcasesByTag(tag = FIXTURE_TAG) {
 }
 
 /**
+ * Removes maintenance categories a spec created, matched by the same tag.
+ *
+ * Its showcase items must be gone first: MaintenanceShowcase.categoryId is
+ * ON DELETE RESTRICT, so the category cannot go before them. Deleting by slug
+ * because, unlike a showcase, this entity has one.
+ */
+export function deleteMaintenanceCategoriesByTag(tag = FIXTURE_TAG) {
+  try {
+    runInDb(`
+      await prisma.maintenanceShowcase.deleteMany({
+        where: {
+          OR: [
+            { nameEn: { contains: ${JSON.stringify(tag)} } },
+            { nameAr: { contains: ${JSON.stringify(tag)} } },
+            { category: { slug: { contains: ${JSON.stringify(tag)} } } },
+          ],
+        },
+      });
+      await prisma.maintenanceCategory.deleteMany({
+        where: { slug: { contains: ${JSON.stringify(tag)} } },
+      });
+    `);
+  } catch {
+    // Intentionally ignored: cleanup must never mask a test result.
+  }
+}
+
+/**
  * Removes every fixture these specs made. Safe to call twice and safe to call
  * when nothing was created — deleting a prefix that matches no rows is a
  * no-op, so cleanup never needs to know how far the run got.
@@ -312,14 +367,25 @@ export function deleteShowcasesByTag(tag = FIXTURE_TAG) {
 export function cleanupFixtures(tag = FIXTURE_TAG) {
   try {
     runInDb(`
-      // Machines first: Machine.categoryId is ON DELETE RESTRICT, so a category
-      // cannot go before its machines do. Both use deleteMany, which is a no-op
-      // when the prefix matches nothing — so cleanup never needs to know how far
-      // a run got.
+      // Children first: both relations are ON DELETE RESTRICT, so a parent
+      // cannot go before its rows do. All use deleteMany, which is a no-op
+      // when the prefix matches nothing — so cleanup never needs to know how
+      // far a run got.
       await prisma.machine.deleteMany({
         where: { slug: { contains: ${JSON.stringify(tag)} } },
       });
       await prisma.machineCategory.deleteMany({
+        where: { slug: { contains: ${JSON.stringify(tag)} } },
+      });
+      await prisma.maintenanceShowcase.deleteMany({
+        where: {
+          OR: [
+            { nameEn: { contains: ${JSON.stringify(tag)} } },
+            { nameAr: { contains: ${JSON.stringify(tag)} } },
+          ],
+        },
+      });
+      await prisma.maintenanceCategory.deleteMany({
         where: { slug: { contains: ${JSON.stringify(tag)} } },
       });
     `);

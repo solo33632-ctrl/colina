@@ -21,7 +21,8 @@
     "subheading": "تصفح عائلات الآلات لدينا.",
     "empty": "لا توجد فئات بعد — عُد قريباً.",
     "hoverText": "اكتشف تفاصيل هذه الفئة",
-    "viewLabel": "عرض"
+    "viewLabel": "عرض",
+    "viewAll": "عرض كل أقسام المنتجات"
   },
   "MaintenanceShowcase": {
     "heading": "ماكينات الصيانة",
@@ -32,12 +33,12 @@
     "valueText": "{percent}% قبل",
     "photoAlt": "{name} — قبل الصيانة",
     "photoAltAfter": "{name} — بعد الصيانة",
-    "hoverText": "شاهد ماكينات هذا الخط قبل الصيانة وبعدها",
+    "hoverText": "شاهد التفاصيل هنا",
     "viewLabel": "عرض"
   },
   "MaintenancePages": {
     "machineCount": "{count, plural, zero {لا توجد ماكينات} one {ماكينة واحدة} two {ماكينتان} few {# ماكينات} many {# ماكينة} other {# ماكينة}}",
-    "viewAll": "عرض الكل",
+    "viewAll": "عرض كل أقسام الصيانة",
     "breadcrumbLabel": "مسار التنقل",
     "maintenanceCrumb": "الصيانة",
     "indexEmpty": "لا توجد ماكينات صيانة بعد — عُد قريباً.",

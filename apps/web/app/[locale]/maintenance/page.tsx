@@ -80,7 +80,6 @@ export default async function MaintenanceIndexPage({ params }: Props) {
                     image: line.coverImage,
                   }}
                   href={`/maintenance/${line.slug}`}
-                  countLabel={pages('machineCount', { count: line.itemCount })}
                   locale={locale}
                   hoverText={t('hoverText')}
                   viewLabel={t('viewLabel')}

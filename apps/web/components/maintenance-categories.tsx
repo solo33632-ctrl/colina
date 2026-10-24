@@ -2,11 +2,15 @@ import { getTranslations } from 'next-intl/server';
 import { Container } from '@colina/ui';
 import { CategoryCard } from './category-card';
 import { Reveal } from './reveal';
-import { Link } from '@/i18n/navigation';
+import { ViewAllLink } from './view-all-link';
 import type { MaintenanceLineSummary } from '@/lib/maintenance';
 
-/** How many lines the home page shows before sending the visitor to /maintenance. */
-const HOME_LIMIT = 6;
+/**
+ * How many lines the home page shows before sending the visitor to
+ * /maintenance. The page fetches one extra row so this component can tell
+ * whether a "View all" link is needed without counting separately.
+ */
+export const HOME_MAINTENANCE_LIMIT = 6;
 
 type MaintenanceCategoriesProps = {
   lines: MaintenanceLineSummary[];
@@ -35,8 +39,8 @@ export async function MaintenanceCategories({
 
   const t = await getTranslations('MaintenanceShowcase');
   const pages = await getTranslations('MaintenancePages');
-  const visible = lines.slice(0, HOME_LIMIT);
-  const hasMore = lines.length > HOME_LIMIT;
+  const visible = lines.slice(0, HOME_MAINTENANCE_LIMIT);
+  const hasMore = lines.length > HOME_MAINTENANCE_LIMIT;
 
   return (
     <section aria-labelledby="maintenance-categories-heading">
@@ -63,7 +67,6 @@ export async function MaintenanceCategories({
                   image: line.coverImage,
                 }}
                 href={`/maintenance/${line.slug}`}
-                countLabel={pages('machineCount', { count: line.itemCount })}
                 locale={locale}
                 hoverText={t('hoverText')}
                 viewLabel={t('viewLabel')}
@@ -72,14 +75,7 @@ export async function MaintenanceCategories({
           ))}
         </ul>
         {hasMore ? (
-          <div className="mt-8 text-center">
-            <Link
-              href="/maintenance"
-              className="inline-flex rounded-md font-medium text-brand-700 underline-offset-4 hover:text-brand-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-            >
-              {pages('viewAll')}
-            </Link>
-          </div>
+          <ViewAllLink href="/maintenance" label={pages('viewAll')} />
         ) : null}
       </Container>
     </section>

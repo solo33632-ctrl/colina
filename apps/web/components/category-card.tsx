@@ -23,12 +23,6 @@ export type CategoryCardProps = {
    */
   href?: string;
   /**
-   * Optional pill under the name, e.g. "12 machines". Rendered inside the
-   * tile and folded into the link's accessible name, so a screen reader hears
-   * the count as part of the destination rather than as loose text.
-   */
-  countLabel?: string;
-  /**
    * The one line revealed under the name on hover/focus. Required so no call
    * site can inherit the wrong grid's copy: the product categories and the
    * maintenance lines say different things about where the tile goes.
@@ -62,7 +56,7 @@ export type CategoryCardProps = {
  * same place. A missing photo cannot make a tile look unfinished.
  *
  * HOVER REVEAL. At rest the tile is exactly what it was: photo, scrim, centred
- * name (and count). Pointing at it — or tabbing to it — darkens the scrim,
+ * name. Pointing at it — or tabbing to it — darkens the scrim,
  * lifts the name, and reveals a short line of copy plus an outlined "View"
  * pill with an arrow. The reveal is absolutely positioned under the name
  * block, so it takes no space at rest and the name stays dead centre until
@@ -77,7 +71,7 @@ export type CategoryCardProps = {
  *
  * The whole tile is ONE link. The revealed copy and pill are a styled,
  * `aria-hidden` span, never nested controls, and the link's accessible name
- * remains the category name (plus the count when there is one).
+ * remains exactly the category name.
  *
  * Typography. The name is `font-medium` (500): IBM Plex Sans and IBM Plex Sans
  * Arabic both load 400/500/600/700 (see `app/[locale]/layout.tsx`), so 500 is a
@@ -97,7 +91,6 @@ export function CategoryCard({
   category,
   locale,
   href,
-  countLabel,
   hoverText,
   viewLabel,
 }: CategoryCardProps) {
@@ -106,11 +99,10 @@ export function CategoryCard({
   return (
     <Link
       href={href ?? `/categories/${category.slug}`}
-      // The tile's accessible name is the category name — plus the count when
-      // one is shown — and nothing else, so a screen reader announces
-      // "Production Lines, 12 machines, link" rather than the photo, the
+      // The tile's accessible name is exactly the category name, so a screen
+      // reader announces "Production Lines, link" rather than the photo, the
       // scrim and the hidden hover copy as well.
-      aria-label={countLabel ? `${name} — ${countLabel}` : name}
+      aria-label={name}
       className="group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-white transition-[transform,box-shadow] duration-300 ease-out motion-safe:hover:-translate-y-2 motion-safe:group-focus-visible:-translate-y-2 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
     >
       {category.image ? (
@@ -155,11 +147,6 @@ export function CategoryCard({
           <h3 className="line-clamp-2 text-balance font-medium text-lg leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] sm:text-xl">
             {name}
           </h3>
-          {countLabel ? (
-            <span className="mt-2 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-              {countLabel}
-            </span>
-          ) : null}
           {/* The reveal, out of flow under the name block. Absolute so the
               resting tile is laid out exactly as before; `w-60 max-w-full`
               keeps it inside the narrowest tile while staying readable on a

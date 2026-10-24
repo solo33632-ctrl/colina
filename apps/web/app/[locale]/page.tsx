@@ -3,12 +3,18 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { prisma } from '@colina/db';
-import { CategoriesGrid } from '@/components/categories-grid';
+import {
+  CategoriesGrid,
+  HOME_CATEGORY_LIMIT,
+} from '@/components/categories-grid';
 import { ContactSection } from '@/components/contact-section';
 import { HeroSection } from '@/components/hero-section';
 import { IntroOverlay } from '@/components/intro-overlay';
 import { IntroProvider } from '@/components/intro-provider';
-import { MaintenanceCategories } from '@/components/maintenance-categories';
+import {
+  HOME_MAINTENANCE_LIMIT,
+  MaintenanceCategories,
+} from '@/components/maintenance-categories';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { PartnersStrip } from '@/components/partners-strip';
 import { WhyUsSection } from '@/components/why-us-section';
@@ -49,12 +55,16 @@ export default async function HomePage({ params }: Props) {
   // Read-only content queries in a Server Component — no API route needed.
   // (Phase 8's backend API covers form submissions/writes, not reads.)
   const [categories, partners, maintenanceLines] = await Promise.all([
-    prisma.machineCategory.findMany({ orderBy: { createdAt: 'asc' } }),
+    // One extra row beyond the six the section prints, so the component can
+    // tell whether a "View all" link is needed without a second query.
+    prisma.machineCategory.findMany({
+      orderBy: { createdAt: 'asc' },
+      take: HOME_CATEGORY_LIMIT + 1,
+    }),
     prisma.partner.findMany({ orderBy: { createdAt: 'asc' } }),
-    // Production lines with at least one machine, in the admin's order. The
-    // component caps the home page at six; the query returns all so it can
-    // decide whether a "View all" link is needed.
-    getMaintenanceLines(),
+    // Production lines with at least one machine, in the admin's order. Same
+    // limit+1 rule as the product categories above.
+    getMaintenanceLines(HOME_MAINTENANCE_LIMIT + 1),
   ]);
 
   // Organization structured data: name + canonical URL only. No logo file

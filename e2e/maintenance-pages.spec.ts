@@ -53,8 +53,6 @@ const COPY = {
     more: 'More machines in this line',
     before: 'Before',
     after: 'After',
-    fourMachines: '4 machines',
-    oneMachine: '1 machine',
   },
   ar: {
     heading: 'ماكينات الصيانة',
@@ -64,10 +62,6 @@ const COPY = {
     more: 'المزيد من ماكينات هذا الخط',
     before: 'قبل',
     after: 'بعد',
-    // ICU `few` for four: the exact digits are the formatter's business, the
-    // noun is what proves the right plural branch was chosen.
-    fourMachines: 'ماكينات',
-    oneMachine: 'ماكينة واحدة',
   },
 } as const;
 
@@ -180,12 +174,12 @@ for (const locale of ['en', 'ar'] as const) {
         const lineA = page.locator(`a[href$="/maintenance/${LINE_A_SLUG}"]`);
         await expect(lineA).toHaveCount(1);
         await expect(lineA).toContainText(lineAName(locale));
-        await expect(lineA).toContainText(COPY[locale].fourMachines);
+        await expect(lineA).not.toContainText(/\d+\s+machines?/i);
 
         const lineB = page.locator(`a[href$="/maintenance/${LINE_B_SLUG}"]`);
         await expect(lineB).toHaveCount(1);
         await expect(lineB).toContainText(lineBName(locale));
-        await expect(lineB).toContainText(COPY[locale].oneMachine);
+        await expect(lineB).not.toContainText(/\d+\s+machines?/i);
 
         // A line with no machines is not a destination.
         await expect(page.getByText(emptyName(locale))).toHaveCount(0);

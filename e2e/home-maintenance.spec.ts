@@ -39,13 +39,9 @@ const ORPHAN_AR = `ماكينة يتيمة ${TAG}`;
 const COPY = {
   en: {
     heading: 'Maintenance machines',
-    twoMachines: '2 machines',
-    oneMachine: '1 machine',
   },
   ar: {
     heading: 'ماكينات الصيانة',
-    twoMachines: 'ماكينتان',
-    oneMachine: 'ماكينة واحدة',
   },
 } as const;
 
@@ -219,7 +215,7 @@ test.describe('home page maintenance machines', () => {
 });
 
 // Both locales, both widths: the section has to read as one page in Arabic on
-// a phone, and the cards carry a count pill whose plural changes per locale.
+// a phone, and the cards carry only the line's name.
 for (const locale of ['en', 'ar'] as const) {
   for (const viewport of [
     { name: '1280px', width: 1280, height: 900 },
@@ -259,14 +255,14 @@ for (const locale of ['en', 'ar'] as const) {
           })
         ).toBeVisible();
 
-        // The line with items is a tile that prints the localized name, the
-        // count pill, and links to its line page.
+        // The line with items is a tile that prints the localized name and
+        // links to its line page. The count pill is gone.
         const lineLink = section.locator(
           `a[href$="/maintenance/${LINE_SLUG}"]`
         );
         await expect(lineLink).toHaveCount(1);
         await expect(lineLink).toContainText(lineName(locale));
-        await expect(lineLink).toContainText(COPY[locale].twoMachines);
+        await expect(lineLink).not.toContainText(/\d+\s+machines?/i);
         // The line's own cover wins over the newest machine's photo.
         await expect(lineLink.locator('img')).toHaveAttribute(
           'src',
@@ -279,7 +275,7 @@ for (const locale of ['en', 'ar'] as const) {
         );
         await expect(fallbackLink).toHaveCount(1);
         await expect(fallbackLink).toContainText(fallbackName(locale));
-        await expect(fallbackLink).toContainText(COPY[locale].oneMachine);
+        await expect(fallbackLink).not.toContainText(/\d+\s+machines?/i);
         await expect(fallbackLink.locator('img')).toHaveAttribute(
           'src',
           SHOWCASE_PHOTOS.after

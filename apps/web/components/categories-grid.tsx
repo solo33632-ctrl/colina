@@ -3,6 +3,14 @@ import type { MachineCategory } from '@colina/db';
 import { Container } from '@colina/ui';
 import { CategoryCard } from './category-card';
 import { Reveal } from './reveal';
+import { ViewAllLink } from './view-all-link';
+
+/**
+ * How many product tiles the home page shows. The page fetches one extra row
+ * so this component can tell whether a "View all" link is needed without
+ * counting the table separately.
+ */
+export const HOME_CATEGORY_LIMIT = 6;
 
 type CategoriesGridProps = {
   categories: MachineCategory[];
@@ -14,6 +22,8 @@ export async function CategoriesGrid({
   locale,
 }: CategoriesGridProps) {
   const t = await getTranslations('Categories');
+  const visible = categories.slice(0, HOME_CATEGORY_LIMIT);
+  const hasMore = categories.length > HOME_CATEGORY_LIMIT;
 
   return (
     <section aria-labelledby="categories-heading">
@@ -35,18 +45,23 @@ export async function CategoriesGrid({
           ) : (
             // Constrained and centred so the square tiles land around 370px on
             // desktop rather than stretching the full container width.
-            <ul className="mx-auto mt-12 grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {categories.map((category) => (
-                <li key={category.id}>
-                  <CategoryCard
-                    category={category}
-                    locale={locale}
-                    hoverText={t('hoverText')}
-                    viewLabel={t('viewLabel')}
-                  />
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="mx-auto mt-12 grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {visible.map((category) => (
+                  <li key={category.id}>
+                    <CategoryCard
+                      category={category}
+                      locale={locale}
+                      hoverText={t('hoverText')}
+                      viewLabel={t('viewLabel')}
+                    />
+                  </li>
+                ))}
+              </ul>
+              {hasMore ? (
+                <ViewAllLink href="/categories" label={t('viewAll')} />
+              ) : null}
+            </>
           )}
         </Reveal>
       </Container>

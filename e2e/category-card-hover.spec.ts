@@ -27,12 +27,12 @@ const LINE_NAME_AR = `خط صيانة التمرير ${STAMP} باسم طويل 
 const COPY = {
   en: {
     productHover: 'Explore this category',
-    maintenanceHover: "See this line's machines before and after maintenance",
+    maintenanceHover: 'See the details here',
     view: 'View',
   },
   ar: {
     productHover: 'اكتشف تفاصيل هذه الفئة',
-    maintenanceHover: 'شاهد ماكينات هذا الخط قبل الصيانة وبعدها',
+    maintenanceHover: 'شاهد التفاصيل هنا',
     view: 'عرض',
   },
 } as const;
@@ -170,7 +170,7 @@ for (const locale of ['en', 'ar'] as const) {
     ).toBeVisible();
   });
 
-  test(`${locale} at 1280: maintenance cards reveal their own copy and count`, async ({
+  test(`${locale} at 1280: maintenance cards reveal their own copy`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });

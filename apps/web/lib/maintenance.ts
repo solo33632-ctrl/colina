@@ -6,8 +6,6 @@ import { prisma } from '@colina/db';
  * `coverImage` is the category's own photo when it has one, otherwise the
  * after photo of its newest item — the same "after" picture the line page
  * leads with, so a line without artwork still gets a real image on the tile.
- * `itemCount` is the number of machines in the line, which the card prints as
- * a pill.
  */
 export type MaintenanceLineSummary = {
   id: string;
@@ -15,7 +13,6 @@ export type MaintenanceLineSummary = {
   nameEn: string;
   nameAr: string;
   coverImage: string | null;
-  itemCount: number;
 };
 
 /**
@@ -23,23 +20,27 @@ export type MaintenanceLineSummary = {
  *
  * The `items: { some: {} }` filter is the public orphan guard applied at the
  * source: a line with nothing in it is not a destination yet, and the home
- * page must not offer a card that leads to an empty page. It also means the
- * count below can never be zero.
+ * page must not offer a card that leads to an empty page.
  *
  * Ordering is the admin's `sortOrder` first and creation time second, so a
  * line an editor deliberately places above another stays there.
+ *
+ * `take` is the home page's preview size (limit + 1); the index calls this
+ * without one and lists every qualifying line.
  */
-export async function getMaintenanceLines(): Promise<MaintenanceLineSummary[]> {
+export async function getMaintenanceLines(
+  take?: number
+): Promise<MaintenanceLineSummary[]> {
   const rows = await prisma.maintenanceCategory.findMany({
     where: { items: { some: {} } },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    take,
     select: {
       id: true,
       slug: true,
       nameEn: true,
       nameAr: true,
       imageUrl: true,
-      _count: { select: { items: true } },
       // Only the newest item's after photo: that is the fallback cover, and
       // nothing else about the row is rendered on a category tile.
       items: {
@@ -50,10 +51,9 @@ export async function getMaintenanceLines(): Promise<MaintenanceLineSummary[]> {
     },
   });
 
-  return rows.map(({ _count, items, imageUrl, ...line }) => ({
+  return rows.map(({ items, imageUrl, ...line }) => ({
     ...line,
     coverImage: imageUrl ?? items[0]?.afterImageUrl ?? null,
-    itemCount: _count.items,
   }));
 }
 

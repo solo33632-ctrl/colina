@@ -386,6 +386,52 @@ export function deleteMaintenanceCategoriesByTag(tag = FIXTURE_TAG) {
   }
 }
 
+export type SiteSettingsFixture = {
+  whatsappNumber: string | null;
+  whatsappMessageEn?: string | null;
+  whatsappMessageAr?: string | null;
+};
+
+/**
+ * Creates or updates the singleton SiteSettings row used by the public site.
+ *
+ * `upsert` rather than create-or-update in the spec: the row is shared with
+ * admin-settings.spec.ts (one worker, so the two never overlap), and a test
+ * should be able to say "this is the state I need" without first checking
+ * whether an earlier test left a row behind.
+ */
+export function setSiteSettings(fixture: SiteSettingsFixture) {
+  runInDb(`
+    const data = {
+      whatsappNumber: ${JSON.stringify(fixture.whatsappNumber)},
+      whatsappMessageEn: ${JSON.stringify(fixture.whatsappMessageEn ?? null)},
+      whatsappMessageAr: ${JSON.stringify(fixture.whatsappMessageAr ?? null)},
+    };
+    await prisma.siteSettings.upsert({
+      where: { id: 'main' },
+      create: { id: 'main', ...data },
+      update: data,
+    });
+  `);
+}
+
+/**
+ * Removes the singleton settings row, restoring the "no WhatsApp" state.
+ *
+ * Ignored on failure like the other cleanup helpers: a cleanup error must not
+ * turn a passing assertion into a red run. The spec still asserts the row is
+ * gone through the UI, so a silent failure cannot hide a leak.
+ */
+export function deleteSiteSettings() {
+  try {
+    runInDb(`
+      await prisma.siteSettings.deleteMany({ where: { id: 'main' } });
+    `);
+  } catch {
+    // Intentionally ignored: cleanup must never mask a test result.
+  }
+}
+
 /**
  * Removes every fixture these specs made. Safe to call twice and safe to call
  * when nothing was created — deleting a prefix that matches no rows is a

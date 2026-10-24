@@ -146,6 +146,11 @@
     "linksLabel": "Quick links",
     "privacy": "Privacy Policy"
   },
+  "Whatsapp": {
+    "buttonLabel": "Chat with us on WhatsApp",
+    "contactLabel": "WhatsApp",
+    "defaultMessage": "Hello, I'd like to ask about your services."
+  },
   "LanguageSwitcher": {
     "label": "Language",
     "arabic": "العربية",

@@ -146,6 +146,11 @@
     "linksLabel": "روابط سريعة",
     "privacy": "سياسة الخصوصية"
   },
+  "Whatsapp": {
+    "buttonLabel": "تواصل معنا عبر واتساب",
+    "contactLabel": "واتساب",
+    "defaultMessage": "مرحباً، أود الاستفسار عن خدماتكم."
+  },
   "LanguageSwitcher": {
     "label": "اللغة",
     "arabic": "العربية",

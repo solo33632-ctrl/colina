@@ -129,6 +129,46 @@
   body:has(main[data-quote-bar-page]) footer {
     padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
+
+  /* -------------------------------------------------------------------------
+     Floating WhatsApp button on a machine page
+
+     The quote bar is fixed to the bottom edge below `lg` and is about 73px
+     tall (the same measured height the footer rule above reserves). The
+     button's normal `bottom-5` would put it straight through the bar, so on
+     pages that carry the marker it is lifted to 5.5rem: the bar's height plus
+     a 15px gap. The offset includes the safe-area inset for the same reason
+     the bar does, which keeps the gap constant on a notched phone.
+
+     Scoped exactly like the footer rule, so no other page moves. The rule
+     applies whether the bar is visible or hidden — the bar's space is always
+     reserved at the bottom of the viewport, and a button that jumped down
+     when the bar faded would cover the footer's last line.
+     ------------------------------------------------------------------------- */
+  body:has(main[data-quote-bar-page]) .colina-whatsapp-button {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* The button now occupies the band ABOVE the bar, so the footer needs more
+     room than the bar alone did: its content has to clear the button's top
+     edge (5.5rem + the button's own 3.5rem height = 9rem), not just the bar.
+     Without this the copyright line — wider than the centred tagline — can
+     pass under the button's right-hand side. The inner Container's own 1.5rem
+     bottom padding sits on top of this, leaving a 1.5rem gap below the last
+     line. Only when a button is actually rendered; a site without WhatsApp
+     keeps the bar-only clearance above. */
+  body:has(main[data-quote-bar-page]):has(.colina-whatsapp-button) footer {
+    padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* The contact row's phone number is LTR text inside a page that may be RTL.
+   `dir="ltr"` on the element already isolates it in every current browser;
+   this class states the isolation explicitly so the number's own punctuation
+   can never reorder the surrounding Arabic. */
+.colina-ltr-isolate {
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 /* ---------------------------------------------------------------------------

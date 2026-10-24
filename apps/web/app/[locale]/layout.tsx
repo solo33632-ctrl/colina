@@ -10,8 +10,11 @@ import {
 import { notFound } from 'next/navigation';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
+import { WhatsappButton } from '@/components/whatsapp-button';
 import { routing } from '@/i18n/routing';
 import { localeAlternates } from '@/lib/seo';
+import { getSiteSettings } from '@/lib/site-settings';
+import { buildWhatsappUrl } from '@/lib/whatsapp';
 import '../globals.css';
 
 // Arabic UI face: full Arabic coverage, 100–700 weights, engineered for
@@ -34,6 +37,12 @@ type LocaleParams = {
   children: ReactNode;
   params: Promise<{ locale: string }>;
 };
+
+// The locale shell now reads the WhatsApp settings from the database, so every
+// page under it is DB-driven. Hourly ISR is the same freshness window the rest
+// of the public site uses (see agent.md) and keeps every page statically
+// generated — nothing here becomes a per-request dynamic render.
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -70,6 +79,20 @@ export default async function LocaleLayout({ children, params }: LocaleParams) {
   // Direction is driven by the active locale — never hardcoded.
   const direction = locale === 'ar' ? 'rtl' : 'ltr';
 
+  // One settings read for the whole request tree (the contact page asks for
+  // the same cached value). The locale's stored greeting wins; a blank or
+  // missing one falls back to the standard greeting in the messages file.
+  const whatsapp = await getTranslations('Whatsapp');
+  const settings = await getSiteSettings();
+  const storedMessage =
+    locale === 'ar' ? settings.whatsappMessageAr : settings.whatsappMessageEn;
+  const whatsappHref = settings.whatsappNumber
+    ? buildWhatsappUrl(
+        settings.whatsappNumber,
+        storedMessage?.trim() || whatsapp('defaultMessage')
+      )
+    : null;
+
   return (
     <html
       lang={locale}
@@ -86,7 +109,13 @@ export default async function LocaleLayout({ children, params }: LocaleParams) {
         <NextIntlClientProvider messages={messages}>
           <SiteHeader />
           {children}
-          <SiteFooter />
+          <SiteFooter hasWhatsapp={whatsappHref !== null} />
+          {whatsappHref ? (
+            <WhatsappButton
+              href={whatsappHref}
+              label={whatsapp('buttonLabel')}
+            />
+          ) : null}
         </NextIntlClientProvider>
       </body>
     </html>

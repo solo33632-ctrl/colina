@@ -9,6 +9,7 @@ import type {
   PartnerFieldMessages,
   ServiceFieldMessages,
   ShowcaseFieldMessages,
+  SiteSettingsFieldMessages,
 } from '../schemas';
 
 // Validation messages, localized — and defined exactly once.
@@ -126,5 +127,16 @@ export function showcaseMessages(
     categoryId: t('validation.categoryId'),
     beforeImageUrl: t('validation.beforeImageUrl'),
     afterImageUrl: t('validation.afterImageUrl'),
+  };
+}
+
+export function siteSettingsMessages(
+  t: Translator<'Settings'>
+): SiteSettingsFieldMessages {
+  return {
+    whatsappNumber: t('validation.whatsappNumber'),
+    whatsappNumberLeadingZero: t('validation.whatsappNumberLeadingZero'),
+    whatsappMessageEn: t('validation.whatsappMessageEn'),
+    whatsappMessageAr: t('validation.whatsappMessageAr'),
   };
 }

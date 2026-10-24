@@ -28,7 +28,8 @@ export type SidebarLabelKey =
   | 'agents'
   | 'leads'
   | 'auditLog'
-  | 'insights';
+  | 'insights'
+  | 'settings';
 
 export type SidebarItem = {
   href: string;
@@ -120,11 +121,19 @@ export function sidebarGroups(options: {
       label: t('groupSystem'),
       items: [
         // SUPER_ADMIN only, and each page re-checks with requireSuperAdmin():
-        // the audit log shows what staff did, the insights dashboard shows
-        // visitor IP addresses and refused requests. Hiding the link is a
-        // convenience, never the protection.
+        // site settings change what every visitor sees, the audit log shows
+        // what staff did, and the insights dashboard shows visitor IP
+        // addresses and refused requests. Hiding the link is a convenience,
+        // never the protection.
         ...(role === 'SUPER_ADMIN'
           ? [
+              {
+                href: '/settings',
+                label: t('settings'),
+                // The icon set has one cog (shared with Machines); reusing it
+                // is better than adding a second, near-identical gear.
+                icon: 'machines' as const,
+              },
               {
                 href: '/insights',
                 label: t('insights'),

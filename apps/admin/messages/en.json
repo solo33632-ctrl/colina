@@ -19,6 +19,7 @@
     "leads": "Leads",
     "insights": "Insights",
     "auditLog": "Audit log",
+    "settings": "Site settings",
     "groupOverview": "Overview",
     "groupCatalog": "Catalog",
     "groupMaintenance": "Maintenance",
@@ -494,5 +495,29 @@
     "notAuthorizedDescription": "The audit log is restricted to super admins. Your editor account cannot view this page.",
     "deletedAdmin": "(deleted admin)",
     "pagesLabel": "Audit log pages"
+  },
+  "Settings": {
+    "heading": "Site settings",
+    "notAuthorizedTitle": "Not authorized",
+    "notAuthorizedDescription": "Site settings are restricted to super admins. Your editor account cannot view this page.",
+    "whatsapp": {
+      "title": "WhatsApp",
+      "number": "WhatsApp number",
+      "numberHint": "Enter the number with the country code. Leave empty to hide the WhatsApp button on the website.",
+      "numberPlaceholder": "+20 100 123 4567",
+      "previewLabel": "Link preview",
+      "messageEn": "Default message (English)",
+      "messageAr": "Default message (Arabic)",
+      "messageHint": "The text that is pre-filled when a visitor opens WhatsApp. Leave empty to use the standard greeting."
+    },
+    "form": {
+      "submit": "Save settings"
+    },
+    "validation": {
+      "whatsappNumber": "Enter the number with the country code, for example +20 100 123 4567.",
+      "whatsappNumberLeadingZero": "Start with the country code, not 0. Example: +20 100 123 4567.",
+      "whatsappMessageEn": "The English greeting must be 300 characters or fewer.",
+      "whatsappMessageAr": "The Arabic greeting must be 300 characters or fewer."
+    }
   }
 }

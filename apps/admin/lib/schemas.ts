@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeWhatsappNumber } from './whatsapp';
 
 // Admin form validation. Same factory pattern as apps/web/lib/schemas.ts:
 // rules live here once, messages are injected (admin strings are hardcoded
@@ -320,3 +321,61 @@ export function agentInputSchema(messages: AgentFieldMessages) {
 }
 
 export type AgentInput = z.infer<ReturnType<typeof agentInputSchema>>;
+
+export type SiteSettingsFieldMessages = {
+  whatsappNumber: string;
+  whatsappNumberLeadingZero: string;
+  whatsappMessageEn: string;
+  whatsappMessageAr: string;
+};
+
+// Site-wide settings. The WhatsApp field accepts anything a person might type
+// (spaces, "+", "00", brackets) and its OUTPUT is the normalized digits — or
+// null for a blank field, which is the valid "hide the button" state. The
+// Server Action writes `parsed.data`, so the raw input is never stored.
+export function siteSettingsInputSchema(messages: SiteSettingsFieldMessages) {
+  return z.object({
+    // `null` is accepted because the form's resolver has already run this
+    // transform before the Server Action is called: a blank field arrives as
+    // null, not as the raw empty string. Both mean "no WhatsApp".
+    whatsappNumber: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((value, ctx) => {
+        const result = normalizeWhatsappNumber(value ?? '');
+        if (!result.ok) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              result.reason === 'leading_zero'
+                ? messages.whatsappNumberLeadingZero
+                : messages.whatsappNumber,
+          });
+          return z.NEVER;
+        }
+        return result.value;
+      }),
+    // Both greetings are optional and independent: an English-only or
+    // Arabic-only greeting is a complete save. 300 characters is enough for
+    // the pre-filled WhatsApp line without becoming a second message body.
+    whatsappMessageEn: z
+      .string()
+      .max(300, { error: messages.whatsappMessageEn })
+      .optional(),
+    whatsappMessageAr: z
+      .string()
+      .max(300, { error: messages.whatsappMessageAr })
+      .optional(),
+  });
+}
+
+export type SiteSettingsInput = z.infer<
+  ReturnType<typeof siteSettingsInputSchema>
+>;
+
+// What the form holds before the schema's transform runs: both greetings may
+// be omitted, and the number is the raw string in the input.
+export type SiteSettingsFormInput = z.input<
+  ReturnType<typeof siteSettingsInputSchema>
+>;

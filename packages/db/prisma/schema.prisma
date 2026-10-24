@@ -348,3 +348,21 @@ model PageViewDaily {
   // ("which pages are popular this month").
   @@unique([date, path, locale])
 }
+
+// Site-wide settings the public site reads (Phase 32a). A singleton: the
+// row's id is always "main", so there is exactly one place to edit and no
+// list to manage. New settings arrive as additive nullable columns — the
+// factory-location fields land in a later stage — never as a second row.
+//
+// The WhatsApp number is stored as normalized international digits without
+// "+" (e.g. "201001234567"), because that is exactly what a wa.me link
+// takes. Null means "no WhatsApp": the public site hides the button. The two
+// greetings are optional pre-filled messages, one per language.
+model SiteSettings {
+  id                String   @id @default("main")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  whatsappNumber    String?
+  whatsappMessageEn String?  @db.Text
+  whatsappMessageAr String?  @db.Text
+}

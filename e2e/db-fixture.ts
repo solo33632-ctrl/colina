@@ -286,22 +286,49 @@ export type ShowcaseFixture = {
   nameAr: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  /** The production line the machine belongs to. Omit for an orphan row. */
+  categorySlug?: string;
+  descriptionEn?: string;
+  descriptionAr?: string;
 };
 
-/** Creates a maintenance showcase row, for the public home-page specs. */
-export function createShowcase(fixture: ShowcaseFixture) {
+/**
+ * Creates a maintenance showcase row and returns its generated id.
+ *
+ * The id is what a detail-page URL is made of, so a spec that wants to visit
+ * one machine has to know it; cuid is not predictable. The optional
+ * `categorySlug` is resolved in the same child process, which keeps the
+ * fixture's caller from having to query the category first.
+ */
+export function createShowcase(fixture: ShowcaseFixture): string {
   const before = fixture.beforeImageUrl ?? SHOWCASE_PHOTOS.before;
   const after = fixture.afterImageUrl ?? SHOWCASE_PHOTOS.after;
-  runInDb(`
-    await prisma.maintenanceShowcase.create({
+  const categoryLookup = fixture.categorySlug
+    ? `const category = await prisma.maintenanceCategory.findUniqueOrThrow({
+        where: { slug: ${JSON.stringify(fixture.categorySlug)} },
+        select: { id: true },
+      });`
+    : 'const category = null;';
+  const id = runInDbValue<string>(`
+    ${categoryLookup}
+    const row = await prisma.maintenanceShowcase.create({
       data: {
         nameEn: ${JSON.stringify(fixture.nameEn)},
         nameAr: ${JSON.stringify(fixture.nameAr)},
+        descriptionEn: ${JSON.stringify(fixture.descriptionEn ?? null)},
+        descriptionAr: ${JSON.stringify(fixture.descriptionAr ?? null)},
         beforeImageUrl: ${JSON.stringify(before)},
         afterImageUrl: ${JSON.stringify(after)},
+        categoryId: category ? category.id : null,
       },
+      select: { id: true },
     });
+    return row.id;
   `);
+  if (!id) {
+    throw new Error(`createShowcase: no id returned for ${fixture.nameEn}`);
+  }
+  return id;
 }
 
 /**

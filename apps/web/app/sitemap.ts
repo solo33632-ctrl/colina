@@ -14,6 +14,7 @@ const STATIC_PATHS = [
   // `?category=` query, which a sitemap must not list, so only the unfiltered
   // entry belongs here — the chips on the page reach every other view.
   '/machines',
+  '/maintenance',
   '/services',
   '/partners',
   '/contact',
@@ -38,12 +39,26 @@ async function alternatesFor(href: string): Promise<Record<string, string>> {
 // changing content, monthly for the rest.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  const [categories, machines] = await Promise.all([
-    prisma.machineCategory.findMany({
-      select: { slug: true, updatedAt: true },
-    }),
-    prisma.machine.findMany({ select: { slug: true, updatedAt: true } }),
-  ]);
+  const [categories, machines, maintenanceLines, maintenanceItems] =
+    await Promise.all([
+      prisma.machineCategory.findMany({
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.machine.findMany({ select: { slug: true, updatedAt: true } }),
+      prisma.maintenanceCategory.findMany({
+        select: { slug: true, updatedAt: true },
+      }),
+      // Orphans have no public page, so they have no sitemap entry. The line
+      // slug comes from the relation, which is also the URL segment.
+      prisma.maintenanceShowcase.findMany({
+        where: { categoryId: { not: null } },
+        select: {
+          id: true,
+          updatedAt: true,
+          category: { select: { slug: true } },
+        },
+      }),
+    ]);
 
   const entries: MetadataRoute.Sitemap = [];
 
@@ -70,6 +85,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       entries.push({
         url: getBaseUrl() + (await getPathname({ locale, href })),
         lastModified: machine.updatedAt,
+        changeFrequency: 'monthly',
+        alternates: { languages: await alternatesFor(href) },
+      });
+    }
+    for (const line of maintenanceLines) {
+      const href = `/maintenance/${line.slug}`;
+      entries.push({
+        url: getBaseUrl() + (await getPathname({ locale, href })),
+        lastModified: line.updatedAt,
+        changeFrequency: 'weekly',
+        alternates: { languages: await alternatesFor(href) },
+      });
+    }
+    for (const item of maintenanceItems) {
+      if (!item.category) continue;
+      const href = `/maintenance/${item.category.slug}/${item.id}`;
+      entries.push({
+        url: getBaseUrl() + (await getPathname({ locale, href })),
+        lastModified: item.updatedAt,
         changeFrequency: 'monthly',
         alternates: { languages: await alternatesFor(href) },
       });

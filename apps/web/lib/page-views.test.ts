@@ -53,6 +53,8 @@ describe('isPublicPagePath', () => {
       '/about',
       '/categories',
       '/contact',
+      '/machines',
+      '/maintenance',
       '/partners',
       '/privacy',
       '/services',
@@ -65,6 +67,10 @@ describe('isPublicPagePath', () => {
     expect(isPublicPagePath('/categories/production-lines')).toBe(true);
     expect(isPublicPagePath('/machines/colina-pack-s')).toBe(true);
     expect(isPublicPagePath('/machines/colina-pro-1000')).toBe(true);
+    expect(isPublicPagePath('/maintenance/production-lines')).toBe(true);
+    expect(isPublicPagePath('/maintenance/production-lines/cmabc123def')).toBe(
+      true
+    );
   });
 
   it('rejects paths that are not public pages', () => {
@@ -73,6 +79,9 @@ describe('isPublicPagePath', () => {
       '/api/contact',
       '/_next/static/chunk',
       '/categories/production-lines/extra',
+      '/maintenance/production-lines/extra/more',
+      '/maintenance/UPPER-CASE',
+      '/maintenance/production-lines/UPPER-CASE',
       '/privacy/',
       '//privacy',
       '/privacy ',

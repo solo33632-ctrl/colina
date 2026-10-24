@@ -31,6 +31,17 @@
     "photoAlt": "{name} — قبل الصيانة",
     "photoAltAfter": "{name} — بعد الصيانة"
   },
+  "MaintenancePages": {
+    "machineCount": "{count, plural, zero {لا توجد ماكينات} one {ماكينة واحدة} two {ماكينتان} few {# ماكينات} many {# ماكينة} other {# ماكينة}}",
+    "viewAll": "عرض الكل",
+    "breadcrumbLabel": "مسار التنقل",
+    "maintenanceCrumb": "الصيانة",
+    "indexEmpty": "لا توجد ماكينات صيانة بعد — عُد قريباً.",
+    "lineMachinesHeading": "ماكينات هذا الخط",
+    "lineEmpty": "لا توجد ماكينات في خط الإنتاج هذا بعد.",
+    "requestMaintenance": "اطلب صيانة",
+    "moreHeading": "المزيد من ماكينات هذا الخط"
+  },
   "CategoryPage": {
     "backToCategories": "كل الفئات",
     "machinesHeading": "آلات هذه الفئة",

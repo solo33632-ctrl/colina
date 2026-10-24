@@ -1,10 +1,33 @@
-import type { MachineCategory } from '@colina/db';
 import { ImageWithFallback } from './image-with-fallback';
 import { Link } from '@/i18n/navigation';
 
+/**
+ * The fields a tile prints. `MachineCategory` satisfies this shape, and so
+ * does a maintenance line mapped to `{ slug, nameEn, nameAr, image }` — the
+ * two grids are deliberately the same card.
+ */
+export type CategoryCardCategory = {
+  slug: string;
+  nameEn: string;
+  nameAr: string;
+  image: string | null;
+};
+
 export type CategoryCardProps = {
-  category: MachineCategory;
+  category: CategoryCardCategory;
   locale: 'ar' | 'en';
+  /**
+   * Where the tile links. Defaults to the product-category page; the
+   * maintenance grid passes `/maintenance/[slug]` so it can share this tile
+   * instead of growing a near-copy with its own hover rules.
+   */
+  href?: string;
+  /**
+   * Optional pill under the name, e.g. "12 machines". Rendered inside the
+   * tile and folded into the link's accessible name, so a screen reader hears
+   * the count as part of the destination rather than as loose text.
+   */
+  countLabel?: string;
 };
 
 /**
@@ -66,16 +89,22 @@ export type CategoryCardProps = {
  * transform is vertical only, so a neighbouring tile's shadow is the only
  * thing that ever reaches past a cell edge.
  */
-export function CategoryCard({ category, locale }: CategoryCardProps) {
+export function CategoryCard({
+  category,
+  locale,
+  href,
+  countLabel,
+}: CategoryCardProps) {
   const name = locale === 'ar' ? category.nameAr : category.nameEn;
 
   return (
     <Link
-      href={`/categories/${category.slug}`}
-      // The tile's accessible name is the category name and nothing else, so a
-      // screen reader announces "Production Lines, link" rather than the photo
-      // and the scrim as well.
-      aria-label={name}
+      href={href ?? `/categories/${category.slug}`}
+      // The tile's accessible name is the category name — plus the count when
+      // one is shown — and nothing else, so a screen reader announces
+      // "Production Lines, 12 machines, link" rather than the photo and the
+      // scrim as well.
+      aria-label={countLabel ? `${name} — ${countLabel}` : name}
       className="group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-white transition-[transform,box-shadow] duration-300 ease-out motion-safe:hover:-translate-y-2 motion-safe:group-focus-visible:-translate-y-2 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
     >
       {category.image ? (
@@ -111,10 +140,16 @@ export function CategoryCard({ category, locale }: CategoryCardProps) {
           <h3 className="line-clamp-2 text-balance font-medium text-lg leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] sm:text-xl">
             {name}
           </h3>
+          {countLabel ? (
+            <span className="mt-2 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+              {countLabel}
+            </span>
+          ) : null}
           {/* The hover underline, out of flow on purpose: in flow it would make
               the name sit above the tile's centre instead of on it, and a tile
               would only be truly centred once hovered. `-ml-5` centres it on the
-              name without a translate transform. */}
+              name without a translate transform. With a count pill present it
+              sits under the pill, still out of flow. */}
           <span
             aria-hidden="true"
             className="absolute left-1/2 top-full -ml-5 mt-2 h-0.5 w-10 rounded-full bg-white opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"

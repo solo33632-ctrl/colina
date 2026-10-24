@@ -72,6 +72,7 @@ const PUBLIC_PATH_SEGMENTS = [
   'categories',
   'contact',
   'machines',
+  'maintenance',
   'partners',
   'privacy',
   'services',
@@ -80,6 +81,9 @@ const PUBLIC_PATH_SEGMENTS = [
 // One lowercase slug: the shape every slug in the seed and admin is generated
 // in (`kebab-case`). Cheaper to reject anything else than to enumerate slugs.
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+// The collections whose pages take a slug after the collection name.
+const SLUG_COLLECTIONS = ['categories', 'machines', 'maintenance'] as const;
 
 // Longest path accepted before the shape rules are even consulted. The longest
 // real route is a fraction of this; the cap only stops a caller from making the
@@ -103,25 +107,33 @@ export function isPublicPagePath(path: string): boolean {
     return true;
   }
   const segments = normalized.split('/');
-  // split('/') on "/about" gives ["", "about"]; anything longer than three
-  // parts is deeper than any public route (home, or one segment, or
-  // collection + slug).
-  if (segments.length < 2 || segments.length > 3 || segments[0] !== '') {
+  // split('/') on "/about" gives ["", "about"]. Four parts is the deepest
+  // public route: /maintenance/[line]/[machine].
+  if (segments.length < 2 || segments.length > 4 || segments[0] !== '') {
     return false;
   }
-  const [collection, slug] = segments.slice(1);
+  const [collection, first, second] = segments.slice(1);
   const known = (PUBLIC_PATH_SEGMENTS as readonly string[]).includes(
     collection
   );
   if (!known) {
     return false;
   }
-  // Static pages are the whole path; only the two collections take a slug.
-  if (slug === undefined) {
+  // Static pages are the whole path.
+  if (first === undefined) {
     return true;
   }
-  const takesSlug = collection === 'categories' || collection === 'machines';
-  return takesSlug && SLUG_PATTERN.test(slug);
+  if (!SLUG_PATTERN.test(first)) {
+    return false;
+  }
+  if (second === undefined) {
+    // Only a collection's own detail page has one slug; /about/anything does
+    // not become public just because it fits the shape.
+    return (SLUG_COLLECTIONS as readonly string[]).includes(collection);
+  }
+  // The only three-part public route is the maintenance machine page under
+  // its line. Both segments are slugs.
+  return collection === 'maintenance' && SLUG_PATTERN.test(second);
 }
 
 /**

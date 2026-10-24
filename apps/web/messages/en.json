@@ -31,6 +31,17 @@
     "photoAlt": "{name} — before the work",
     "photoAltAfter": "{name} — after the work"
   },
+  "MaintenancePages": {
+    "machineCount": "{count, plural, =0 {No machines} one {# machine} other {# machines}}",
+    "viewAll": "View all",
+    "breadcrumbLabel": "Breadcrumb",
+    "maintenanceCrumb": "Maintenance",
+    "indexEmpty": "No maintenance machines yet — check back soon.",
+    "lineMachinesHeading": "Machines in this line",
+    "lineEmpty": "No machines in this production line yet.",
+    "requestMaintenance": "Request maintenance",
+    "moreHeading": "More machines in this line"
+  },
   "CategoryPage": {
     "backToCategories": "All categories",
     "machinesHeading": "Machines in this category",

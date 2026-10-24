@@ -358,6 +358,12 @@ model PageViewDaily {
 // "+" (e.g. "201001234567"), because that is exactly what a wa.me link
 // takes. Null means "no WhatsApp": the public site hides the button. The two
 // greetings are optional pre-filled messages, one per language.
+//
+// The factory location is optional as a group: latitude/longitude are the
+// parsed pair (both null when no map is wanted), the addresses and working
+// hours are free text per language, and mapsUrl is an optional https Google
+// Maps link for a Directions button. The admin edits a single coordinates
+// text field; the action stores the parsed numbers, never the pasted text.
 model SiteSettings {
   id                String   @id @default("main")
   createdAt         DateTime @default(now())
@@ -365,4 +371,11 @@ model SiteSettings {
   whatsappNumber    String?
   whatsappMessageEn String?  @db.Text
   whatsappMessageAr String?  @db.Text
+  latitude          Float?
+  longitude         Float?
+  factoryAddressEn  String?  @db.Text
+  factoryAddressAr  String?  @db.Text
+  workingHoursEn    String?
+  workingHoursAr    String?
+  mapsUrl           String?
 }

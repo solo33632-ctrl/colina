@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseCoordinates } from './coordinates';
 import { normalizeWhatsappNumber } from './whatsapp';
 
 // Admin form validation. Same factory pattern as apps/web/lib/schemas.ts:
@@ -327,12 +328,45 @@ export type SiteSettingsFieldMessages = {
   whatsappNumberLeadingZero: string;
   whatsappMessageEn: string;
   whatsappMessageAr: string;
+  coordinates: string;
+  coordinatesRange: string;
+  factoryAddressEn: string;
+  factoryAddressAr: string;
+  workingHoursEn: string;
+  workingHoursAr: string;
+  mapsUrl: string;
+  mapsUrlLength: string;
 };
+
+// Optional free text: trimmed, blank becomes null, and the limit is checked
+// after trimming so trailing spaces cannot push a valid value over the edge.
+function optionalText(max: number, message: string) {
+  return z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value, ctx) => {
+      const trimmed = value?.trim() ?? '';
+      if (trimmed === '') {
+        return null;
+      }
+      if (trimmed.length > max) {
+        ctx.addIssue({ code: 'custom', message });
+        return z.NEVER;
+      }
+      return trimmed;
+    });
+}
 
 // Site-wide settings. The WhatsApp field accepts anything a person might type
 // (spaces, "+", "00", brackets) and its OUTPUT is the normalized digits — or
 // null for a blank field, which is the valid "hide the button" state. The
 // Server Action writes `parsed.data`, so the raw input is never stored.
+//
+// The factory coordinates work the same way: one pasted string goes in, one
+// `{ lat, lng }` pair (or null) comes out, and the action stores the numbers
+// only. Addresses and hours are trimmed optional text; `mapsUrl` is a full
+// https URL, never http and never a bare path.
 export function siteSettingsInputSchema(messages: SiteSettingsFieldMessages) {
   return z.object({
     // `null` is accepted because the form's resolver has already run this
@@ -367,6 +401,57 @@ export function siteSettingsInputSchema(messages: SiteSettingsFieldMessages) {
       .string()
       .max(300, { error: messages.whatsappMessageAr })
       .optional(),
+    // `null` is accepted for the same reason as the number: the resolver
+    // sends null after its transform has run, and both blank forms mean
+    // "no factory pin".
+    coordinates: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((value, ctx) => {
+        const result = parseCoordinates(value ?? '');
+        if (!result.ok) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              result.reason === 'out_of_range'
+                ? messages.coordinatesRange
+                : messages.coordinates,
+          });
+          return z.NEVER;
+        }
+        return result.value;
+      }),
+    factoryAddressEn: optionalText(300, messages.factoryAddressEn),
+    factoryAddressAr: optionalText(300, messages.factoryAddressAr),
+    workingHoursEn: optionalText(200, messages.workingHoursEn),
+    workingHoursAr: optionalText(200, messages.workingHoursAr),
+    mapsUrl: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((value, ctx) => {
+        const trimmed = value?.trim() ?? '';
+        if (trimmed === '') {
+          return null;
+        }
+        if (trimmed.length > 500) {
+          ctx.addIssue({ code: 'custom', message: messages.mapsUrlLength });
+          return z.NEVER;
+        }
+        try {
+          const url = new URL(trimmed);
+          // Absolute https only: `javascript:`, `data:` and relative paths
+          // either parse with another protocol or fail `new URL` outright.
+          if (url.protocol !== 'https:' || url.hostname === '') {
+            throw new Error('not an absolute https URL');
+          }
+        } catch {
+          ctx.addIssue({ code: 'custom', message: messages.mapsUrl });
+          return z.NEVER;
+        }
+        return trimmed;
+      }),
   });
 }
 

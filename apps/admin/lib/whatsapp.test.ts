@@ -9,6 +9,14 @@ const M = {
   whatsappNumberLeadingZero: 'leading-zero',
   whatsappMessageEn: 'message-en',
   whatsappMessageAr: 'message-ar',
+  coordinates: 'coordinates',
+  coordinatesRange: 'coordinates-range',
+  factoryAddressEn: 'address-en',
+  factoryAddressAr: 'address-ar',
+  workingHoursEn: 'hours-en',
+  workingHoursAr: 'hours-ar',
+  mapsUrl: 'maps-url',
+  mapsUrlLength: 'maps-url-length',
 };
 
 describe('normalizeWhatsappNumber', () => {

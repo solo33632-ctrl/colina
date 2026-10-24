@@ -46,24 +46,32 @@ export async function saveSiteSettings(input: unknown): Promise<ActionResult> {
     };
   }
 
+  // Every location field is already trimmed and null-normalized by the
+  // schema. The coordinates go in as two numbers, never as the pasted text.
+  const data = {
+    whatsappNumber: parsed.data.whatsappNumber,
+    whatsappMessageEn: greeting(parsed.data.whatsappMessageEn),
+    whatsappMessageAr: greeting(parsed.data.whatsappMessageAr),
+    latitude: parsed.data.coordinates?.lat ?? null,
+    longitude: parsed.data.coordinates?.lng ?? null,
+    factoryAddressEn: parsed.data.factoryAddressEn ?? null,
+    factoryAddressAr: parsed.data.factoryAddressAr ?? null,
+    workingHoursEn: parsed.data.workingHoursEn ?? null,
+    workingHoursAr: parsed.data.workingHoursAr ?? null,
+    mapsUrl: parsed.data.mapsUrl ?? null,
+  };
+
   try {
     await prisma.$transaction(async (tx) => {
       // One row, id "main". Upsert rather than create-or-update: the first
       // save creates it, every later save updates it, and a page visit never
-      // creates anything.
+      // creates anything. The audit row is the same single SETTINGS_UPDATE
+      // entry as before, even though the form now has two cards: it is still
+      // one Save.
       await tx.siteSettings.upsert({
         where: { id: 'main' },
-        create: {
-          id: 'main',
-          whatsappNumber: parsed.data.whatsappNumber,
-          whatsappMessageEn: greeting(parsed.data.whatsappMessageEn),
-          whatsappMessageAr: greeting(parsed.data.whatsappMessageAr),
-        },
-        update: {
-          whatsappNumber: parsed.data.whatsappNumber,
-          whatsappMessageEn: greeting(parsed.data.whatsappMessageEn),
-          whatsappMessageAr: greeting(parsed.data.whatsappMessageAr),
-        },
+        create: { id: 'main', ...data },
+        update: data,
       });
       await tx.auditLog.create({
         data: {
@@ -74,15 +82,19 @@ export async function saveSiteSettings(input: unknown): Promise<ActionResult> {
       });
     });
 
-    // Settings currently affect the home page. `revalidateWebPaths` expands
-    // this to /ar and /en and has no layout-level option (it revalidates
-    // page paths only), so '/' is the whole call.
-    revalidateWebPaths(['/']);
+    // The WhatsApp settings render in the locale layout (button) and on
+    // /contact (the number row); the factory location is also a /contact
+    // concern. `revalidateWebPaths` expands each path to /ar and /en and has
+    // no layout-level option, so those two page paths are the whole call.
+    // The cross-app caveat in revalidate-web.ts still applies: this purges
+    // admin's own cache, not apps/web's.
+    revalidateWebPaths(['/', '/contact']);
     return { ok: true };
   } catch (error) {
     // Deliberately not the error itself: a Prisma failure can echo the input,
-    // and the input contains a phone number. The error name is enough to tell
-    // an operator what happened without writing the number to a log.
+    // and the input now contains a phone number, coordinates and addresses.
+    // The error name is enough to tell an operator what happened without
+    // writing any of that to a log.
     console.error(
       '[admin] saveSiteSettings failed:',
       error instanceof Error ? error.name : 'unknown error'

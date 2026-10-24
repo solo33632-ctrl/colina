@@ -138,5 +138,13 @@ export function siteSettingsMessages(
     whatsappNumberLeadingZero: t('validation.whatsappNumberLeadingZero'),
     whatsappMessageEn: t('validation.whatsappMessageEn'),
     whatsappMessageAr: t('validation.whatsappMessageAr'),
+    coordinates: t('validation.coordinates'),
+    coordinatesRange: t('validation.coordinatesRange'),
+    factoryAddressEn: t('validation.factoryAddressEn'),
+    factoryAddressAr: t('validation.factoryAddressAr'),
+    workingHoursEn: t('validation.workingHoursEn'),
+    workingHoursAr: t('validation.workingHoursAr'),
+    mapsUrl: t('validation.mapsUrl'),
+    mapsUrlLength: t('validation.mapsUrlLength'),
   };
 }

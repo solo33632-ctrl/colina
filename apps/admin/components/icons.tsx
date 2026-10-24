@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 
 // Local icon set for the admin shell.
 //
-// Inline SVG instead of an icon package: the admin needs ten glyphs, and a
-// dependency for that would be dead weight. Every glyph is drawn on the same
+// Inline SVG instead of an icon package: the admin needs a couple of dozen
+// glyphs, and a dependency for that would be dead weight. Every glyph is drawn on the same
 // 24×24 grid with `currentColor` strokes so it inherits the text colour of
 // whatever it sits in (inactive item, active item, button). They are all
 // decorative — the surrounding link or button always carries a translated
@@ -12,6 +12,7 @@ export type IconName =
   | 'dashboard'
   | 'categories'
   | 'machines'
+  | 'compare'
   | 'partners'
   | 'services'
   | 'news'
@@ -51,6 +52,16 @@ const GLYPHS: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="12" r="3.25" />
       <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" />
+    </>
+  ),
+  // A frame split down the middle with a handle on the divider: the
+  // before/after slider these entries manage. Reads as two halves without
+  // repeating the folder or the wrench used by its neighbours.
+  compare: (
+    <>
+      <rect x="3" y="4.5" width="18" height="15" rx="2" />
+      <path d="M12 4.5v15" />
+      <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
     </>
   ),
   // Two people.

@@ -13,6 +13,7 @@ import type { IconName } from '@/components/icons';
 export type SidebarLabelKey =
   | 'groupOverview'
   | 'groupCatalog'
+  | 'groupMaintenance'
   | 'groupContent'
   | 'groupInbox'
   | 'groupSystem'
@@ -67,28 +68,36 @@ export function sidebarGroups(options: {
       ],
     },
     {
-      id: 'content',
-      label: t('groupContent'),
+      // The public site presents these three as one maintenance area: the
+      // production lines, the before/after showcase machines on those lines,
+      // and the services that keep them running. Keeping them in one group
+      // matches the way staff think about the work, and stops the services
+      // entry from reading as a generic catalog item.
+      id: 'maintenance',
+      label: t('groupMaintenance'),
       items: [
-        { href: '/partners', label: t('partners'), icon: 'partners' },
-        { href: '/services', label: t('services'), icon: 'services' },
-        // Beside Maintenance services rather than in the catalog: this holds
-        // photos of finished work, which is content, not part of the product
-        // range. It reuses the services wrench on purpose — one more glyph for
-        // one more entry would grow the icon set for no added meaning.
-        {
-          href: '/maintenance-showcase',
-          label: t('maintenanceShowcase'),
-          icon: 'services',
-        },
-        // The production lines the showcase machines belong to. The folder
-        // glyph marks it as a grouping entity, which also keeps it distinct
-        // from the services wrench beside it.
+        // The lines the showcase machines belong to. The folder glyph marks
+        // it as a grouping entity.
         {
           href: '/maintenance-categories',
           label: t('maintenanceCategories'),
           icon: 'categories',
         },
+        // The split-frame glyph echoes the before/after slider these entries
+        // manage, and keeps the three adjacent icons distinct.
+        {
+          href: '/maintenance-showcase',
+          label: t('maintenanceShowcase'),
+          icon: 'compare',
+        },
+        { href: '/services', label: t('services'), icon: 'services' },
+      ],
+    },
+    {
+      id: 'content',
+      label: t('groupContent'),
+      items: [
+        { href: '/partners', label: t('partners'), icon: 'partners' },
         { href: '/news', label: t('news'), icon: 'news' },
         { href: '/agents', label: t('agents'), icon: 'agents' },
       ],

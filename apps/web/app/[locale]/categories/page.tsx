@@ -64,7 +64,12 @@ export default async function CategoriesPage({ params }: Props) {
           <ul className="mx-auto mt-12 grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => (
               <li key={category.id}>
-                <CategoryCard category={category} locale={locale} />
+                <CategoryCard
+                  category={category}
+                  locale={locale}
+                  hoverText={t('hoverText')}
+                  viewLabel={t('viewLabel')}
+                />
               </li>
             ))}
           </ul>

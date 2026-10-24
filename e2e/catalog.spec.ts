@@ -193,13 +193,16 @@ test.describe('catalog browsing flow', () => {
     // Each card is a link through to its own category page.
     const first = cards.first();
     await expect(first).toHaveAttribute('href', /^\/en\/categories\/[^/]+$/);
-    // ...and every card carries its name on the tile. Nothing else: the tile is
-    // a photo, a scrim, an icon and the name.
+    // ...and every card carries its name on the tile. The hover reveal is
+    // aria-hidden, so the visible heading is still the card's only readable
+    // text and the accessible name is still exactly the category name.
     for (const card of await cards.all()) {
       const name = await card.getAttribute('aria-label');
       expect(name).toBeTruthy();
       await expect(card.getByRole('heading')).toHaveText(name!);
-      expect(((await card.textContent()) ?? '').trim()).toBe(name);
+      await expect(
+        card.locator('[data-testid="category-card-reveal"]')
+      ).toHaveAttribute('aria-hidden', 'true');
     }
   });
 
@@ -334,8 +337,9 @@ async function expectSquareTileWithCenteredName(tile: Locator) {
   // The tile is a link, and says so with the pointer.
   expect(shape.cursor).toBe('pointer');
 
-  // The name is the tile's whole content: no icon left above it.
-  expect(shape.icons).toBe(0);
+  // The only SVG is the arrow inside the hidden "View" pill; no icon sits
+  // above the name.
+  expect(shape.icons).toBe(1);
 
   // Flat when idle — the deeper shadow is a hover/focus affordance.
   expect(['none', '']).toContain(shape.boxShadow);
@@ -435,9 +439,8 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
           expect(name).toBeTruthy();
           await expect(tile.locator('h3')).toBeVisible();
           await expect(tile.locator('h3')).toHaveText(name!);
-          // The icon is gone from every tile, photo or not.
-          expect(await tile.locator('svg').count()).toBe(0);
-          expect(((await tile.textContent()) ?? '').trim()).toBe(name);
+          // The only icon is the reveal arrow, photo or not.
+          expect(await tile.locator('svg').count()).toBe(1);
           await expectSquareTileWithCenteredName(tile);
         }
 
@@ -457,7 +460,8 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
         );
         await expect(withoutPhoto).toHaveCount(1);
         await expect(withoutPhoto.locator('img')).toHaveCount(0);
-        await expect(withoutPhoto.locator('svg')).toHaveCount(0);
+        // The reveal arrow is the one icon every tile carries.
+        await expect(withoutPhoto.locator('svg')).toHaveCount(1);
         await expectSquareTileWithCenteredName(withoutPhoto);
         const field = await withoutPhoto.evaluate((el) => {
           const dark = Array.from(el.querySelectorAll('div')).find((child) => {
@@ -495,7 +499,7 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
   // movement and the photo zoom are gated with `motion-safe:`, which is what
   // the second test pins down.
   for (const locale of ['en', 'ar'] as const) {
-    test(`${locale}: hovering a tile lifts it and lightens the scrim`, async ({
+    test(`${locale}: hovering a tile lifts it and darkens the scrim`, async ({
       page,
     }) => {
       await page.setViewportSize({ width: 1280, height: 900 });
@@ -535,11 +539,12 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
 
       // The tile moved UP by at least 4px (`-translate-y-2` is 8px).
       expect(before.top - after.top).toBeGreaterThanOrEqual(4);
-      // The scrim lightened: 60% black -> 45% black.
+      // The scrim darkened: 60% black -> 70% black, so the revealed copy
+      // stays readable over the photo.
       if (before.alpha !== null && after.alpha !== null) {
-        expect(after.alpha).toBeLessThan(before.alpha);
+        expect(after.alpha).toBeGreaterThan(before.alpha);
         expect(before.alpha).toBeCloseTo(0.6, 2);
-        expect(after.alpha).toBeCloseTo(0.45, 2);
+        expect(after.alpha).toBeCloseTo(0.7, 2);
       }
       // The photo zoomed in: a scale matrix, not the identity.
       if (before.imageTransform && after.imageTransform) {
@@ -547,7 +552,7 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
       }
     });
 
-    test(`${locale}: with reduced motion the tile does not move, and still lightens`, async ({
+    test(`${locale}: with reduced motion the tile does not move, and still darkens`, async ({
       browser,
     }) => {
       const context = await browser.newContext({
@@ -571,7 +576,7 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
       // `(prefers-reduced-motion: no-preference)`, so the rule never exists.
       expect(Math.abs(after - before)).toBeLessThanOrEqual(0.5);
 
-      // The scrim still lightens — that is a colour change, not movement.
+      // The scrim still darkens — that is a colour change, not movement.
       const alpha = await tile.evaluate((el) => {
         const scrim = Array.from(el.querySelectorAll('div')).find((child) => {
           const match = getComputedStyle(child).backgroundColor.match(
@@ -588,7 +593,7 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
           : null;
       });
       if (alpha !== null) {
-        expect(alpha).toBeCloseTo(0.45, 2);
+        expect(alpha).toBeCloseTo(0.7, 2);
       }
 
       await context.close();

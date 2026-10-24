@@ -28,17 +28,19 @@ export type CategoryCardProps = {
    * the count as part of the destination rather than as loose text.
    */
   countLabel?: string;
+  /**
+   * The one line revealed under the name on hover/focus. Required so no call
+   * site can inherit the wrong grid's copy: the product categories and the
+   * maintenance lines say different things about where the tile goes.
+   */
+  hoverText: string;
+  /** The outlined pill's label, "View" / "عرض". */
+  viewLabel: string;
 };
 
 /**
- * One product category, as a square tile: the photo fills the tile, a dark
- * overlay sits over it, and the category name is centred on top in white.
- *
- * The structure is borrowed from a reference catalogue's home grid — square
- * tiles, a scrim, the name dead centre — while every pixel is ours: our photos,
- * our palette, our copy. A previous version also put a line icon above the name;
- * it went, because the name alone is the one thing every visitor needs to read
- * and a glyph competes with it for the middle of a small square.
+ * One category, as a square tile: the photo fills the tile, a dark overlay
+ * sits over it, and the category name is centred on top in white.
  *
  * THE PHOTO IS ALWAYS SHOWN COMPLETE, never cropped. A production-line photo
  * cropped to a square loses the machine it exists to show, so this rule
@@ -59,6 +61,24 @@ export type CategoryCardProps = {
  * of photo + scrim, so the grid reads as one set: same shape, same name in the
  * same place. A missing photo cannot make a tile look unfinished.
  *
+ * HOVER REVEAL. At rest the tile is exactly what it was: photo, scrim, centred
+ * name (and count). Pointing at it — or tabbing to it — darkens the scrim,
+ * lifts the name, and reveals a short line of copy plus an outlined "View"
+ * pill with an arrow. The reveal is absolutely positioned under the name
+ * block, so it takes no space at rest and the name stays dead centre until
+ * the state changes. The name block's upward shift and the tile's lift are
+ * both transforms and are gated with `motion-safe:`; a visitor who asked for
+ * reduced motion gets the same state change with no movement.
+ *
+ * The reveal only exists where the device can actually hover
+ * (`@media (hover: hover)`), so a tap on a phone cannot leave a stuck hover
+ * state behind; on touch the tile stays at rest and the tap navigates.
+ * Keyboard focus still reveals it everywhere, because that is not a hover.
+ *
+ * The whole tile is ONE link. The revealed copy and pill are a styled,
+ * `aria-hidden` span, never nested controls, and the link's accessible name
+ * remains the category name (plus the count when there is one).
+ *
  * Typography. The name is `font-medium` (500): IBM Plex Sans and IBM Plex Sans
  * Arabic both load 400/500/600/700 (see `app/[locale]/layout.tsx`), so 500 is a
  * weight the files genuinely ship — not a synthesised one — and it is the
@@ -69,22 +89,6 @@ export type CategoryCardProps = {
  * bounds it to two lines so every tile is the same height and a long name can
  * never push its neighbours out of line.
  *
- * Centring is exact: the name is the only in-flow child, and the hover underline
- * is positioned out of flow (`absolute top-full`), so a tile that has never been
- * hovered is laid out exactly as one that has.
- *
- * Hover/focus says "this is a link" four ways at once — the tile lifts, the
- * shadow deepens, the photo eases in, the scrim lightens — plus an underline
- * bar under the name. The movement is gated with `motion-safe:` rather than
- * cancelled with `motion-reduce:`: Tailwind emits the hover rule as a
- * two-class selector (`.hover\:-translate-y-2:hover`) against `motion-reduce:`'s
- * single class, so under `prefers-reduced-motion: reduce` both rules match and
- * the higher-specificity hover rule wins — the lift would survive the very
- * preference it ignores. `motion-safe:` wraps the hover rule itself in
- * `(prefers-reduced-motion: no-preference)`, so a visitor who asked for less
- * motion is never given a rule to override. Opacity and colour changes are not
- * movement and stay ungated.
- *
  * The lift cannot widen the page: the tile is `overflow-hidden` and the
  * transform is vertical only, so a neighbouring tile's shadow is the only
  * thing that ever reaches past a cell edge.
@@ -94,6 +98,8 @@ export function CategoryCard({
   locale,
   href,
   countLabel,
+  hoverText,
+  viewLabel,
 }: CategoryCardProps) {
   const name = locale === 'ar' ? category.nameAr : category.nameEn;
 
@@ -102,8 +108,8 @@ export function CategoryCard({
       href={href ?? `/categories/${category.slug}`}
       // The tile's accessible name is the category name — plus the count when
       // one is shown — and nothing else, so a screen reader announces
-      // "Production Lines, 12 machines, link" rather than the photo and the
-      // scrim as well.
+      // "Production Lines, 12 machines, link" rather than the photo, the
+      // scrim and the hidden hover copy as well.
       aria-label={countLabel ? `${name} — ${countLabel}` : name}
       className="group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-white transition-[transform,box-shadow] duration-300 ease-out motion-safe:hover:-translate-y-2 motion-safe:group-focus-visible:-translate-y-2 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
     >
@@ -123,20 +129,29 @@ export function CategoryCard({
             />
           </div>
           {/* The scrim. Present whatever the photo's own brightness, which is
-              what lets one white name work over every category. */}
+              what lets one white name work over every category. It darkens on
+              hover/focus instead of lightening: the revealed copy sits on the
+              same photo, so the state that shows more text must not reduce the
+              contrast under it. */}
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-black/60 transition-colors duration-300 group-hover:bg-black/45 group-focus-visible:bg-black/45"
+            data-testid="category-card-overlay"
+            className="absolute inset-0 bg-black/60 transition-colors duration-300 [@media(hover:hover)]:group-hover:bg-black/70 group-focus-visible:bg-black/70"
           />
         </>
       ) : (
         // No photo: a solid field in the same place the photo + scrim would
-        // have occupied, so the tile is identical in layout.
-        <div aria-hidden="true" className="absolute inset-0 bg-stone-800" />
+        // have occupied, so the tile is identical in layout. It darkens on
+        // hover/focus like the scrim does.
+        <div
+          aria-hidden="true"
+          data-testid="category-card-overlay"
+          className="absolute inset-0 bg-stone-800 transition-colors duration-300 [@media(hover:hover)]:group-hover:bg-stone-900 group-focus-visible:bg-stone-900"
+        />
       )}
 
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
-        <div className="relative flex max-w-[80%] flex-col items-center">
+        <div className="relative flex max-w-[80%] flex-col items-center motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out [@media(hover:hover)]:motion-safe:group-hover:-translate-y-5 motion-safe:group-focus-visible:-translate-y-5">
           <h3 className="line-clamp-2 text-balance font-medium text-lg leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] sm:text-xl">
             {name}
           </h3>
@@ -145,15 +160,43 @@ export function CategoryCard({
               {countLabel}
             </span>
           ) : null}
-          {/* The hover underline, out of flow on purpose: in flow it would make
-              the name sit above the tile's centre instead of on it, and a tile
-              would only be truly centred once hovered. `-ml-5` centres it on the
-              name without a translate transform. With a count pill present it
-              sits under the pill, still out of flow. */}
-          <span
+          {/* The reveal, out of flow under the name block. Absolute so the
+              resting tile is laid out exactly as before; `w-60 max-w-full`
+              keeps it inside the narrowest tile while staying readable on a
+              wide one. Opacity is a colour change and may transition without
+              a motion gate; nothing here moves unless motion is safe. */}
+          <div
             aria-hidden="true"
-            className="absolute left-1/2 top-full -ml-5 mt-2 h-0.5 w-10 rounded-full bg-white opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
-          />
+            data-testid="category-card-reveal"
+            className="pointer-events-none absolute inset-x-0 top-full mx-auto mt-2.5 flex w-60 max-w-full flex-col items-center opacity-0 transition-opacity duration-300 [@media(hover:hover)]:group-hover:opacity-100 group-focus-visible:opacity-100"
+          >
+            <p className="line-clamp-2 text-balance text-xs leading-snug text-white sm:text-sm">
+              {hoverText}
+            </p>
+            <span
+              data-testid="category-card-view"
+              className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-white px-3 py-1 text-xs font-medium text-white sm:text-sm"
+            >
+              {viewLabel}
+              {/* Drawn pointing right, mirrored under `dir="rtl"` so "forward"
+                  follows the reading direction in both locales. */}
+              <svg
+                aria-hidden="true"
+                focusable="false"
+                data-testid="category-card-arrow"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3.5 w-3.5 shrink-0 rtl:[transform:scaleX(-1)]"
+              >
+                <path d="M4 12h15" />
+                <path d="m13 6 6 6-6 6" />
+              </svg>
+            </span>
+          </div>
         </div>
       </div>
     </Link>

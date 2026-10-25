@@ -5,7 +5,6 @@ import { Card, Container } from '@colina/ui';
 import { SaveBanner } from '@/components/save-banner';
 import { SettingsForm } from '@/components/settings-form';
 import { requireSuperAdmin } from '@/lib/admin-action';
-import { formatCoordinates } from '@/lib/coordinates';
 import { sectionMetadata } from '@/lib/metadata';
 
 export async function generateMetadata({
@@ -49,14 +48,6 @@ export default async function SettingsPage({ searchParams }: Props) {
     where: { id: 'main' },
   });
 
-  // Both numbers or neither: a half-saved pair (only possible through a
-  // hand-edited row) is treated as "no map" rather than rendered as
-  // "30, undefined".
-  const coordinates =
-    settings && settings.latitude !== null && settings.longitude !== null
-      ? formatCoordinates({ lat: settings.latitude, lng: settings.longitude })
-      : '';
-
   return (
     <main>
       <Container className="max-w-5xl py-10">
@@ -67,7 +58,8 @@ export default async function SettingsPage({ searchParams }: Props) {
             whatsappNumber: settings?.whatsappNumber ?? '',
             whatsappMessageEn: settings?.whatsappMessageEn ?? '',
             whatsappMessageAr: settings?.whatsappMessageAr ?? '',
-            coordinates,
+            contactPhone: settings?.contactPhone ?? '',
+            contactEmail: settings?.contactEmail ?? '',
             factoryAddressEn: settings?.factoryAddressEn ?? '',
             factoryAddressAr: settings?.factoryAddressAr ?? '',
             workingHoursEn: settings?.workingHoursEn ?? '',

@@ -16,43 +16,40 @@ import { runInDb, runInDbValue } from './db-fixture';
 
 const en = copyFor('en');
 
+const PHONE = '#settings-contact-phone';
+const EMAIL = '#settings-contact-email';
 const NUMBER_INPUT = '#settings-whatsapp-number';
 const PREVIEW = '[data-testid="whatsapp-preview"]';
-const COORDINATES_INPUT = '#settings-factory-coordinates';
-const COORDINATES_PREVIEW = '[data-testid="coordinates-preview"]';
-const COORDINATES_ERROR = '[data-testid="coordinates-error"]';
 const ADDRESS_EN = '#settings-factory-address-en';
 const ADDRESS_AR = '#settings-factory-address-ar';
 const HOURS_EN = '#settings-factory-hours-en';
 const HOURS_AR = '#settings-factory-hours-ar';
 const MAPS_URL = '#settings-factory-maps-url';
+const COORDINATES_INPUT = '#settings-factory-coordinates';
 
 const COPY = {
   heading: 'Site settings',
+  contact: 'Contact info',
   whatsapp: 'WhatsApp',
-  factory: 'Factory location',
   save: 'Save settings',
   saved: 'Saved successfully.',
+  phoneHint:
+    'Shown on the contact page. Write it the way visitors should read it.',
   numberHint:
     'Enter the number with the country code. Leave empty to hide the WhatsApp button on the website.',
   leadingZero: 'Start with the country code, not 0. Example: +20 100 123 4567.',
   messageEn: 'Default message (English)',
   messageAr: 'Default message (Arabic)',
-  coordinates: 'Map coordinates',
-  coordinatesHint:
-    'On Google Maps, right-click the factory and click the first line (the numbers) to copy them, then paste here. Leave empty to hide the map.',
-  coordinatesPreview: 'Open this point on the map',
-  coordinatesError:
-    'Enter coordinates like 30.0444, 31.2357, or paste a long Google Maps link. On Google Maps, right-click the factory, then click the first line (the numbers) to copy it.',
-  coordinatesRange:
-    'Latitude must be between -90 and 90, and longitude between -180 and 180.',
+  phoneError:
+    'Enter a phone number using digits, spaces and + - ( ) . only, with at least 6 digits.',
+  emailError: 'Enter a valid email address, for example info@yourcompany.com.',
   addressEn: 'Address (English)',
   addressAr: 'Address (Arabic)',
   hoursEn: 'Working hours (English)',
   hoursAr: 'Working hours (Arabic)',
-  mapsUrl: 'Google Maps link (optional)',
+  mapsUrl: 'Location link (optional)',
   mapsUrlHint:
-    'Used by the Directions button. If empty, a link is built from the coordinates.',
+    "Shown as an 'Open in maps' link next to the address. Leave empty to hide it.",
   mapsUrlError:
     'Enter a full https:// link, for example https://maps.google.com/.',
 } as const;
@@ -61,6 +58,8 @@ type SettingsRow = {
   whatsappNumber: string | null;
   whatsappMessageEn: string | null;
   whatsappMessageAr: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
   latitude: number | null;
   longitude: number | null;
   factoryAddressEn: string | null;
@@ -84,6 +83,8 @@ function readSettings(): SettingsRow | null {
         whatsappNumber: true,
         whatsappMessageEn: true,
         whatsappMessageAr: true,
+        contactPhone: true,
+        contactEmail: true,
         latitude: true,
         longitude: true,
         factoryAddressEn: true,
@@ -119,21 +120,28 @@ function seedSettings() {
   `);
 }
 
-// A saved factory pin plus its free text, used by the "clearing only the
-// coordinates" test. The edit page must seed the field from the two numbers,
-// not from a stored string.
-function seedFactoryLocation() {
+function seedContact() {
+  runInDb(`
+    await prisma.siteSettings.create({
+      data: {
+        id: 'main',
+        contactPhone: '+20 100 123 4567',
+        contactEmail: 'info@yourcompany.com',
+      },
+    });
+  `);
+}
+
+// A pair stored by the previous admin version. The contact form no longer
+// edits it, but an ordinary save must not wipe it while the web app still
+// renders the map.
+function seedStoredCoordinates() {
   runInDb(`
     await prisma.siteSettings.create({
       data: {
         id: 'main',
         latitude: 30.0444,
         longitude: 31.2357,
-        factoryAddressEn: 'Old English address',
-        factoryAddressAr: 'العنوان العربي القديم',
-        workingHoursEn: 'Old English hours',
-        workingHoursAr: 'المواعيد العربية القديمة',
-        mapsUrl: 'https://maps.google.com/?q=30.0444,31.2357',
       },
     });
   `);
@@ -166,7 +174,7 @@ test.describe('site settings', () => {
   });
 
   // Each test starts without a row, so the "nothing is saved" assertion in the
-  // invalid-number test cannot pass because of an earlier test's row.
+  // invalid-input tests cannot pass because of an earlier test's row.
   test.beforeEach(() => {
     if (DATABASE_URL) {
       deleteSettings();
@@ -189,13 +197,12 @@ test.describe('site settings', () => {
       page.getByRole('heading', { name: COPY.heading, level: 1 })
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: COPY.whatsapp, level: 2 })
+      page.getByRole('heading', { name: COPY.contact, level: 2 })
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: COPY.factory, level: 2 })
+      page.getByRole('heading', { name: COPY.whatsapp, level: 2 })
     ).toBeVisible();
     await expect(page.getByText(COPY.numberHint)).toBeVisible();
-    await expect(page.getByText(COPY.coordinatesHint)).toBeVisible();
 
     const number = page.locator(NUMBER_INPUT);
     await expect(number).toHaveAttribute('dir', 'ltr');
@@ -205,7 +212,7 @@ test.describe('site settings', () => {
 
     // Live preview from the normalized value, before saving.
     await number.fill('+20 100 123 4567');
-    const preview = page.getByTestId('whatsapp-preview');
+    const preview = page.locator(PREVIEW);
     await expect(preview).toHaveText('https://wa.me/201001234567');
     await expect(preview).toHaveAttribute('href', 'https://wa.me/201001234567');
 
@@ -218,13 +225,15 @@ test.describe('site settings', () => {
     await expect(page).not.toHaveURL(/saved=1/);
     await expect(preview).toHaveText('https://wa.me/201001234567');
 
-    // The raw "+20 ..." is never what lands in the database.
-    // Saving only WhatsApp still works, and leaves every location column
-    // null — the location is an optional group, not a required second step.
+    // The raw "+20 ..." is never what lands in the database. Saving only
+    // WhatsApp still works, and leaves every contact/location column null —
+    // the rest of the form is optional, not a required second step.
     expect(readSettings()).toEqual({
       whatsappNumber: '201001234567',
       whatsappMessageEn: 'Hello from Colina',
       whatsappMessageAr: 'مرحباً من كولينا',
+      contactPhone: null,
+      contactEmail: null,
       latitude: null,
       longitude: null,
       factoryAddressEn: null,
@@ -296,6 +305,8 @@ test.describe('site settings', () => {
       whatsappNumber: null,
       whatsappMessageEn: 'New English greeting',
       whatsappMessageAr: 'تحية عربية جديدة',
+      contactPhone: null,
+      contactEmail: null,
       latitude: null,
       longitude: null,
       factoryAddressEn: null,
@@ -318,29 +329,131 @@ test.describe('site settings', () => {
     await context.close();
   });
 
-  test('round-trips coordinates, both addresses, working hours and a maps link', async ({
+  test('saves phone and email and round-trips them after reload', async ({
     browser,
   }) => {
     const { context, page } = await openSettings(browser);
 
-    const coordinates = page.locator(COORDINATES_INPUT);
-    await expect(coordinates).toHaveAttribute('dir', 'ltr');
-    await expect(coordinates).toHaveAttribute(
-      'placeholder',
-      '30.0444, 31.2357'
-    );
-    await coordinates.fill('30.0444, 31.2357');
+    const phone = page.locator(PHONE);
+    const email = page.locator(EMAIL);
+    await expect(phone).toHaveAttribute('dir', 'ltr');
+    await expect(phone).toHaveAttribute('inputmode', 'tel');
+    await expect(phone).toHaveAttribute('placeholder', '+20 100 123 4567');
+    await expect(email).toHaveAttribute('dir', 'ltr');
+    await expect(email).toHaveAttribute('inputmode', 'email');
+    await expect(email).toHaveAttribute('placeholder', 'info@yourcompany.com');
+    await expect(page.getByText(COPY.phoneHint)).toBeVisible();
 
-    const preview = page.getByTestId('coordinates-preview');
-    await expect(preview).toHaveText(COPY.coordinatesPreview);
-    await expect(preview).toHaveAttribute(
-      'href',
-      'https://www.google.com/maps?q=30.0444,31.2357'
-    );
-    await expect(preview).toHaveAttribute('target', '_blank');
-    const rel = await preview.getAttribute('rel');
-    expect(rel).toContain('noopener');
-    expect(rel).toContain('noreferrer');
+    await phone.fill('+20 100 123 4567');
+    // The email is trimmed and lowercased by the schema before it is stored.
+    await email.fill('  INFO@YourCompany.COM  ');
+
+    const auditBefore = countSettingsAudit();
+    await page.getByRole('button', { name: COPY.save }).click();
+    await expect(page.getByText(COPY.saved)).toBeVisible();
+
+    expect(readSettings()).toEqual({
+      whatsappNumber: null,
+      whatsappMessageEn: null,
+      whatsappMessageAr: null,
+      contactPhone: '+20 100 123 4567',
+      contactEmail: 'info@yourcompany.com',
+      latitude: null,
+      longitude: null,
+      factoryAddressEn: null,
+      factoryAddressAr: null,
+      workingHoursEn: null,
+      workingHoursAr: null,
+      mapsUrl: null,
+    });
+    expect(countSettingsAudit()).toBe(auditBefore + 1);
+
+    await page.reload();
+    await expect(page.locator(PHONE)).toHaveValue('+20 100 123 4567');
+    await expect(page.locator(EMAIL)).toHaveValue('info@yourcompany.com');
+
+    await context.close();
+  });
+
+  test('invalid phone shows its message and saves nothing', async ({
+    browser,
+  }) => {
+    const { context, page } = await openSettings(browser);
+    const auditBefore = countSettingsAudit();
+
+    await page.locator(PHONE).fill('12345');
+    await page.getByRole('button', { name: COPY.save }).click();
+
+    await expect(page.getByText(COPY.phoneError)).toBeVisible();
+    await expect(page).toHaveURL(`${ADMIN_URL}/en/settings`);
+    expect(readSettings()).toBeNull();
+    expect(countSettingsAudit()).toBe(auditBefore);
+
+    await context.close();
+  });
+
+  test('invalid email shows its message and saves nothing', async ({
+    browser,
+  }) => {
+    const { context, page } = await openSettings(browser);
+    const auditBefore = countSettingsAudit();
+
+    await page.locator(EMAIL).fill('not-an-email');
+    await page.getByRole('button', { name: COPY.save }).click();
+
+    await expect(page.getByText(COPY.emailError)).toBeVisible();
+    await expect(page).toHaveURL(`${ADMIN_URL}/en/settings`);
+    expect(readSettings()).toBeNull();
+    expect(countSettingsAudit()).toBe(auditBefore);
+
+    await context.close();
+  });
+
+  test('clearing phone and email stores both as null', async ({ browser }) => {
+    seedContact();
+    const { context, page } = await openSettings(browser);
+
+    await expect(page.locator(PHONE)).toHaveValue('+20 100 123 4567');
+    await expect(page.locator(EMAIL)).toHaveValue('info@yourcompany.com');
+
+    await page.locator(PHONE).fill('');
+    await page.locator(EMAIL).fill('');
+    await page.getByRole('button', { name: COPY.save }).click();
+    await expect(page.getByText(COPY.saved)).toBeVisible();
+
+    expect(readSettings()).toEqual({
+      whatsappNumber: null,
+      whatsappMessageEn: null,
+      whatsappMessageAr: null,
+      contactPhone: null,
+      contactEmail: null,
+      latitude: null,
+      longitude: null,
+      factoryAddressEn: null,
+      factoryAddressAr: null,
+      workingHoursEn: null,
+      workingHoursAr: null,
+      mapsUrl: null,
+    });
+
+    await page.reload();
+    await expect(page.locator(PHONE)).toHaveValue('');
+    await expect(page.locator(EMAIL)).toHaveValue('');
+
+    await context.close();
+  });
+
+  test('round-trips both addresses, working hours and a location link', async ({
+    browser,
+  }) => {
+    const { context, page } = await openSettings(browser);
+
+    await expect(page.getByLabel(COPY.addressEn)).toBeVisible();
+    await expect(page.getByLabel(COPY.addressAr)).toBeVisible();
+    await expect(page.getByLabel(COPY.hoursEn)).toBeVisible();
+    await expect(page.getByLabel(COPY.hoursAr)).toBeVisible();
+    await expect(page.getByLabel(COPY.mapsUrl)).toBeVisible();
+    await expect(page.getByText(COPY.mapsUrlHint)).toBeVisible();
 
     await page.locator(ADDRESS_EN).fill('12 Industrial Road, Cairo');
     await page.locator(ADDRESS_AR).fill('١٢ شارع المصنع، القاهرة');
@@ -358,8 +471,10 @@ test.describe('site settings', () => {
       whatsappNumber: null,
       whatsappMessageEn: null,
       whatsappMessageAr: null,
-      latitude: 30.0444,
-      longitude: 31.2357,
+      contactPhone: null,
+      contactEmail: null,
+      latitude: null,
+      longitude: null,
       factoryAddressEn: '12 Industrial Road, Cairo',
       factoryAddressAr: '١٢ شارع المصنع، القاهرة',
       workingHoursEn: 'Sun–Thu, 9:00–17:00',
@@ -368,15 +483,7 @@ test.describe('site settings', () => {
     });
     expect(countSettingsAudit()).toBe(auditBefore + 1);
 
-    // A full reload proves the page seeds the field from the two numbers.
     await page.reload();
-    await expect(page.locator(COORDINATES_INPUT)).toHaveValue(
-      '30.0444, 31.2357'
-    );
-    await expect(page.getByTestId('coordinates-preview')).toHaveAttribute(
-      'href',
-      'https://www.google.com/maps?q=30.0444,31.2357'
-    );
     await expect(page.locator(ADDRESS_EN)).toHaveValue(
       '12 Industrial Road, Cairo'
     );
@@ -394,130 +501,52 @@ test.describe('site settings', () => {
     await context.close();
   });
 
-  test('invalid coordinates show the message and save nothing', async ({
+  test('rejects an http location link and saves nothing', async ({
     browser,
   }) => {
     const { context, page } = await openSettings(browser);
     const auditBefore = countSettingsAudit();
 
-    const cases = [
-      { value: 'abc', message: COPY.coordinatesError },
-      { value: '91, 31', message: COPY.coordinatesRange },
-      {
-        value: 'https://maps.app.goo.gl/abc123',
-        message: COPY.coordinatesError,
-      },
-    ] as const;
-
-    for (const { value, message } of cases) {
-      await page.locator(COORDINATES_INPUT).fill(value);
-      // The live preview turns into the parse error immediately.
-      await expect(page.getByTestId('coordinates-error')).toHaveText(message);
-      await expect(page.getByTestId('coordinates-preview')).toHaveCount(0);
-
-      await page.getByRole('button', { name: COPY.save }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/en/settings`);
-      await expect(page.getByTestId('coordinates-error')).toHaveText(message);
-
-      // The client refused the submit, so the action never ran.
-      expect(readSettings(), value).toBeNull();
-    }
-
-    expect(countSettingsAudit()).toBe(auditBefore);
-    await context.close();
-  });
-
-  test('clearing the coordinates stores both numbers as null', async ({
-    browser,
-  }) => {
-    seedFactoryLocation();
-    const { context, page } = await openSettings(browser);
-
-    // The edit page formats the saved pair, not the raw pasted URL.
-    await expect(page.locator(COORDINATES_INPUT)).toHaveValue(
-      '30.0444, 31.2357'
-    );
-    await expect(page.getByTestId('coordinates-preview')).toHaveAttribute(
-      'href',
-      'https://www.google.com/maps?q=30.0444,31.2357'
-    );
-
-    await page.locator(COORDINATES_INPUT).fill('');
-    await expect(page.getByTestId('coordinates-preview')).toHaveCount(0);
-
-    await page.getByRole('button', { name: COPY.save }).click();
-    await expect(page.getByText(COPY.saved)).toBeVisible();
-
-    expect(readSettings()).toEqual({
-      whatsappNumber: null,
-      whatsappMessageEn: null,
-      whatsappMessageAr: null,
-      latitude: null,
-      longitude: null,
-      factoryAddressEn: 'Old English address',
-      factoryAddressAr: 'العنوان العربي القديم',
-      workingHoursEn: 'Old English hours',
-      workingHoursAr: 'المواعيد العربية القديمة',
-      mapsUrl: 'https://maps.google.com/?q=30.0444,31.2357',
-    });
-
-    await page.reload();
-    await expect(page.locator(COORDINATES_INPUT)).toHaveValue('');
-    await expect(page.getByTestId('coordinates-preview')).toHaveCount(0);
-
-    await context.close();
-  });
-
-  test('accepts a long Google Maps URL and stores the numbers', async ({
-    browser,
-  }) => {
-    const { context, page } = await openSettings(browser);
-    const url =
-      'https://www.google.com/maps/place/Colina/@30.0444,31.2357,17z/data=!4m2!3m1';
-
-    await page.locator(COORDINATES_INPUT).fill(url);
-    await expect(page.getByTestId('coordinates-preview')).toHaveAttribute(
-      'href',
-      'https://www.google.com/maps?q=30.0444,31.2357'
-    );
-
-    await page.getByRole('button', { name: COPY.save }).click();
-    await expect(page.getByText(COPY.saved)).toBeVisible();
-
-    expect(readSettings()).toEqual({
-      whatsappNumber: null,
-      whatsappMessageEn: null,
-      whatsappMessageAr: null,
-      latitude: 30.0444,
-      longitude: 31.2357,
-      factoryAddressEn: null,
-      factoryAddressAr: null,
-      workingHoursEn: null,
-      workingHoursAr: null,
-      mapsUrl: null,
-    });
-
-    await page.reload();
-    await expect(page.locator(COORDINATES_INPUT)).toHaveValue(
-      '30.0444, 31.2357'
-    );
-
-    await context.close();
-  });
-
-  test('rejects an http maps link and saves nothing', async ({ browser }) => {
-    const { context, page } = await openSettings(browser);
-
-    await page.locator(COORDINATES_INPUT).fill('30.0444, 31.2357');
     await page
       .locator(MAPS_URL)
       .fill('http://maps.google.com/?q=30.0444,31.2357');
-
     await page.getByRole('button', { name: COPY.save }).click();
+
     await expect(page.getByText(COPY.mapsUrlError)).toBeVisible();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/settings`);
-
     expect(readSettings()).toBeNull();
+    expect(countSettingsAudit()).toBe(auditBefore);
+
+    await context.close();
+  });
+
+  test('the form has no map coordinates field', async ({ browser }) => {
+    const { context, page } = await openSettings(browser);
+
+    await expect(page.locator(COORDINATES_INPUT)).toHaveCount(0);
+    await expect(page.getByTestId('coordinates-preview')).toHaveCount(0);
+    await expect(page.getByTestId('coordinates-error')).toHaveCount(0);
+    await expect(page.getByText('Map coordinates')).toHaveCount(0);
+
+    await context.close();
+  });
+
+  test('saving contact info leaves previously stored coordinates untouched', async ({
+    browser,
+  }) => {
+    seedStoredCoordinates();
+    const { context, page } = await openSettings(browser);
+
+    await page.locator(PHONE).fill('+20 100 123 4567');
+    await page.locator(EMAIL).fill('info@yourcompany.com');
+    await page.getByRole('button', { name: COPY.save }).click();
+    await expect(page.getByText(COPY.saved)).toBeVisible();
+
+    const row = readSettings();
+    expect(row?.latitude).toBe(30.0444);
+    expect(row?.longitude).toBe(31.2357);
+    expect(row?.contactPhone).toBe('+20 100 123 4567');
+    expect(row?.contactEmail).toBe('info@yourcompany.com');
 
     await context.close();
   });

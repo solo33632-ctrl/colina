@@ -46,14 +46,17 @@ export async function saveSiteSettings(input: unknown): Promise<ActionResult> {
     };
   }
 
-  // Every location field is already trimmed and null-normalized by the
-  // schema. The coordinates go in as two numbers, never as the pasted text.
+  // Every contact field is already trimmed and null-normalized by the schema.
+  // `latitude`/`longitude` are deliberately absent: the admin no longer edits
+  // the map, and leaving the keys out means an ordinary save never overwrites
+  // a pair stored by an earlier version (the web app still reads it until
+  // stage 34b removes the map).
   const data = {
     whatsappNumber: parsed.data.whatsappNumber,
     whatsappMessageEn: greeting(parsed.data.whatsappMessageEn),
     whatsappMessageAr: greeting(parsed.data.whatsappMessageAr),
-    latitude: parsed.data.coordinates?.lat ?? null,
-    longitude: parsed.data.coordinates?.lng ?? null,
+    contactPhone: parsed.data.contactPhone ?? null,
+    contactEmail: parsed.data.contactEmail ?? null,
     factoryAddressEn: parsed.data.factoryAddressEn ?? null,
     factoryAddressAr: parsed.data.factoryAddressAr ?? null,
     workingHoursEn: parsed.data.workingHoursEn ?? null,
@@ -92,9 +95,9 @@ export async function saveSiteSettings(input: unknown): Promise<ActionResult> {
     return { ok: true };
   } catch (error) {
     // Deliberately not the error itself: a Prisma failure can echo the input,
-    // and the input now contains a phone number, coordinates and addresses.
-    // The error name is enough to tell an operator what happened without
-    // writing any of that to a log.
+    // and the input now contains phone numbers, an email address and the
+    // owner's contact copy. The error name is enough to tell an operator what
+    // happened without writing any of that to a log.
     console.error(
       '[admin] saveSiteSettings failed:',
       error instanceof Error ? error.name : 'unknown error'

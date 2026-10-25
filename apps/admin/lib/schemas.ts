@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { parseCoordinates } from './coordinates';
 import { normalizeWhatsappNumber } from './whatsapp';
 
 // Admin form validation. Same factory pattern as apps/web/lib/schemas.ts:
@@ -328,8 +327,10 @@ export type SiteSettingsFieldMessages = {
   whatsappNumberLeadingZero: string;
   whatsappMessageEn: string;
   whatsappMessageAr: string;
-  coordinates: string;
-  coordinatesRange: string;
+  contactPhone: string;
+  contactPhoneLength: string;
+  contactEmail: string;
+  contactEmailLength: string;
   factoryAddressEn: string;
   factoryAddressAr: string;
   workingHoursEn: string;
@@ -363,10 +364,13 @@ function optionalText(max: number, message: string) {
 // null for a blank field, which is the valid "hide the button" state. The
 // Server Action writes `parsed.data`, so the raw input is never stored.
 //
-// The factory coordinates work the same way: one pasted string goes in, one
-// `{ lat, lng }` pair (or null) comes out, and the action stores the numbers
-// only. Addresses and hours are trimmed optional text; `mapsUrl` is a full
-// https URL, never http and never a bare path.
+// The contact phone and email are display values: the phone is stored exactly
+// as typed (trimmed), and the email is trimmed and lowercased. Neither is
+// coerced into a canonical machine format. Blank means null, which hides that
+// row on the public contact page. Addresses and hours are trimmed
+// optional text; `mapsUrl` is a full https URL, never http and never a bare
+// path. There is deliberately no coordinates field any more: the columns stay
+// for the web app, but the admin no longer reads or writes them.
 export function siteSettingsInputSchema(messages: SiteSettingsFieldMessages) {
   return z.object({
     // `null` is accepted because the form's resolver has already run this
@@ -401,26 +405,64 @@ export function siteSettingsInputSchema(messages: SiteSettingsFieldMessages) {
       .string()
       .max(300, { error: messages.whatsappMessageAr })
       .optional(),
-    // `null` is accepted for the same reason as the number: the resolver
-    // sends null after its transform has run, and both blank forms mean
-    // "no factory pin".
-    coordinates: z
+    // A display value, so the formatting is kept: "the way visitors should
+    // read it" is the owner's choice, not the schema's. The rule is still
+    // strict about what may appear (no letters or other punctuation) and
+    // counts real digits rather than characters, so "+20 100 123 4567" is
+    // accepted while "12345" and "ext 5" are not. Trimmed before the length
+    // check so trailing spaces cannot push a valid number over 30 characters.
+    contactPhone: z
       .string()
       .nullable()
       .optional()
       .transform((value, ctx) => {
-        const result = parseCoordinates(value ?? '');
-        if (!result.ok) {
+        const trimmed = value?.trim() ?? '';
+        if (trimmed === '') {
+          return null;
+        }
+        if (trimmed.length > 30) {
           ctx.addIssue({
             code: 'custom',
-            message:
-              result.reason === 'out_of_range'
-                ? messages.coordinatesRange
-                : messages.coordinates,
+            message: messages.contactPhoneLength,
           });
           return z.NEVER;
         }
-        return result.value;
+        if (!/^[0-9+\-(). ]+$/.test(trimmed)) {
+          ctx.addIssue({ code: 'custom', message: messages.contactPhone });
+          return z.NEVER;
+        }
+        const digits = trimmed.replace(/[^0-9]/g, '');
+        if (digits.length < 6) {
+          ctx.addIssue({ code: 'custom', message: messages.contactPhone });
+          return z.NEVER;
+        }
+        return trimmed;
+      }),
+    // Emails are case-insensitive but stored lowercased, so the same address
+    // typed with different capitals is one value. The length limit is checked
+    // before the format rule so an overlong address reports the clearer
+    // reason. Blank means "hide the email row".
+    contactEmail: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((value, ctx) => {
+        const normalized = value?.trim().toLowerCase() ?? '';
+        if (normalized === '') {
+          return null;
+        }
+        if (normalized.length > 254) {
+          ctx.addIssue({
+            code: 'custom',
+            message: messages.contactEmailLength,
+          });
+          return z.NEVER;
+        }
+        if (!z.email().safeParse(normalized).success) {
+          ctx.addIssue({ code: 'custom', message: messages.contactEmail });
+          return z.NEVER;
+        }
+        return normalized;
       }),
     factoryAddressEn: optionalText(300, messages.factoryAddressEn),
     factoryAddressAr: optionalText(300, messages.factoryAddressAr),

@@ -500,6 +500,22 @@
     "heading": "Site settings",
     "notAuthorizedTitle": "Not authorized",
     "notAuthorizedDescription": "Site settings are restricted to super admins. Your editor account cannot view this page.",
+    "contact": {
+      "title": "Contact info",
+      "phone": "Phone",
+      "phonePlaceholder": "+20 100 123 4567",
+      "phoneHint": "Shown on the contact page. Write it the way visitors should read it.",
+      "email": "Email",
+      "emailPlaceholder": "info@yourcompany.com",
+      "addressEn": "Address (English)",
+      "addressAr": "Address (Arabic)",
+      "hoursEn": "Working hours (English)",
+      "hoursAr": "Working hours (Arabic)",
+      "hoursPlaceholderEn": "Sun–Thu, 9:00–17:00",
+      "hoursPlaceholderAr": "من الأحد إلى الخميس، 9 ص – 5 م",
+      "mapsUrl": "Location link (optional)",
+      "mapsUrlHint": "Shown as an 'Open in maps' link next to the address. Leave empty to hide it."
+    },
     "whatsapp": {
       "title": "WhatsApp",
       "number": "WhatsApp number",
@@ -510,21 +526,6 @@
       "messageAr": "Default message (Arabic)",
       "messageHint": "The text that is pre-filled when a visitor opens WhatsApp. Leave empty to use the standard greeting."
     },
-    "factory": {
-      "title": "Factory location",
-      "coordinates": "Map coordinates",
-      "coordinatesPlaceholder": "30.0444, 31.2357",
-      "coordinatesHint": "On Google Maps, right-click the factory and click the first line (the numbers) to copy them, then paste here. Leave empty to hide the map.",
-      "coordinatesPreview": "Open this point on the map",
-      "addressEn": "Address (English)",
-      "addressAr": "Address (Arabic)",
-      "hoursEn": "Working hours (English)",
-      "hoursAr": "Working hours (Arabic)",
-      "hoursPlaceholderEn": "Sun–Thu, 9:00–17:00",
-      "hoursPlaceholderAr": "من الأحد إلى الخميس، 9 ص – 5 م",
-      "mapsUrl": "Google Maps link (optional)",
-      "mapsUrlHint": "Used by the Directions button. If empty, a link is built from the coordinates."
-    },
     "form": {
       "submit": "Save settings"
     },
@@ -533,8 +534,10 @@
       "whatsappNumberLeadingZero": "Start with the country code, not 0. Example: +20 100 123 4567.",
       "whatsappMessageEn": "The English greeting must be 300 characters or fewer.",
       "whatsappMessageAr": "The Arabic greeting must be 300 characters or fewer.",
-      "coordinates": "Enter coordinates like 30.0444, 31.2357, or paste a long Google Maps link. On Google Maps, right-click the factory, then click the first line (the numbers) to copy it.",
-      "coordinatesRange": "Latitude must be between -90 and 90, and longitude between -180 and 180.",
+      "contactPhone": "Enter a phone number using digits, spaces and + - ( ) . only, with at least 6 digits.",
+      "contactPhoneLength": "The phone number must be 30 characters or fewer.",
+      "contactEmail": "Enter a valid email address, for example info@yourcompany.com.",
+      "contactEmailLength": "The email address must be 254 characters or fewer.",
       "factoryAddressEn": "The English address must be 300 characters or fewer.",
       "factoryAddressAr": "The Arabic address must be 300 characters or fewer.",
       "workingHoursEn": "The English working hours must be 200 characters or fewer.",

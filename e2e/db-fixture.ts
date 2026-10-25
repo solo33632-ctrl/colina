@@ -390,6 +390,13 @@ export type SiteSettingsFixture = {
   whatsappNumber: string | null;
   whatsappMessageEn?: string | null;
   whatsappMessageAr?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  factoryAddressEn?: string | null;
+  factoryAddressAr?: string | null;
+  workingHoursEn?: string | null;
+  workingHoursAr?: string | null;
+  mapsUrl?: string | null;
 };
 
 /**
@@ -406,6 +413,13 @@ export function setSiteSettings(fixture: SiteSettingsFixture) {
       whatsappNumber: ${JSON.stringify(fixture.whatsappNumber)},
       whatsappMessageEn: ${JSON.stringify(fixture.whatsappMessageEn ?? null)},
       whatsappMessageAr: ${JSON.stringify(fixture.whatsappMessageAr ?? null)},
+      latitude: ${JSON.stringify(fixture.latitude ?? null)},
+      longitude: ${JSON.stringify(fixture.longitude ?? null)},
+      factoryAddressEn: ${JSON.stringify(fixture.factoryAddressEn ?? null)},
+      factoryAddressAr: ${JSON.stringify(fixture.factoryAddressAr ?? null)},
+      workingHoursEn: ${JSON.stringify(fixture.workingHoursEn ?? null)},
+      workingHoursAr: ${JSON.stringify(fixture.workingHoursAr ?? null)},
+      mapsUrl: ${JSON.stringify(fixture.mapsUrl ?? null)},
     };
     await prisma.siteSettings.upsert({
       where: { id: 'main' },

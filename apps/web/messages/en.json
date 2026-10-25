@@ -174,9 +174,15 @@
   },
   "ContactPage": {
     "heading": "Contact us",
-    "subheading": "Placeholder contact page — submissions are wired up in Phase 8.",
-    "mapTitle": "Map (illustrative)",
-    "mapNote": "Illustrative map centered on Cairo — the real address arrives with Phase 0 content."
+    "subheading": "Placeholder contact page — submissions are wired up in Phase 8."
+  },
+  "Factory": {
+    "heading": "Visit our factory",
+    "address": "Address",
+    "hours": "Working hours",
+    "directions": "Get directions",
+    "openMap": "Open in Google Maps",
+    "mapTitle": "Map showing the Colina factory location"
   },
   "PrivacyPage": {
     "heading": "Privacy Policy",

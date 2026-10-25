@@ -174,15 +174,15 @@
   },
   "ContactPage": {
     "heading": "Contact us",
-    "subheading": "Placeholder contact page — submissions are wired up in Phase 8."
+    "subheading": "Tell us about your project and we'll get back to you."
   },
-  "Factory": {
-    "heading": "Visit our factory",
+  "ContactInfo": {
+    "heading": "Contact info",
     "address": "Address",
+    "phone": "Phone",
+    "email": "Email",
     "hours": "Working hours",
-    "directions": "Get directions",
-    "openMap": "Open in Google Maps",
-    "mapTitle": "Map showing the Colina factory location"
+    "openInMaps": "Open in maps"
   },
   "PrivacyPage": {
     "heading": "Privacy Policy",

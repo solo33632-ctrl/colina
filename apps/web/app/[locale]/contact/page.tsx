@@ -4,16 +4,16 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { Container } from '@colina/ui';
 import { ContactForm } from '@/components/contact-form';
-import { FactoryLocation } from '@/components/factory-location';
+import { ContactInfo } from '@/components/contact-info';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { routing } from '@/i18n/routing';
 import { localeAlternates } from '@/lib/seo';
 import { getSiteSettings } from '@/lib/site-settings';
 import { buildWhatsappUrl } from '@/lib/whatsapp';
 
-// Static page reusing the shared ContactForm — submission wiring is Phase 8.
-// The WhatsApp row is the one DB-driven part, so it follows the site's hourly
-// freshness window like every other DB-backed page.
+// Static page reusing the shared ContactForm. The contact details and the
+// WhatsApp row are DB-driven, so the page follows the site's hourly freshness
+// window like every other DB-backed page.
 export const revalidate = 3600;
 
 type Props = {
@@ -49,7 +49,7 @@ export default async function ContactPage({ params }: Props) {
 
   // Same cached read as the layout, and the same locale fallback: a blank
   // stored greeting becomes the standard one, and an invalid/missing number
-  // renders neither the row nor the floating button.
+  // renders no WhatsApp row and no floating button.
   const settings = await getSiteSettings();
   const storedMessage =
     locale === 'ar' ? settings.whatsappMessageAr : settings.whatsappMessageEn;
@@ -60,43 +60,56 @@ export default async function ContactPage({ params }: Props) {
       )
     : null;
 
+  // The current locale wins; the other language is a fallback only when the
+  // current one is blank, so the info block never shows both.
+  const address =
+    locale === 'ar'
+      ? (settings.factoryAddressAr ?? settings.factoryAddressEn)
+      : (settings.factoryAddressEn ?? settings.factoryAddressAr);
+  const hours =
+    locale === 'ar'
+      ? (settings.workingHoursAr ?? settings.workingHoursEn)
+      : (settings.workingHoursEn ?? settings.workingHoursAr);
+
+  const hasContactInfo = Boolean(
+    address ||
+      hours ||
+      settings.contactPhone ||
+      settings.contactEmail ||
+      whatsappHref
+  );
+
   return (
     <main>
       <PageViewTracker path="/contact" locale={locale} />
       <Container className="py-16">
-        <h1 className="text-center text-2xl font-bold text-stone-900 sm:text-3xl">
-          {t('heading')}
-        </h1>
-        <p className="mt-2 text-center text-stone-600">{t('subheading')}</p>
-        {whatsappHref ? (
+        <div className="mx-auto max-w-5xl">
+          <h1 className="text-center text-2xl font-bold text-stone-900 sm:text-3xl">
+            {t('heading')}
+          </h1>
+          <p className="mt-2 text-center text-stone-600">{t('subheading')}</p>
           <div
-            data-testid="whatsapp-contact-row"
-            className="mx-auto mt-6 max-w-md rounded-xl border border-stone-200 bg-white px-5 py-4"
+            className={
+              hasContactInfo
+                ? 'mt-8 grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-10'
+                : undefined
+            }
           >
-            <dl className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-              <dt className="text-sm font-medium text-stone-600">
-                {whatsapp('contactLabel')}
-              </dt>
-              <dd>
-                <a
-                  href={whatsappHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded text-sm font-semibold text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-                >
-                  <span dir="ltr" className="colina-ltr-isolate">
-                    +{settings.whatsappNumber}
-                  </span>
-                </a>
-              </dd>
-            </dl>
+            {hasContactInfo ? (
+              <ContactInfo
+                address={address}
+                hours={hours}
+                phone={settings.contactPhone}
+                email={settings.contactEmail}
+                mapsUrl={settings.mapsUrl}
+                whatsappNumber={settings.whatsappNumber}
+                whatsappHref={whatsappHref}
+              />
+            ) : null}
+            <ContactForm />
           </div>
-        ) : null}
-        <ContactForm />
+        </div>
       </Container>
-      {/* Replaces the illustrative OSM placeholder that used to sit here. The
-          same component is the last section of the home page. */}
-      <FactoryLocation locale={locale} />
     </main>
   );
 }

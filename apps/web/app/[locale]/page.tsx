@@ -8,7 +8,6 @@ import {
   HOME_CATEGORY_LIMIT,
 } from '@/components/categories-grid';
 import { ContactSection } from '@/components/contact-section';
-import { FactoryLocation } from '@/components/factory-location';
 import { HeroSection } from '@/components/hero-section';
 import { IntroOverlay } from '@/components/intro-overlay';
 import { IntroProvider } from '@/components/intro-provider';
@@ -98,9 +97,6 @@ export default async function HomePage({ params }: Props) {
       <WhyUsSection />
       <PartnersStrip partners={partners} locale={locale} />
       <ContactSection />
-      {/* Last section before the footer, matching the contact page. Renders
-          nothing until the admin has saved a location. */}
-      <FactoryLocation locale={locale} />
     </main>
   );
 }

@@ -47,7 +47,9 @@ function expectedUrl(message: string) {
 
 const whatsappButton = (page: Page) => page.getByTestId('whatsapp-button');
 const quoteBar = (page: Page) => page.getByTestId('mobile-quote-bar');
-const contactRow = (page: Page) => page.getByTestId('whatsapp-contact-row');
+const contactInfo = (page: Page) => page.getByTestId('contact-info');
+const contactRow = (page: Page) =>
+  contactInfo(page).getByTestId('whatsapp-contact-row');
 
 async function buttonBox(page: Page) {
   const box = await whatsappButton(page).boundingBox();
@@ -310,6 +312,8 @@ for (const locale of ['en', 'ar'] as const) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${WEB_URL}/${locale}/contact`);
 
+    // Stage 34b moved the row inside the "Contact info" block beside the form.
+    await expect(contactInfo(page)).toBeVisible();
     const row = contactRow(page);
     await expect(row).toBeVisible();
     await expect(row.getByText(text.contactLabel)).toBeVisible();

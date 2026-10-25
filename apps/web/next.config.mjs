@@ -10,9 +10,9 @@ import createNextIntlPlugin from 'next-intl/plugin';
 //   dev-mode debugging relies on eval(), which a production-strict policy
 //   intentionally blocks ("eval() is not supported… React requires eval()
 //   in development mode"). Production builds never ship 'unsafe-eval'.
-// - `frame-src` allows Google Maps: the factory section embeds the
-//   keyless `google.com/maps?...&output=embed` URL (no API key, no
-//   script). Nothing else may frame or be framed.
+// - `frame-src 'none'`: the public site frames nothing. The factory map was
+//   the only framed content and it was removed in Stage 34b; `X-Frame-Options`
+//   still prevents the site itself from being framed.
 // - No `upgrade-insecure-requests`: it would rewrite same-origin http://
 //   API calls and break local-HTTP environments outright.
 const scriptSrc =
@@ -26,7 +26,7 @@ const contentSecurityPolicy = [
   "img-src 'self' data: https:",
   "font-src 'self' data:",
   "connect-src 'self'",
-  'frame-src https://www.google.com',
+  "frame-src 'none'",
   "form-action 'self'",
   "base-uri 'self'",
   "frame-ancestors 'none'",

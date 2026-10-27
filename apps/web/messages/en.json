@@ -124,8 +124,6 @@
     "empty": "No partners yet."
   },
   "Contact": {
-    "heading": "Contact us",
-    "subheading": "Placeholder contact form — submissions are wired up in Phase 8.",
     "nameLabel": "Name",
     "emailLabel": "Email",
     "phoneLabel": "Phone",
@@ -137,6 +135,12 @@
     "emailError": "Please enter a valid email address.",
     "phoneError": "Please enter a valid phone number.",
     "messageError": "Please enter your message (at least 10 characters)."
+  },
+  "ContactCta": {
+    "heading": "Get in touch",
+    "body": "Tell us about your production line or maintenance needs and our team will get back to you.",
+    "primary": "Contact us",
+    "whatsapp": "Chat on WhatsApp"
   },
   "Header": {
     "skipToContent": "Skip to content"

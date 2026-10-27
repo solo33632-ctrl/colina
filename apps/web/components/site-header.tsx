@@ -14,7 +14,7 @@ export async function SiteHeader() {
     { label: nav('machines'), href: '/machines' as const },
     { label: nav('services'), href: '/services' as const },
     { label: nav('about'), href: '/about' as const },
-    { label: nav('contact'), href: '/#contact' as const },
+    { label: nav('contact'), href: '/contact' as const },
   ];
   // The lockup already draws the wordmark and the tagline, so the alt text
   // spells both out for assistive tech. `priority` because the logo is the

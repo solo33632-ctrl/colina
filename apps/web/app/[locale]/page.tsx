@@ -7,7 +7,7 @@ import {
   CategoriesGrid,
   HOME_CATEGORY_LIMIT,
 } from '@/components/categories-grid';
-import { ContactSection } from '@/components/contact-section';
+import { ContactCtaBand } from '@/components/contact-cta-band';
 import { HeroSection } from '@/components/hero-section';
 import { IntroOverlay } from '@/components/intro-overlay';
 import { IntroProvider } from '@/components/intro-provider';
@@ -90,13 +90,13 @@ export default async function HomePage({ params }: Props) {
           machine page from a search never sees a splash. */}
       <IntroProvider>
         <IntroOverlay />
-        <HeroSection />
+        <HeroSection locale={locale} />
         <CategoriesGrid categories={categories} locale={locale} />
         <MaintenanceCategories lines={maintenanceLines} locale={locale} />
       </IntroProvider>
       <WhyUsSection />
       <PartnersStrip partners={partners} locale={locale} />
-      <ContactSection />
+      <ContactCtaBand locale={locale} />
     </main>
   );
 }

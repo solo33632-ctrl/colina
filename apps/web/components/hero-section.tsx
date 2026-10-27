@@ -1,5 +1,13 @@
 import { getTranslations } from 'next-intl/server';
 import { Button, Container } from '@colina/ui';
+import { getPathname } from '@/i18n/navigation';
+import { routing } from '@/i18n/routing';
+
+type Locale = (typeof routing.locales)[number];
+
+type HeroSectionProps = {
+  locale: Locale;
+};
 
 // Text-only hero on a brand background — no photography exists yet
 // (real media arrives with Phase 0 content).
@@ -14,7 +22,7 @@ import { Button, Container } from '@colina/ui';
 // The hero's entrance is the brand overlay lifting off it, which reads
 // identically and costs nothing. The entrance animation lives on the
 // sections below the fold, which are not LCP candidates.
-export async function HeroSection() {
+export async function HeroSection({ locale }: HeroSectionProps) {
   const t = await getTranslations('Hero');
 
   return (
@@ -27,7 +35,7 @@ export async function HeroSection() {
           {t('subtitle')}
         </p>
         <div className="mt-8 flex justify-center">
-          <Button href="#contact" size="lg">
+          <Button href={getPathname({ href: '/contact', locale })} size="lg">
             {t('cta')}
           </Button>
         </div>

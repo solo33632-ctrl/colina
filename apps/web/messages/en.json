@@ -91,7 +91,7 @@
   },
   "MaintenanceForm": {
     "heading": "Request maintenance",
-    "subheading": "Placeholder request form — submissions are wired up in Phase 8.",
+    "subheading": "Tell us about the machine or line and the issue you are facing. Our after-sales team will get back to you.",
     "nameLabel": "Name",
     "companyLabel": "Company (optional)",
     "emailLabel": "Email (optional)",
@@ -108,19 +108,19 @@
   },
   "WhyUs": {
     "heading": "Why Colina",
-    "subheading": "Placeholder strengths — final copy arrives later.",
+    "subheading": "What sets Colina apart on the factory floor.",
     "feature1Title": "Decades of experience",
-    "feature1Text": "Placeholder: years building food-industry machinery.",
+    "feature1Text": "Years of hands-on experience designing and building machinery for food manufacturers.",
     "feature2Title": "After-sales support",
-    "feature2Text": "Placeholder: maintenance and spare parts.",
+    "feature2Text": "Preventive maintenance, emergency repair and spare parts, handled by our own team.",
     "feature3Title": "Custom engineering",
-    "feature3Text": "Placeholder: lines tailored to your plant.",
+    "feature3Text": "Lines engineered around your product, your space and your capacity.",
     "feature4Title": "Built for quality",
-    "feature4Text": "Placeholder: robust machines, food-safe design."
+    "feature4Text": "Robust machines with food-safe design, built for long daily runs."
   },
   "Partners": {
     "heading": "Our partners",
-    "subheading": "Placeholder partner strip.",
+    "subheading": "Companies that trust Colina.",
     "empty": "No partners yet."
   },
   "Contact": {
@@ -166,14 +166,14 @@
   },
   "AboutPage": {
     "heading": "About Colina",
-    "intro1": "Placeholder: Colina manufactures production lines and machinery for the food industry.",
-    "intro2": "Placeholder: this page will tell the company story once Phase 0 content arrives.",
+    "intro1": "Colina designs and manufactures production lines and machinery for the food industry, and supports them with after-sales maintenance.",
+    "intro2": "We work with each customer from the first layout to commissioning and beyond, so every line is built around the way you actually produce.",
     "missionTitle": "Our mission",
-    "missionText": "Placeholder mission statement."
+    "missionText": "To give food manufacturers reliable machinery and dependable service, so their production keeps running."
   },
   "PartnersPage": {
     "heading": "Our partners",
-    "subheading": "Placeholder partner listing.",
+    "subheading": "The companies we have built and maintained lines for.",
     "empty": "No partners yet."
   },
   "ContactPage": {
@@ -201,11 +201,11 @@
     "pageViewsTitle": "How visits are counted",
     "pageViewsText": "Placeholder: the site counts page visits in aggregate — for each day, a single number per page per language, recording which page was opened and how many times. Nothing is recorded about you as an individual: there is no separate entry for your visit, no IP address attached to a page view, and no cookie or other identifier used for counting. This is a different thing from the blocked-submission records above, which do keep IP addresses because their purpose is investigating abuse — counting visits never stores yours. Automated crawlers that identify themselves are left out, so the totals are approximate rather than exact.",
     "trackersTitle": "No ad trackers",
-    "trackersText": "Placeholder: per this project's policy, the site uses no third-party advertising trackers or analytics scripts.",
+    "trackersText": "The site uses no third-party advertising trackers or external analytics scripts.",
     "contactTitle": "Contact",
-    "contactText": "Placeholder: privacy contact details (TBD).",
+    "contactText": "For any privacy question, reach us through the details on our Contact page.",
     "changesTitle": "Changes",
-    "changesText": "Placeholder: this draft will be replaced with a reviewed policy before launch."
+    "changesText": "We may update this policy from time to time. The current version is always the one published on this page."
   },
   "RelatedMachines": {
     "heading": "Related machines",

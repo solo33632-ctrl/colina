@@ -425,11 +425,33 @@
   },
   "Leads": {
     "heading": "Leads",
-    "empty": "No leads match this filter.",
+    "empty": "No requests yet",
+    "noResults": "No results for your filters",
+    "totalCount": "Total requests: {count}",
     "notFound": "That lead no longer exists.",
     "updateStatus": "Update status",
     "statusLabel": "Status",
     "pagesLabel": "Leads pages",
+    "filterByType": "Filter by type",
+    "searchLabel": "Search requests",
+    "searchPlaceholder": "Name, company, phone, email or machine…",
+    "clearFilters": "Clear filters",
+    "from": "From",
+    "to": "To",
+    "justNow": "Just now",
+    "tabs": {
+      "all": "All",
+      "contact": "Contact",
+      "maintenance": "Maintenance",
+      "quote": "Quotes"
+    },
+    "table": {
+      "type": "Type",
+      "contact": "Contact",
+      "machine": "Machine / subject",
+      "status": "Status",
+      "received": "Received"
+    },
     "form": {
       "name": "Name",
       "email": "Email",
@@ -441,12 +463,22 @@
     },
     "kinds": {
       "contact": "Contact",
-      "maintenance": "Maintenance"
+      "maintenance": "Maintenance",
+      "quote": "Quote request"
     },
     "statuses": {
       "NEW": "New",
       "IN_PROGRESS": "In progress",
       "RESOLVED": "Resolved"
+    },
+    "actions": {
+      "whatsapp": "WhatsApp",
+      "call": "Call",
+      "email": "Email"
+    },
+    "detail": {
+      "back": "Back to leads",
+      "contactHeading": "Contact the requester"
     }
   },
   "Insights": {

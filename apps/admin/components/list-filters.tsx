@@ -11,6 +11,9 @@ export async function ListFilters({
   query,
   filtered,
   clearHref,
+  label,
+  placeholder,
+  clearLabel,
   children,
 }: {
   query: string;
@@ -19,6 +22,10 @@ export async function ListFilters({
    *  link, so this one is suppressed rather than duplicated. */
   filtered: boolean;
   clearHref: string;
+  /** Overrides for lists whose search covers more than a name. */
+  label?: string;
+  placeholder?: string;
+  clearLabel?: string;
   /** Extra controls, e.g. the machines category select. */
   children?: ReactNode;
 }) {
@@ -31,14 +38,14 @@ export async function ListFilters({
           htmlFor="list-search"
           className="mb-1 block text-sm font-medium text-stone-700"
         >
-          {common('search')}
+          {label ?? common('search')}
         </label>
         <input
           id="list-search"
           name="q"
           type="search"
           defaultValue={query}
-          placeholder={common('searchPlaceholder')}
+          placeholder={placeholder ?? common('searchPlaceholder')}
           className={inputClasses}
         />
       </div>
@@ -51,7 +58,7 @@ export async function ListFilters({
           href={clearHref}
           className="rounded pb-2 text-sm font-medium text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
         >
-          {common('clearSearch')}
+          {clearLabel ?? common('clearSearch')}
         </Link>
       ) : null}
     </form>

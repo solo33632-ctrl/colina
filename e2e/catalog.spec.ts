@@ -897,16 +897,18 @@ test.describe('machine quote panel', () => {
     await context.close();
 
     // ...and it is in the admin's inbox, carrying which machine it is about.
-    // The leads list is a card list, not a table.
     const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
     const admin = await browser.newContext({ storageState: state });
     const adminPage = await admin.newPage();
     await adminPage.goto(`${ADMIN_URL}/en/leads`);
-    const card = adminPage.locator('main li').filter({ hasText: stamp });
-    await expect(card).toBeVisible();
-    // `company` was left blank, so the card's summary falls back to the
-    // machine reference — exactly what an admin triaging the inbox needs.
-    await expect(card).toContainText('(colina-pro-1000)');
+    const row = adminPage.locator('main tr').filter({ hasText: stamp });
+    await expect(row).toBeVisible();
+    // The leads list derives "quote" from the machine reference, so the row
+    // is badged as a quote and still names the exact machine page.
+    await expect(row).toContainText('Quote request');
+    // `company` was left blank, so the machine/subject column falls back to
+    // the machine reference — exactly what an admin triaging the inbox needs.
+    await expect(row).toContainText('(colina-pro-1000)');
     await admin.close();
   });
 

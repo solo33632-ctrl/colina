@@ -46,7 +46,7 @@ export function LeadStatusForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 flex items-end gap-3">
+    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
       <div>
         <label
           htmlFor="lead-status"

@@ -446,6 +446,104 @@ export function deleteSiteSettings() {
   }
 }
 
+export type LeadStatusFixture = 'NEW' | 'IN_PROGRESS' | 'RESOLVED';
+
+export type ContactLeadFixture = {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  message: string;
+  status?: LeadStatusFixture;
+  /** ISO timestamp; omitted rows use the database's `now()`. */
+  createdAt?: string;
+};
+
+export type MaintenanceLeadFixture = ContactLeadFixture & {
+  company?: string | null;
+  machineModel?: string | null;
+};
+
+/**
+ * Creates contact-message leads in one child process and returns their ids.
+ *
+ * A batch rather than one call per row: the pagination spec needs enough leads
+ * to cross the 20-row page size, and 25 `tsx` startups would dominate the run.
+ * Names carry the caller's tag so `deleteLeadsByTag` can remove exactly this
+ * run's rows.
+ */
+export function createContactLeads(rows: ContactLeadFixture[]): string[] {
+  const ids = runInDbValue<string[]>(`
+    const rows = ${JSON.stringify(rows)};
+    const ids = [];
+    for (const row of rows) {
+      const created = await prisma.contactMessage.create({
+        data: {
+          name: row.name,
+          email: row.email ?? null,
+          phone: row.phone ?? null,
+          message: row.message,
+          status: row.status ?? 'NEW',
+          ...(row.createdAt ? { createdAt: new Date(row.createdAt) } : {}),
+        },
+        select: { id: true },
+      });
+      ids.push(created.id);
+    }
+    return ids;
+  `);
+  if (!ids) {
+    throw new Error('createContactLeads: no ids returned');
+  }
+  return ids;
+}
+
+/** Creates maintenance/quote requests in one child process, same as above. */
+export function createMaintenanceLeads(
+  rows: MaintenanceLeadFixture[]
+): string[] {
+  const ids = runInDbValue<string[]>(`
+    const rows = ${JSON.stringify(rows)};
+    const ids = [];
+    for (const row of rows) {
+      const created = await prisma.maintenanceRequest.create({
+        data: {
+          name: row.name,
+          company: row.company ?? null,
+          phone: row.phone ?? null,
+          email: row.email ?? null,
+          machineModel: row.machineModel ?? null,
+          message: row.message,
+          status: row.status ?? 'NEW',
+          ...(row.createdAt ? { createdAt: new Date(row.createdAt) } : {}),
+        },
+        select: { id: true },
+      });
+      ids.push(created.id);
+    }
+    return ids;
+  `);
+  if (!ids) {
+    throw new Error('createMaintenanceLeads: no ids returned');
+  }
+  return ids;
+}
+
+/** Removes the lead rows a spec created, matched by the same tag. */
+export function deleteLeadsByTag(tag = FIXTURE_TAG) {
+  try {
+    runInDb(`
+      await prisma.contactMessage.deleteMany({
+        where: { name: { contains: ${JSON.stringify(tag)} } },
+      });
+      await prisma.maintenanceRequest.deleteMany({
+        where: { name: { contains: ${JSON.stringify(tag)} } },
+      });
+    `);
+  } catch {
+    // Intentionally ignored: cleanup must never mask a test result.
+  }
+}
+
 /**
  * Removes every fixture these specs made. Safe to call twice and safe to call
  * when nothing was created — deleting a prefix that matches no rows is a

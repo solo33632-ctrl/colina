@@ -425,11 +425,33 @@
   },
   "Leads": {
     "heading": "الطلبات",
-    "empty": "لا توجد طلبات مطابقة لهذه التصفية.",
+    "empty": "لا توجد طلبات بعد",
+    "noResults": "لا توجد نتائج مطابقة لتصفيتك",
+    "totalCount": "إجمالي الطلبات: {count}",
     "notFound": "هذا الطلب لم يعد موجوداً.",
     "updateStatus": "تحديث الحالة",
     "statusLabel": "الحالة",
     "pagesLabel": "صفحات الطلبات",
+    "filterByType": "التصفية حسب النوع",
+    "searchLabel": "البحث في الطلبات",
+    "searchPlaceholder": "الاسم أو الشركة أو الهاتف أو البريد أو الآلة…",
+    "clearFilters": "مسح التصفية",
+    "from": "من",
+    "to": "إلى",
+    "justNow": "الآن",
+    "tabs": {
+      "all": "الكل",
+      "contact": "تواصل",
+      "maintenance": "صيانة",
+      "quote": "عروض أسعار"
+    },
+    "table": {
+      "type": "النوع",
+      "contact": "التواصل",
+      "machine": "الآلة / الموضوع",
+      "status": "الحالة",
+      "received": "تاريخ الاستلام"
+    },
     "form": {
       "name": "الاسم",
       "email": "البريد الإلكتروني",
@@ -441,12 +463,22 @@
     },
     "kinds": {
       "contact": "نموذج تواصل",
-      "maintenance": "طلب صيانة"
+      "maintenance": "طلب صيانة",
+      "quote": "طلب عرض سعر"
     },
     "statuses": {
       "NEW": "جديد",
       "IN_PROGRESS": "قيد المعالجة",
       "RESOLVED": "تم الحل"
+    },
+    "actions": {
+      "whatsapp": "واتساب",
+      "call": "اتصال",
+      "email": "بريد إلكتروني"
+    },
+    "detail": {
+      "back": "العودة إلى الطلبات",
+      "contactHeading": "تواصل مع صاحب الطلب"
     }
   },
   "Insights": {

@@ -11,11 +11,13 @@ export async function ListEmptyState({
   createHref,
   createLabel,
   clearHref,
+  clearLabel,
 }: {
   message: string;
   createHref?: string;
   createLabel?: string;
   clearHref?: string;
+  clearLabel?: string;
 }) {
   const common = await getTranslations('Common');
 
@@ -33,7 +35,7 @@ export async function ListEmptyState({
             href={clearHref}
             className="rounded text-sm font-medium text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
           >
-            {common('clearSearch')}
+            {clearLabel ?? common('clearSearch')}
           </Link>
         ) : null}
       </div>

@@ -12,21 +12,30 @@ import { Icon } from './icons';
 // toast kept in client state would not — and it needs nothing from the app
 // shell to persist. The marker is consumed once: it is dropped from the URL on
 // mount, so a reload does not resurrect the banner.
-export function SaveBanner({ message }: { message: string }) {
+//
+// `param` lets the same banner confirm a deletion (`?deleted=N`); the two
+// markers are independent and each names its own message.
+export function SaveBanner({
+  message,
+  param = 'saved',
+}: {
+  message: string;
+  param?: string;
+}) {
   const t = useTranslations('Common');
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.has('saved')) {
-      url.searchParams.delete('saved');
+    if (url.searchParams.has(param)) {
+      url.searchParams.delete(param);
       window.history.replaceState(null, '', `${url.pathname}${url.search}`);
     }
     // Outlives a glance at the top of the list, and the close button is there
     // for anyone who wants it gone sooner.
     const timer = window.setTimeout(() => setVisible(false), 8000);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [param]);
 
   if (!visible) {
     return null;

@@ -8,9 +8,16 @@ import {
   leadKindTone,
   leadStatusTone,
 } from '@/components/lead-badges';
+import { LeadBulkBar } from '@/components/lead-bulk-bar';
+import {
+  LeadRowCheckbox,
+  LeadSelectAll,
+} from '@/components/lead-select-checkbox';
+import { LeadSelectionProvider } from '@/components/lead-selection';
 import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
 import { ListPagination } from '@/components/list-pagination';
+import { SaveBanner } from '@/components/save-banner';
 import { inputClasses } from '@/components/form-fields';
 import { intlLocale, relativeTime } from '@/lib/format';
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/lead-status';
@@ -42,17 +49,45 @@ type Props = {
     from?: string;
     to?: string;
     page?: string;
+    /** `?deleted=N`: how many rows the last delete call removed. */
+    deleted?: string;
   }>;
 };
 
 export default async function LeadsPage({ searchParams }: Props) {
+  const params = await searchParams;
   const locale = await getLocale();
   const t = await getTranslations('Leads');
   const common = await getTranslations('Common');
-  const filters = parseLeadListFilters(await searchParams);
+  const filters = parseLeadListFilters(params);
   const result = await queryLeads(filters);
   const intl = intlLocale(locale);
   const filtered = hasActiveLeadFilters(filters);
+
+  // The delete paths (single and bulk) land here with `?deleted=N`: the count
+  // they removed, `0` meaning every requested id was already gone. Anything
+  // else in the parameter is ignored rather than guessed.
+  const deletedParam = Number.parseInt(params.deleted ?? '', 10);
+  const deleted =
+    params.deleted !== undefined &&
+    Number.isInteger(deletedParam) &&
+    deletedParam >= 0
+      ? deletedParam
+      : null;
+  const deletedMessage =
+    deleted === null
+      ? null
+      : deleted === 0
+        ? t('delete.noneDeleted')
+        : t('delete.deletedCount', { count: deleted });
+
+  // Kept filter- and page-aware, so a deletion inside a filtered view lands
+  // back in the same view. The previous page is for the emptied-page case: the
+  // bulk bar decides which of the two it needs after seeing the real counts.
+  const successHref = leadListHref(filters, { page: result.page });
+  const previousPageHref = leadListHref(filters, {
+    page: Math.max(1, result.page - 1),
+  });
 
   const tabLabels: Record<LeadType, string> = {
     all: t('tabs.all'),
@@ -94,6 +129,17 @@ export default async function LeadsPage({ searchParams }: Props) {
   );
 
   const columns: AdminTableColumn<LeadListRow>[] = [
+    {
+      key: 'select',
+      header: <LeadSelectAll label={t('delete.selectAll')} />,
+      className: 'w-12',
+      render: (row) => (
+        <LeadRowCheckbox
+          target={{ kind: row.detailKind, id: row.id }}
+          label={t('delete.selectRow', { name: row.name })}
+        />
+      ),
+    },
     {
       key: 'type',
       header: t('table.type'),
@@ -186,7 +232,12 @@ export default async function LeadsPage({ searchParams }: Props) {
 
   return (
     <main>
-      <Container className="py-10">
+      <Container
+        className={result.rows.length > 0 ? 'pt-10 pb-28' : 'py-10'}
+      >
+        {deletedMessage ? (
+          <SaveBanner param="deleted" message={deletedMessage} />
+        ) : null}
         <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
           <h1 className="text-2xl font-bold text-stone-900">{t('heading')}</h1>
           <p className="text-sm text-stone-500">
@@ -293,14 +344,29 @@ export default async function LeadsPage({ searchParams }: Props) {
             clearLabel={filtered ? t('clearFilters') : undefined}
           />
         ) : (
-          <>
+          <LeadSelectionProvider
+            pageItems={result.rows.map((row) => ({
+              kind: row.detailKind,
+              id: row.id,
+            }))}
+          >
+            {/* Select-all toolbar for the card layout, where the table's
+                header checkbox is hidden with the rest of the table. */}
+            <div className="mt-6 flex items-center justify-between md:hidden">
+              <LeadSelectAll label={t('delete.selectAll')} showLabel />
+            </div>
+
             {/* Phones get cards: seven table columns cannot stay readable at
                 390px, and the row link is still the same detail route. */}
-            <ul aria-label={t('heading')} className="mt-6 grid gap-3 md:hidden">
+            <ul aria-label={t('heading')} className="mt-3 grid gap-3 md:hidden">
               {result.rows.map((row) => (
                 <li key={`${row.kind}-${row.id}`}>
                   <Card className="p-4">
                     <div className="flex flex-wrap items-center gap-2">
+                      <LeadRowCheckbox
+                        target={{ kind: row.detailKind, id: row.id }}
+                        label={t('delete.selectRow', { name: row.name })}
+                      />
                       <LeadBadge tone={leadKindTone(row.kind)}>
                         {t(`kinds.${row.kind}`)}
                       </LeadBadge>
@@ -360,7 +426,13 @@ export default async function LeadsPage({ searchParams }: Props) {
               totalPages={result.totalPages}
               buildHref={(page) => leadListHref(filters, { page })}
             />
-          </>
+
+            <LeadBulkBar
+              successHref={successHref}
+              previousPageHref={previousPageHref}
+              pageCount={result.rows.length}
+            />
+          </LeadSelectionProvider>
         )}
       </Container>
     </main>

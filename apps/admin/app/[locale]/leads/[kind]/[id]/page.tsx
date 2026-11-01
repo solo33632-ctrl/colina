@@ -5,11 +5,8 @@ import { prisma } from '@colina/db';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Button, Card, Container } from '@colina/ui';
 import { Link } from '@/i18n/navigation';
-import {
-  LeadBadge,
-  leadKindTone,
-  leadStatusTone,
-} from '@/components/lead-badges';
+import { LeadBadge, leadKindTone, leadStatusTone } from '@/components/lead-badges';
+import { LeadDeleteButton } from '@/components/lead-delete-button';
 import { LeadStatusForm } from '@/components/lead-status-form';
 import { intlLocale, relativeTime } from '@/lib/format';
 import { isLeadStatus, type LeadStatus } from '@/lib/lead-status';
@@ -284,6 +281,9 @@ export default async function LeadDetailPage({ params }: Props) {
               leadId={id}
               currentStatus={lead.status}
             />
+            <div className="mt-6 border-t border-stone-200 pt-5">
+              <LeadDeleteButton kind={kind} id={id} itemName={lead.name} />
+            </div>
           </Card>
         </div>
       </Container>

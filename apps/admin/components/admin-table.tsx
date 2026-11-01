@@ -5,7 +5,8 @@ import type { ReactNode } from 'react';
 // every content type shares the same markup and only passes its own columns.
 export type AdminTableColumn<Row> = {
   key: string;
-  header: string;
+  /** Text for most lists; an element when the header holds a control. */
+  header: ReactNode;
   /** Applied to both the header cell and the body cells. */
   className?: string;
   render: (row: Row) => ReactNode;

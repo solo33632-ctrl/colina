@@ -479,6 +479,20 @@
     "detail": {
       "back": "العودة إلى الطلبات",
       "contactHeading": "تواصل مع صاحب الطلب"
+    },
+    "delete": {
+      "title": "حذف الطلب؟",
+      "button": "حذف الطلب",
+      "item": "حذف طلب من {name}",
+      "confirmOne": "حذف الطلب من «{name}»؟ لا يمكن التراجع عن هذا الإجراء.",
+      "bulkButton": "حذف المحدد",
+      "clear": "مسح التحديد",
+      "selected": "المحدد: {count}",
+      "confirmBulk": "حذف {count, plural, one {# طلب محدد} other {# طلبات محددة}}؟ لا يمكن التراجع عن هذا الإجراء.",
+      "deletedCount": "الطلبات المحذوفة: {count}.",
+      "noneDeleted": "لم يُحذف أي طلب؛ قد يكون قد حُذف مسبقاً.",
+      "selectAll": "تحديد كل الطلبات في هذه الصفحة",
+      "selectRow": "تحديد طلب من {name}"
     }
   },
   "Insights": {

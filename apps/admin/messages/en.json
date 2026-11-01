@@ -479,6 +479,20 @@
     "detail": {
       "back": "Back to leads",
       "contactHeading": "Contact the requester"
+    },
+    "delete": {
+      "title": "Delete request?",
+      "button": "Delete request",
+      "item": "Delete request from {name}",
+      "confirmOne": "Delete the request from “{name}”? This cannot be undone.",
+      "bulkButton": "Delete selected",
+      "clear": "Clear selection",
+      "selected": "Selected: {count}",
+      "confirmBulk": "Delete {count, plural, one {# selected request} other {# selected requests}}? This cannot be undone.",
+      "deletedCount": "Deleted requests: {count}.",
+      "noneDeleted": "No requests were deleted. They may have already been removed.",
+      "selectAll": "Select all requests on this page",
+      "selectRow": "Select request from {name}"
     }
   },
   "Insights": {

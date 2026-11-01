@@ -51,6 +51,7 @@ describe('isPublicPagePath', () => {
     for (const path of [
       '/',
       '/about',
+      '/agents',
       '/categories',
       '/contact',
       '/machines',

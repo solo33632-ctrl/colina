@@ -67,9 +67,9 @@ export async function createAgent(
       return row;
     });
 
-    // No public consumer exists yet (no /agents route as of Phase 7):
-    // documented no-op so a future route only has to fill this in.
-    revalidateWebPaths([]);
+    // The public /agents page is built from this table, so both locale
+    // variants of the listing are revalidated on a create.
+    revalidateWebPaths(['/agents']);
     return { ok: true, id: created.id };
   } catch (error) {
     console.error('[admin] createAgent failed:', error);
@@ -127,8 +127,8 @@ export async function updateAgent(
       });
     });
 
-    // No public consumer exists yet (see createAgent).
-    revalidateWebPaths([]);
+    // Same revalidation as createAgent (see there).
+    revalidateWebPaths(['/agents']);
     return { ok: true };
   } catch (error) {
     console.error('[admin] updateAgent failed:', error);
@@ -160,8 +160,8 @@ export async function deleteAgent(id: string): Promise<ActionResult> {
       });
     });
 
-    // No public consumer exists yet (see createAgent).
-    revalidateWebPaths([]);
+    // Same revalidation as createAgent (see there).
+    revalidateWebPaths(['/agents']);
     return { ok: true };
   } catch (error) {
     console.error('[admin] deleteAgent failed:', error);

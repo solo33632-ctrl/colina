@@ -13,6 +13,7 @@ export async function SiteHeader() {
     { label: nav('home'), href: '/' as const },
     { label: nav('machines'), href: '/machines' as const },
     { label: nav('services'), href: '/services' as const },
+    { label: nav('agents'), href: '/agents' as const },
     { label: nav('about'), href: '/about' as const },
     { label: nav('contact'), href: '/contact' as const },
   ];

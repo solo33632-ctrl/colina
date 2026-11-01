@@ -8,6 +8,7 @@
     "home": "Home",
     "machines": "Machines",
     "services": "Services",
+    "agents": "Agents",
     "about": "About",
     "contact": "Contact"
   },
@@ -175,6 +176,12 @@
     "heading": "Our partners",
     "subheading": "The companies we have built and maintained lines for.",
     "empty": "No partners yet."
+  },
+  "AgentsPage": {
+    "heading": "Our agents",
+    "subheading": "Find a Colina agent near you for sales and after-sales support.",
+    "empty": "No agents are listed yet — the Colina team is ready to help you directly.",
+    "emptyCta": "Contact us"
   },
   "ContactPage": {
     "heading": "Contact us",

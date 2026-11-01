@@ -28,6 +28,7 @@ export async function SiteFooter({ hasWhatsapp = false }: SiteFooterProps) {
   const links = [
     { label: nav('about'), href: '/about' as const },
     { label: partners('heading'), href: '/partners' as const },
+    { label: nav('agents'), href: '/agents' as const },
     { label: nav('contact'), href: '/contact' as const },
     { label: t('privacy'), href: '/privacy' as const },
   ];

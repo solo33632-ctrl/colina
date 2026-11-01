@@ -69,6 +69,7 @@ export function isCrawlerUserAgent(userAgent: string | null | undefined) {
 const PUBLIC_PATH_SEGMENTS = [
   '',
   'about',
+  'agents',
   'categories',
   'contact',
   'machines',

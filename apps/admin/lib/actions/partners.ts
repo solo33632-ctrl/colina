@@ -3,6 +3,7 @@
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
+import { buildChanges, buildSnapshot, PARTNER_AUDIT_SPEC } from '../audit-changes';
 import { revalidateWebPaths } from '../revalidate-web';
 import { partnerMessages } from './validation-messages';
 import { partnerInputSchema } from '../schemas';
@@ -48,6 +49,7 @@ export async function createPartner(
           adminUserId: session.user.id,
           action: 'PARTNER_CREATE',
           entity: `Partner:${row.id}`,
+          details: buildSnapshot(row, PARTNER_AUDIT_SPEC),
         },
       });
       return row;
@@ -84,28 +86,39 @@ export async function updatePartner(
   }
 
   try {
-    const existing = await prisma.partner.findUnique({ where: { id } });
-    if (!existing) {
-      return { ok: false, error: 'not_found' };
-    }
+    const updated = await prisma.$transaction(async (tx) => {
+      // The before-row is read inside the same transaction as the write, so
+      // the diff and the write see the same committed state.
+      const existing = await tx.partner.findUnique({
+        where: { id },
+        select: { nameAr: true, nameEn: true, logo: true },
+      });
+      if (!existing) {
+        return null;
+      }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.partner.update({
+      const row = await tx.partner.update({
         where: { id },
         data: {
           nameAr: parsed.data.nameAr,
           nameEn: parsed.data.nameEn,
           logo: parsed.data.logo || null,
         },
+        select: { nameAr: true, nameEn: true, logo: true },
       });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'PARTNER_UPDATE',
           entity: `Partner:${id}`,
+          details: buildChanges(existing, row, PARTNER_AUDIT_SPEC),
         },
       });
+      return row;
     });
+    if (updated === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     revalidateWebPaths(['/', '/partners']);
     return { ok: true };
@@ -122,22 +135,30 @@ export async function deletePartner(id: string): Promise<ActionResult> {
   }
 
   // No relations point at Partner: nothing to block on, straight delete.
-  const existing = await prisma.partner.findUnique({ where: { id } });
-  if (!existing) {
-    return { ok: false, error: 'not_found' };
-  }
-
   try {
-    await prisma.$transaction(async (tx) => {
+    const deleted = await prisma.$transaction(async (tx) => {
+      const existing = await tx.partner.findUnique({
+        where: { id },
+        select: { nameAr: true, nameEn: true, logo: true },
+      });
+      if (!existing) {
+        return false;
+      }
+
       await tx.partner.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'PARTNER_DELETE',
           entity: `Partner:${id}`,
+          details: buildSnapshot(existing, PARTNER_AUDIT_SPEC, 'delete'),
         },
       });
+      return true;
     });
+    if (!deleted) {
+      return { ok: false, error: 'not_found' };
+    }
 
     revalidateWebPaths(['/', '/partners']);
     return { ok: true };

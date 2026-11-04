@@ -3,6 +3,11 @@
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
+import {
+  buildChanges,
+  buildSnapshot,
+  CATEGORY_AUDIT_SPEC,
+} from '../audit-changes';
 import { categoryMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { categoryInputSchema } from '../schemas';
@@ -51,6 +56,7 @@ export async function createCategory(
           adminUserId: session.user.id,
           action: 'CATEGORY_CREATE',
           entity: `MachineCategory:${row.slug}`,
+          details: buildSnapshot(row, CATEGORY_AUDIT_SPEC),
         },
       });
       return row;
@@ -96,14 +102,24 @@ export async function updateCategory(
   }
 
   try {
-    const existing = await prisma.machineCategory.findUnique({
-      where: { id },
-    });
-    if (!existing) {
-      return { ok: false, error: 'not_found' };
-    }
+    const result = await prisma.$transaction(async (tx) => {
+      // Before-row with the allowlisted fields only, read in the write's
+      // transaction so the diff is consistent with what gets stored.
+      const existing = await tx.machineCategory.findUnique({
+        where: { id },
+        select: {
+          nameAr: true,
+          nameEn: true,
+          slug: true,
+          descriptionAr: true,
+          descriptionEn: true,
+          image: true,
+        },
+      });
+      if (!existing) {
+        return null;
+      }
 
-    const updated = await prisma.$transaction(async (tx) => {
       const row = await tx.machineCategory.update({
         where: { id },
         data: {
@@ -114,23 +130,36 @@ export async function updateCategory(
           descriptionEn: parsed.data.descriptionEn ?? '',
           image: parsed.data.image || null,
         },
+        select: {
+          nameAr: true,
+          nameEn: true,
+          slug: true,
+          descriptionAr: true,
+          descriptionEn: true,
+          image: true,
+        },
       });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'CATEGORY_UPDATE',
           entity: `MachineCategory:${row.slug}`,
+          details: buildChanges(existing, row, CATEGORY_AUDIT_SPEC),
         },
       });
-      return row;
+      return { row, previousSlug: existing.slug };
     });
+    if (result === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     // Affected public pages: home grid + listing + this category's detail
     // (both locales; old slug too when the slug itself changed).
+    const { row: updated, previousSlug } = result;
     const detailPaths =
-      existing.slug === updated.slug
+      previousSlug === updated.slug
         ? [`/categories/${updated.slug}`]
-        : [`/categories/${existing.slug}`, `/categories/${updated.slug}`];
+        : [`/categories/${previousSlug}`, `/categories/${updated.slug}`];
     revalidateWebPaths(['/', '/categories', ...detailPaths]);
     return { ok: true, slug: updated.slug };
   } catch (error) {
@@ -173,16 +202,29 @@ export async function deleteCategory(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const deleted = await prisma.$transaction(async (tx) => {
+      const snapshot = await tx.machineCategory.findUnique({
+        where: { id },
+        select: { nameAr: true, nameEn: true, slug: true },
+      });
+      if (!snapshot) {
+        return false;
+      }
+
       await tx.machineCategory.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'CATEGORY_DELETE',
           entity: `MachineCategory:${existing.slug}`,
+          details: buildSnapshot(snapshot, CATEGORY_AUDIT_SPEC, 'delete'),
         },
       });
+      return true;
     });
+    if (!deleted) {
+      return { ok: false, error: 'not_found' };
+    }
 
     revalidateWebPaths(['/', '/categories', `/categories/${existing.slug}`]);
     return { ok: true };

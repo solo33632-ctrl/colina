@@ -273,6 +273,7 @@ model AuditLog {
   adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
   action      String
   entity      String
+  details     Json?
 
   @@index([adminUserId])
 }

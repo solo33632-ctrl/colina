@@ -50,7 +50,7 @@ const slugRule = (message: string) =>
 // rejected at validation time (XSS / protocol-smuggling hardening,
 // Phase 13). Pre-existing relative seed paths predate this rule and are
 // grandfathered data, not new input.
-function isHttpUrl(value: string): boolean {
+export function isHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
     return url.protocol === 'http:' || url.protocol === 'https:';

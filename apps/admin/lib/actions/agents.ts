@@ -3,6 +3,11 @@
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
+import {
+  AGENT_AUDIT_SPEC,
+  buildChanges,
+  buildSnapshot,
+} from '../audit-changes';
 import { revalidateWebPaths } from '../revalidate-web';
 import { agentMessages } from './validation-messages';
 import { agentInputSchema } from '../schemas';
@@ -22,6 +27,24 @@ function emptyToNull(value: string | undefined): string | null | undefined {
   }
   return value.trim() === '' ? null : value;
 }
+
+// Exactly the fields the audit allowlist reads. Selecting only these keeps
+// the transaction from loading anything the log could not record anyway.
+const AGENT_AUDIT_SELECT = {
+  countryAr: true,
+  countryEn: true,
+  nameAr: true,
+  nameEn: true,
+  cityAr: true,
+  cityEn: true,
+  addressAr: true,
+  addressEn: true,
+  phone: true,
+  email: true,
+  websiteUrl: true,
+  logoUrl: true,
+  isPublished: true,
+} as const;
 
 export async function createAgent(
   input: unknown
@@ -71,6 +94,7 @@ export async function createAgent(
           adminUserId: session.user.id,
           action: 'AGENT_CREATE',
           entity: `Agent:${row.id}`,
+          details: buildSnapshot(row, AGENT_AUDIT_SPEC),
         },
       });
       return row;
@@ -108,13 +132,16 @@ export async function updateAgent(
   }
 
   try {
-    const existing = await prisma.agent.findUnique({ where: { id } });
-    if (!existing) {
-      return { ok: false, error: 'not_found' };
-    }
+    const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.agent.findUnique({
+        where: { id },
+        select: AGENT_AUDIT_SELECT,
+      });
+      if (!existing) {
+        return null;
+      }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.agent.update({
+      const row = await tx.agent.update({
         where: { id },
         data: {
           countryAr: parsed.data.countryAr,
@@ -133,15 +160,21 @@ export async function updateAgent(
           // undefined keeps the stored switch (see the schema note).
           isPublished: parsed.data.isPublished,
         },
+        select: AGENT_AUDIT_SELECT,
       });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'AGENT_UPDATE',
           entity: `Agent:${id}`,
+          details: buildChanges(existing, row, AGENT_AUDIT_SPEC),
         },
       });
+      return row;
     });
+    if (updated === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     // Same revalidation as createAgent (see there).
     revalidateWebPaths(['/agents']);
@@ -166,12 +199,17 @@ export async function setAgentPublished(
   }
 
   try {
-    const existing = await prisma.agent.findUnique({ where: { id } });
-    if (!existing) {
-      return { ok: false, error: 'not_found' };
-    }
+    const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.agent.findUnique({
+        where: { id },
+        // The name is not part of the change, but it is the row's label and
+        // the page needs it for the human sentence and search.
+        select: { nameEn: true, nameAr: true, isPublished: true },
+      });
+      if (!existing) {
+        return false;
+      }
 
-    await prisma.$transaction(async (tx) => {
       await tx.agent.update({
         where: { id },
         data: { isPublished: published },
@@ -181,9 +219,20 @@ export async function setAgentPublished(
           adminUserId: session.user.id,
           action: published ? 'AGENT_PUBLISH' : 'AGENT_HIDE',
           entity: `Agent:${id}`,
+          // The switch is the only change this action can make; an idempotent
+          // click still writes the entry with an empty changes list.
+          details: buildChanges(
+            existing,
+            { ...existing, isPublished: published },
+            AGENT_AUDIT_SPEC
+          ),
         },
       });
+      return true;
     });
+    if (!updated) {
+      return { ok: false, error: 'not_found' };
+    }
 
     // The list shows the new badge, and both /agents variants either gain
     // or lose the agent's cards.
@@ -202,22 +251,38 @@ export async function deleteAgent(id: string): Promise<ActionResult> {
   }
 
   // No relations point at Agent: nothing to block on.
-  const existing = await prisma.agent.findUnique({ where: { id } });
-  if (!existing) {
-    return { ok: false, error: 'not_found' };
-  }
-
   try {
-    await prisma.$transaction(async (tx) => {
+    const deleted = await prisma.$transaction(async (tx) => {
+      const existing = await tx.agent.findUnique({
+        where: { id },
+        select: {
+          nameEn: true,
+          nameAr: true,
+          countryEn: true,
+          countryAr: true,
+          cityEn: true,
+          cityAr: true,
+          isPublished: true,
+        },
+      });
+      if (!existing) {
+        return false;
+      }
+
       await tx.agent.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'AGENT_DELETE',
           entity: `Agent:${id}`,
+          details: buildSnapshot(existing, AGENT_AUDIT_SPEC, 'delete'),
         },
       });
+      return true;
     });
+    if (!deleted) {
+      return { ok: false, error: 'not_found' };
+    }
 
     // Same revalidation as createAgent (see there).
     revalidateWebPaths(['/agents']);

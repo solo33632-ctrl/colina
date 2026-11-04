@@ -663,6 +663,157 @@ export function deleteAgentsByTag(tag = FIXTURE_TAG) {
   }
 }
 
+export type PartnerFixture = {
+  nameEn: string;
+  nameAr: string;
+  logo?: string | null;
+};
+
+/** Creates Partner rows in one child process and returns their ids. */
+export function createPartners(rows: PartnerFixture[]): string[] {
+  const ids = runInDbValue<string[]>(`
+    const rows = ${JSON.stringify(rows)};
+    const ids = [];
+    for (const row of rows) {
+      const created = await prisma.partner.create({
+        data: {
+          nameEn: row.nameEn,
+          nameAr: row.nameAr,
+          logo: row.logo ?? null,
+        },
+        select: { id: true },
+      });
+      ids.push(created.id);
+    }
+    return ids;
+  `);
+  if (!ids) {
+    throw new Error('createPartners: no ids returned');
+  }
+  return ids;
+}
+
+/** Removes the Partner rows a spec created, matched by the same tag. */
+export function deletePartnersByTag(tag = FIXTURE_TAG) {
+  try {
+    runInDb(`
+      await prisma.partner.deleteMany({
+        where: {
+          OR: [
+            { nameEn: { contains: ${JSON.stringify(tag)} } },
+            { nameAr: { contains: ${JSON.stringify(tag)} } },
+          ],
+        },
+      });
+    `);
+  } catch {
+    // Intentionally ignored: cleanup must never mask a test result.
+  }
+}
+
+export type AuditLogFixture = {
+  action: string;
+  entity: string;
+  createdAt?: string;
+  /** Omit for a pre-Stage-38a row (no details column value). */
+  details?: unknown;
+  /** Resolved to `adminUserId`; omitted/unknown means a deleted admin. */
+  adminEmail?: string | null;
+};
+
+/**
+ * Creates AuditLog rows directly, for tests about the log page itself.
+ *
+ * The admin id is resolved by email inside the child process so a spec can
+ * pass the same `ADMIN_EMAIL` it logs in with. Every row's entity or details
+ * carries the caller's tag, which is what `auditLogsByTag` /
+ * `deleteAuditLogsByTag` use — the table is append-only in the real app, but
+ * these fixtures are deliberately removable.
+ */
+export function createAuditLogs(rows: AuditLogFixture[]): string[] {
+  const ids = runInDbValue<string[]>(`
+    const rows = ${JSON.stringify(rows)};
+    const ids = [];
+    for (const row of rows) {
+      const admin = row.adminEmail
+        ? await prisma.adminUser.findUnique({
+            where: { email: row.adminEmail },
+            select: { id: true },
+          })
+        : null;
+      const created = await prisma.auditLog.create({
+        data: {
+          action: row.action,
+          entity: row.entity,
+          createdAt: row.createdAt ? new Date(row.createdAt) : undefined,
+          details: row.details === undefined ? null : row.details,
+          adminUserId: admin ? admin.id : null,
+        },
+        select: { id: true },
+      });
+      ids.push(created.id);
+    }
+    return ids;
+  `);
+  if (!ids) {
+    throw new Error('createAuditLogs: no ids returned');
+  }
+  return ids;
+}
+
+export type AuditLogFixtureRow = {
+  id: string;
+  action: string;
+  entity: string;
+  details: unknown;
+};
+
+/** Reads the audit rows carrying a tag, for stored-JSON assertions. */
+export function auditLogsByTag(tag = FIXTURE_TAG): AuditLogFixtureRow[] {
+  return (
+    runInDbValue<AuditLogFixtureRow[]>(`
+      return prisma.auditLog.findMany({
+        where: {
+          OR: [
+            { entity: { contains: ${JSON.stringify(tag)} } },
+            {
+              details: {
+                path: ['search'],
+                string_contains: ${JSON.stringify(tag.toLowerCase())},
+              },
+            },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, action: true, entity: true, details: true },
+      });
+    `) ?? []
+  );
+}
+
+/** Removes every audit row a spec created, including its details JSON. */
+export function deleteAuditLogsByTag(tag = FIXTURE_TAG) {
+  try {
+    runInDb(`
+      await prisma.auditLog.deleteMany({
+        where: {
+          OR: [
+            { entity: { contains: ${JSON.stringify(tag)} } },
+            {
+              details: {
+                path: ['search'],
+                string_contains: ${JSON.stringify(tag.toLowerCase())},
+              },
+            },
+          ],
+        },
+      });
+    `);
+  } catch {
+    // Intentionally ignored: cleanup must never mask a test result.
+  }
+}
+
 /**
  * The whole Agent table, serialized.
  *
@@ -692,9 +843,11 @@ export type AgentRowSnapshot = {
 
 export function snapshotAllAgents(): AgentRowSnapshot[] {
   assertTestDatabase();
-  return runInDbValue<AgentRowSnapshot[]>(`
+  return (
+    runInDbValue<AgentRowSnapshot[]>(`
     return prisma.agent.findMany({ orderBy: { createdAt: 'asc' } });
-  `) ?? [];
+  `) ?? []
+  );
 }
 
 export function restoreAgents(rows: AgentRowSnapshot[]) {

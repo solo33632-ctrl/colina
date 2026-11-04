@@ -3,6 +3,11 @@
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
+import {
+  buildChanges,
+  buildSnapshot,
+  MACHINE_AUDIT_SPEC,
+} from '../audit-changes';
 import { machineMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { machineInputSchema } from '../schemas';
@@ -90,6 +95,7 @@ export async function createMachine(
           adminUserId: session.user.id,
           action: 'MACHINE_CREATE',
           entity: `Machine:${row.slug}`,
+          details: buildSnapshot(row, MACHINE_AUDIT_SPEC),
         },
       });
       return row;
@@ -142,15 +148,31 @@ export async function updateMachine(
   );
 
   try {
-    const existing = await prisma.machine.findUnique({
-      where: { id },
-      include: { category: { select: { slug: true } } },
-    });
-    if (!existing) {
-      return { ok: false, error: 'not_found' };
-    }
+    const result = await prisma.$transaction(async (tx) => {
+      // Before-row with exactly the audited fields, read inside the write's
+      // transaction so the diff cannot race a concurrent edit.
+      const existing = await tx.machine.findUnique({
+        where: { id },
+        select: {
+          nameAr: true,
+          nameEn: true,
+          slug: true,
+          shortDescriptionAr: true,
+          shortDescriptionEn: true,
+          descriptionAr: true,
+          descriptionEn: true,
+          specsAr: true,
+          specsEn: true,
+          datasheetUrl: true,
+          category: { select: { slug: true } },
+          images: { select: { url: true }, orderBy: { position: 'asc' } },
+          relatedMachines: { select: { id: true } },
+        },
+      });
+      if (!existing) {
+        return null;
+      }
 
-    const updated = await prisma.$transaction(async (tx) => {
       const row = await tx.machine.update({
         where: { id },
         data: {
@@ -188,27 +210,53 @@ export async function updateMachine(
           })),
         });
       }
+
+      // The persisted shape, flattened to the allowlisted field names. What
+      // the admin actually saved is the source of truth for "after" — not the
+      // loosely typed form input.
+      const before = {
+        ...existing,
+        categorySlug: existing.category.slug,
+        images: existing.images.map((image) => image.url),
+        relatedIds: existing.relatedMachines.map((related) => related.id),
+      };
+      const after = {
+        ...row,
+        categorySlug: row.category.slug,
+        images: ordered.map((image) => image.url),
+        relatedIds,
+      };
+
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'MACHINE_UPDATE',
           entity: `Machine:${row.slug}`,
+          details: buildChanges(before, after, MACHINE_AUDIT_SPEC),
         },
       });
-      return row;
+      return {
+        row,
+        previousSlug: existing.slug,
+        previousCategorySlug: existing.category.slug,
+      };
     });
+    if (result === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     // Affected public pages: own detail + parent category detail (both
     // locales; old slug/category too when either changed).
+    const { row: updated, previousSlug, previousCategorySlug } = result;
     const detailPaths =
-      existing.slug === updated.slug
+      previousSlug === updated.slug
         ? [`/machines/${updated.slug}`]
-        : [`/machines/${existing.slug}`, `/machines/${updated.slug}`];
+        : [`/machines/${previousSlug}`, `/machines/${updated.slug}`];
     const categoryPaths =
-      existing.category.slug === updated.category.slug
+      previousCategorySlug === updated.category.slug
         ? [`/categories/${updated.category.slug}`]
         : [
-            `/categories/${existing.category.slug}`,
+            `/categories/${previousCategorySlug}`,
             `/categories/${updated.category.slug}`,
           ];
     // The home page's featured strip reads `featured`, so it is revalidated
@@ -232,35 +280,48 @@ export async function deleteMachine(id: string): Promise<ActionResult> {
     return { ok: false, error: 'unauthorized' };
   }
 
-  const existing = await prisma.machine.findUnique({
-    where: { id },
-    include: { category: { select: { slug: true } } },
-  });
-  if (!existing) {
-    return { ok: false, error: 'not_found' };
-  }
-
   try {
     // Images (Cascade) and related-machine join rows go with it — no
     // manual cleanup needed.
-    await prisma.$transaction(async (tx) => {
+    const deleted = await prisma.$transaction(async (tx) => {
+      const existing = await tx.machine.findUnique({
+        where: { id },
+        select: {
+          nameAr: true,
+          nameEn: true,
+          slug: true,
+          category: { select: { slug: true } },
+        },
+      });
+      if (!existing) {
+        return null;
+      }
+
       await tx.machine.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'MACHINE_DELETE',
           entity: `Machine:${existing.slug}`,
+          details: buildSnapshot(existing, MACHINE_AUDIT_SPEC, 'delete'),
         },
       });
+      return {
+        slug: existing.slug,
+        categorySlug: existing.category.slug,
+      };
     });
+    if (deleted === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     // Affected public pages: the home page (the row may have been in the
     // featured strip), the parent category detail (grid shrinks), and its own
     // detail path (so it flips to 404 promptly).
     revalidateWebPaths([
       '/',
-      `/categories/${existing.category.slug}`,
-      `/machines/${existing.slug}`,
+      `/categories/${deleted.categorySlug}`,
+      `/machines/${deleted.slug}`,
     ]);
     return { ok: true };
   } catch (error) {

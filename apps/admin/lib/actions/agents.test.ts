@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { requireAdmin } from '../admin-action';
-import { createAgent, deleteAgent, updateAgent } from './agents';
+import { createAgent, deleteAgent, setAgentPublished, updateAgent } from './agents';
 
 // Agent-action contract tests. Prisma is a small in-memory double so the
 // transaction boundary and the audit payload can be inspected without a
@@ -53,8 +53,12 @@ const SESSION = {
 const VALID_INPUT = {
   countryAr: 'مصر',
   countryEn: 'Egypt',
+  nameAr: 'وكيل الجيزة',
+  nameEn: 'Giza office',
   cityAr: '',
   cityEn: 'Cairo',
+  websiteUrl: '',
+  logoUrl: '',
 };
 
 const doubles = () => {
@@ -121,6 +125,73 @@ describe('createAgent', () => {
     expect(doubles().agent.create).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
   });
+
+  it('fails validation when the names are missing (legacy rows still exist, but a save must name an agent)', async () => {
+    const { nameAr: _ar, nameEn: _en, ...unnamed } = VALID_INPUT;
+    void _ar;
+    void _en;
+    const result = await createAgent(unnamed);
+
+    assert(!result.ok);
+    expect(result.issues?.some((issue) => issue.field === 'nameAr')).toBe(true);
+    expect(result.issues?.some((issue) => issue.field === 'nameEn')).toBe(true);
+    expect(doubles().agent.create).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('writes the profile fields and defaults to published on create', async () => {
+    const result = await createAgent({
+      ...VALID_INPUT,
+      websiteUrl: 'https://agent.example.com',
+      logoUrl: 'https://res.cloudinary.com/demo/image/upload/logo.png',
+      isPublished: undefined,
+    });
+
+    expect(result).toEqual({ ok: true, id: 'agent-1' });
+    // The schema passed the URL through; the switch defaults to published.
+    expect(doubles().agent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          nameAr: 'وكيل الجيزة',
+          nameEn: 'Giza office',
+          websiteUrl: 'https://agent.example.com',
+          logoUrl: 'https://res.cloudinary.com/demo/image/upload/logo.png',
+          isPublished: true,
+        }),
+      })
+    );
+  });
+
+  it('rejects an invalid website URL before anything is written', async () => {
+    for (const bad of [
+      'not a url',
+      'https://user:secret@example.com',
+      'javascript:alert(1)',
+    ]) {
+      const result = await createAgent({
+        ...VALID_INPUT,
+        websiteUrl: bad,
+      });
+      expect(result).toMatchObject({ ok: false, error: 'validation_failed' });
+    }
+    expect(doubles().agent.create).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('clears an empty website to null and keeps the stored switch on update', async () => {
+    await updateAgent('agent-1', { ...VALID_INPUT, isPublished: undefined });
+
+    expect(doubles().agent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'agent-1' },
+        data: expect.objectContaining({
+          websiteUrl: null,
+          logoUrl: null,
+          isPublished: undefined,
+        }),
+      })
+    );
+  });
 });
 
 describe('updateAgent', () => {
@@ -147,6 +218,71 @@ describe('updateAgent', () => {
   it('revalidates nothing when the agent does not exist', async () => {
     findUnique.mockResolvedValue(null);
     const result = await updateAgent('missing', VALID_INPUT);
+
+    expect(result).toEqual({ ok: false, error: 'not_found' });
+    expect(doubles().agent.update).not.toHaveBeenCalled();
+    expect(revalidatedLocales()).toEqual([]);
+  });
+});
+
+describe('setAgentPublished', () => {
+  it('flips the switch, audits the resulting state and revalidates /agents when hiding', async () => {
+    const result = await setAgentPublished('agent-1', false);
+
+    expect(result).toEqual({ ok: true });
+    expect(doubles().agent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'agent-1' },
+        data: { isPublished: false },
+      })
+    );
+    expect(doubles().auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          adminUserId: 'admin-1',
+          action: 'AGENT_HIDE',
+          entity: 'Agent:agent-1',
+        }),
+      })
+    );
+    expect(revalidatedLocales().map((call) => call[0])).toEqual([
+      '/ar/agents',
+      '/en/agents',
+    ]);
+  });
+
+  it('audits AGENT_PUBLISH and revalidates /agents when publishing', async () => {
+    const result = await setAgentPublished('agent-1', true);
+
+    expect(result).toEqual({ ok: true });
+    expect(doubles().agent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { isPublished: true },
+      })
+    );
+    expect(doubles().auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: 'AGENT_PUBLISH' }),
+      })
+    );
+    expect(revalidatedLocales().map((call) => call[0])).toEqual([
+      '/ar/agents',
+      '/en/agents',
+    ]);
+  });
+
+  it('does nothing for an unauthenticated admin', async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(null as never);
+    const result = await setAgentPublished('agent-1', false);
+
+    expect(result).toEqual({ ok: false, error: 'unauthorized' });
+    expect(doubles().agent.update).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('revalidates nothing when the agent does not exist', async () => {
+    findUnique.mockResolvedValue(null);
+    const result = await setAgentPublished('missing', true);
 
     expect(result).toEqual({ ok: false, error: 'not_found' });
     expect(doubles().agent.update).not.toHaveBeenCalled();

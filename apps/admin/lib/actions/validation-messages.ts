@@ -115,6 +115,11 @@ export function agentMessages(t: Translator<'Agents'>): AgentFieldMessages {
   return {
     countryAr: t('validation.countryAr'),
     countryEn: t('validation.countryEn'),
+    nameAr: t('validation.nameAr'),
+    nameEn: t('validation.nameEn'),
+    websiteUrl: t('validation.websiteUrl'),
+    websiteUrlLength: t('validation.websiteUrlLength'),
+    logoUrl: t('validation.logoUrl'),
   };
 }
 

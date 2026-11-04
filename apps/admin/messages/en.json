@@ -416,12 +416,48 @@
       "phone": "Phone (optional)",
       "email": "Email (optional)",
       "submitCreate": "Create agent",
-      "submitEdit": "Save changes"
+      "submitEdit": "Save changes",
+      "nameEn": "Agent name (English)",
+      "nameAr": "Agent name (Arabic)",
+      "website": "Website (optional)",
+      "logo": "Logo (optional)",
+      "publishedOn": "Published on the public site",
+      "publishHelp": "Hidden agents do not appear on the public site."
     },
     "validation": {
       "countryAr": "Arabic country must be at least 2 characters.",
-      "countryEn": "English country must be at least 2 characters."
-    }
+      "countryEn": "English country must be at least 2 characters.",
+      "nameAr": "Arabic agent name must be at least 2 and at most 120 characters.",
+      "nameEn": "English agent name must be at least 2 and at most 120 characters.",
+      "websiteUrl": "Website must be an absolute http(s) URL without embedded credentials.",
+      "websiteUrlLength": "Website URL must be at most 2048 characters.",
+      "logoUrl": "Logo must be an absolute http(s) URL."
+    },
+    "sections": {
+      "identity": "Identity",
+      "location": "Location",
+      "contact": "Contact",
+      "visibility": "Visibility"
+    },
+    "table": {
+      "location": "Location",
+      "contact": "Contact",
+      "status": "Status",
+      "updated": "Updated"
+    },
+    "list": {
+      "published": "Published",
+      "hidden": "Hidden",
+      "nameMissing": "Name missing",
+      "publish": "Publish",
+      "hide": "Hide",
+      "publishNamed": "Publish {name}",
+      "hideNamed": "Hide {name}",
+      "filterByCountry": "Filter by country",
+      "allCountries": "All countries",
+      "allStatuses": "All statuses"
+    },
+    "justNow": "Just now"
   },
   "Leads": {
     "heading": "Leads",

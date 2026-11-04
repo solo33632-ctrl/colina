@@ -13,23 +13,42 @@ import {
   ensureEditor,
   removeEditor,
 } from './admin-editor';
+import { resetPageViewDaily, runInDbValue } from './db-fixture';
 
 const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 
-// The dashboard reads two tables nothing else in the suite writes to, so this
-// spec creates its own rows through the app rather than reaching into the
-// database for them: the public site's own beacon records the page views, and
-// the contact endpoint's honeypot records the security events. Both paths are
-// the real ones, so the test fails if either writer breaks.
+// The dashboard ranks page views and security events across whatever is in
+// the window, so this spec controls what it can: it empties the page-view
+// table (other specs visit public pages, and views left over from earlier
+// runs would otherwise out-rank the paths this spec seeds and push them out
+// of the top-ten table), then creates its own rows through the app. Both
+// paths are the real ones, so the test fails if either writer breaks.
 //
 // The honeypot is checked before the rate limiter, so these posts do not spend
 // the contact endpoint's budget or the admin login budget.
 async function seedTrafficAndEvents(page: import('@playwright/test').Page) {
-  // One page view each: the beacon is a client effect, so the page has to
-  // hydrate before it fires (see e2e/page-views.spec.ts for the same rule).
-  for (const path of ['/en', '/en/privacy']) {
-    await page.goto(`${WEB_URL}${path}`);
-    await page.waitForTimeout(1200);
+  // One page view each: the beacon is a client effect, so wait for the
+  // recorded row instead of guessing at a delay (the same rule
+  // page-views.spec applies to its beacons). The tracker reports the
+  // locale-agnostic path, so `/en` lands as `/` and `/en/privacy` as
+  // `/privacy`.
+  const seededViews: Array<[visitPath: string, recordedPath: string]> = [
+    ['/en', '/'],
+    ['/en/privacy', '/privacy'],
+  ];
+  for (const [visitPath, recordedPath] of seededViews) {
+    await page.goto(`${WEB_URL}${visitPath}`);
+    await expect
+      .poll(
+        () =>
+          runInDbValue<number>(
+            `return prisma.pageViewDaily.count({ where: { path: ${JSON.stringify(
+              recordedPath
+            )} } });`
+          ) ?? 0,
+        { timeout: 10_000, interval: 300 }
+      )
+      .toBeGreaterThan(0);
   }
 
   const response = await page.request.post(`${WEB_URL}/api/contact`, {
@@ -61,6 +80,10 @@ test.describe('insights dashboard', () => {
   }) => {
     // A throwaway context for the public site, so seeding traffic does not
     // depend on any session the admin specs hold.
+    // With one worker this reset cannot race another spec's visitors, and
+    // after-run leftovers have nowhere to matter: only this test reads the
+    // ranking side.
+    resetPageViewDaily();
     const publicContext = await browser.newContext();
     const publicPage = await publicContext.newPage();
     await seedTrafficAndEvents(publicPage);

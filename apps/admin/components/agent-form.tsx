@@ -4,18 +4,23 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Card } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';
 import { FormActions } from './form-actions';
+import { UploadField } from './upload-field';
 import { createAgent, updateAgent } from '@/lib/actions/agents';
 import { agentMessages } from '@/lib/actions/validation-messages';
-import { agentInputSchema, type AgentInput } from '@/lib/schemas';
+import {
+  agentInputSchema,
+  type AgentFormInput,
+  type AgentInput,
+} from '@/lib/schemas';
 
 type AgentFormProps = {
   mode: 'create' | 'edit';
   agentId?: string;
-  defaultValues?: AgentInput;
+  defaultValues?: AgentFormInput;
 };
 
 export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
@@ -28,22 +33,32 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
 
   const {
     register,
+    control,
     handleSubmit,
     setError,
+    clearErrors,
+    setValue,
     formState: { errors, isSubmitting },
-  } = useForm<AgentInput>({
+  } = useForm<AgentFormInput, unknown, AgentInput>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues ?? {
       countryAr: '',
       countryEn: '',
+      nameAr: '',
+      nameEn: '',
       cityAr: '',
       cityEn: '',
       addressAr: '',
       addressEn: '',
       phone: '',
       email: '',
+      websiteUrl: '',
+      logoUrl: '',
+      isPublished: true,
     },
   });
+
+  const logoValue = useWatch({ control, name: 'logoUrl' });
 
   async function onSubmit(values: AgentInput) {
     setFormError(null);
@@ -77,34 +92,74 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
       noValidate
       className="mt-6 grid gap-6 pb-24 text-start"
     >
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Contact details are the same in both languages, so they get their
-            own full-width section above the two language columns. */}
-        <Card title={common('sectionBasic')} className="lg:col-span-2">
+      {/* Identity: what names the agent on the public site and in this list.
+          A name is required on every save, so a legacy row without one asks
+          for it the next time it is edited. */}
+      <Card title={t('sections.identity')} className="lg:col-span-2">
+        <div className="grid gap-5">
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field id="agent-phone" label={t('form.phone')}>
+            <Field
+              id="agent-name-en"
+              label={t('form.nameEn')}
+              error={errors.nameEn?.message}
+            >
               <input
-                id="agent-phone"
-                type="tel"
-                autoComplete="tel"
+                id="agent-name-en"
+                type="text"
                 dir="ltr"
                 className={inputClasses}
-                {...register('phone')}
+                {...register('nameEn')}
               />
             </Field>
-            <Field id="agent-email" label={t('form.email')}>
+            <Field
+              id="agent-name-ar"
+              label={t('form.nameAr')}
+              error={errors.nameAr?.message}
+            >
               <input
-                id="agent-email"
-                type="email"
-                autoComplete="email"
-                dir="ltr"
+                id="agent-name-ar"
+                type="text"
+                dir="rtl"
                 className={inputClasses}
-                {...register('email')}
+                {...register('nameAr')}
               />
             </Field>
           </div>
-        </Card>
-        <Card title={common('sectionArabic')}>
+          {/* Reused partner logo uploader: choose a file (Cloudinary upload)
+              or paste an already-hosted URL; the schema rules are shared. */}
+          <Field
+            id="agent-logo"
+            label={t('form.logo')}
+            error={errors.logoUrl?.message}
+          >
+            <UploadField
+              id="agent-logo"
+              kind="image"
+              value={logoValue ?? ''}
+              onUploaded={(url) => {
+                setValue('logoUrl', url, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                clearErrors('logoUrl');
+              }}
+              onClear={() =>
+                setValue('logoUrl', '', {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
+              }
+              urlInputProps={register('logoUrl')}
+            />
+          </Field>
+        </div>
+      </Card>
+
+      {/* Location: the country pair is what the public page groups agents
+          by, and the city headlines each card. The two languages mirror the
+          other bilingual forms. */}
+      <Card title={t('sections.location')} className="lg:col-span-2">
+        <div className="grid gap-6 lg:grid-cols-2">
           <div dir="rtl" className="grid gap-5">
             <Field
               id="agent-country-ar"
@@ -138,8 +193,6 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
               />
             </Field>
           </div>
-        </Card>
-        <Card title={common('sectionEnglish')}>
           <div dir="ltr" className="grid gap-5">
             <Field
               id="agent-country-en"
@@ -173,8 +226,77 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
               />
             </Field>
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
+
+      {/* Contact: language-neutral values pinned LTR, plus the website link. */}
+      <Card title={t('sections.contact')} className="lg:col-span-2">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field id="agent-phone" label={t('form.phone')}>
+            <input
+              id="agent-phone"
+              type="tel"
+              autoComplete="tel"
+              dir="ltr"
+              className={inputClasses}
+              {...register('phone')}
+            />
+          </Field>
+          <Field id="agent-email" label={t('form.email')}>
+            <input
+              id="agent-email"
+              type="email"
+              autoComplete="email"
+              dir="ltr"
+              className={inputClasses}
+              {...register('email')}
+            />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field
+              id="agent-website"
+              label={t('form.website')}
+              error={errors.websiteUrl?.message}
+            >
+              <input
+                id="agent-website"
+                type="url"
+                autoComplete="url"
+                placeholder="https://"
+                dir="ltr"
+                className={inputClasses}
+                {...register('websiteUrl')}
+              />
+            </Field>
+          </div>
+        </div>
+      </Card>
+
+      {/* Visibility: the quick switch behind the list's publish/hide action. */}
+      <Card title={t('sections.visibility')} className="lg:col-span-2">
+        <label
+          htmlFor="agent-published"
+          className="flex w-fit cursor-pointer items-center gap-3"
+        >
+          <div className="relative grid place-items-center">
+            <input
+              id="agent-published"
+              type="checkbox"
+              className="peer sr-only"
+              {...register('isPublished')}
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none relative h-6 w-11 rounded-full bg-stone-300 transition-colors peer-checked:bg-brand-700 after:absolute after:top-0.5 after:start-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5 rtl:peer-checked:after:-translate-x-5 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600"
+            />
+          </div>
+          <span className="text-sm font-medium text-stone-900">
+            {t('form.publishedOn')}
+          </span>
+        </label>
+        <p className="mt-2 text-sm text-stone-500">{t('form.publishHelp')}</p>
+      </Card>
+
       {formError ? (
         <p role="alert" className="text-sm font-medium text-red-700">
           {formError}

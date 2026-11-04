@@ -51,12 +51,19 @@ export default async function EditAgentPage({ params }: Props) {
           defaultValues={{
             countryAr: agent.countryAr,
             countryEn: agent.countryEn,
+            // Legacy rows predate names: the form starts them empty and the
+            // schema asks for a name on the next save.
+            nameAr: agent.nameAr ?? '',
+            nameEn: agent.nameEn ?? '',
+            websiteUrl: agent.websiteUrl ?? '',
+            logoUrl: agent.logoUrl ?? '',
             cityAr: agent.cityAr ?? '',
             cityEn: agent.cityEn ?? '',
             addressAr: agent.addressAr ?? '',
             addressEn: agent.addressEn ?? '',
             phone: agent.phone ?? '',
             email: agent.email ?? '',
+            isPublished: agent.isPublished,
           }}
         />
         <DeleteButton

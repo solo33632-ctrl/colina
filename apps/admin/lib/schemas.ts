@@ -305,22 +305,109 @@ export type NewsInput = z.infer<ReturnType<typeof newsInputSchema>>;
 export type AgentFieldMessages = {
   countryAr: string;
   countryEn: string;
+  nameAr: string;
+  nameEn: string;
+  websiteUrl: string;
+  websiteUrlLength: string;
+  logoUrl: string;
 };
+
+// A saved agent needs an identity: the public page and the admin list name
+// an agent, and rows that predate the columns simply have no name yet — they
+// stay listable, and the form asks for both names the next time they are
+// edited. 120 characters keeps the country section's card titles sane.
+export const AGENT_NAME_MAX_LENGTH = 120;
+
+// Longest website URL the form accepts. Real agent websites sit far below
+// this; 2048 is the practical ceiling above which browsers and crawlers
+// start refusing links, and strings past it are almost always paste errors.
+export const AGENT_WEBSITE_URL_MAX_LENGTH = 2048;
+
+// Optional external website. Trimmed; blank saves as null ("no site").
+// Absolute http(s) only — the same protocol rule every other stored URL
+// follows — and never with credentials embedded in the authority part
+// (`user:pass@example.com` would echo a secret straight into a public href).
+// The trim/length/format order reports the clearest reason first, matching
+// the settings schema's URL transform.
+function websiteUrl(
+  value: string | null | undefined,
+  messages: {
+    format: string;
+    length: string;
+  }
+): { value: string | null } | { issue: string } {
+  const trimmed = value?.trim() ?? '';
+  if (trimmed === '') {
+    return { value: null };
+  }
+  if (trimmed.length > AGENT_WEBSITE_URL_MAX_LENGTH) {
+    return { issue: messages.length };
+  }
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return { issue: messages.format };
+  }
+  if (
+    (url.protocol !== 'http:' && url.protocol !== 'https:') ||
+    url.username !== '' ||
+    url.password !== ''
+  ) {
+    return { issue: messages.format };
+  }
+  return { value: trimmed };
+}
 
 export function agentInputSchema(messages: AgentFieldMessages) {
   return z.object({
     countryAr: z.string().min(2, { error: messages.countryAr }),
     countryEn: z.string().min(2, { error: messages.countryEn }),
+    nameAr: z
+      .string()
+      .min(2, { error: messages.nameAr })
+      .max(AGENT_NAME_MAX_LENGTH, { error: messages.nameAr }),
+    nameEn: z
+      .string()
+      .min(2, { error: messages.nameEn })
+      .max(AGENT_NAME_MAX_LENGTH, { error: messages.nameEn }),
     cityAr: z.string().optional(),
     cityEn: z.string().optional(),
     addressAr: z.string().optional(),
     addressEn: z.string().optional(),
     phone: z.string().optional(),
     email: z.string().optional(),
+    websiteUrl: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((value, ctx) => {
+        const result = websiteUrl(value, {
+          format: messages.websiteUrl,
+          length: messages.websiteUrlLength,
+        });
+        if ('issue' in result) {
+          ctx.addIssue({ code: 'custom', message: result.issue });
+          return z.NEVER;
+        }
+        return result.value;
+      }),
+    // Same rule as the Partner logo (see `optionalHttpUrl`): the field is
+    // filled by the Cloudinary uploader (secure https URL) or a pasted
+    // absolute URL, and blank stays blank ("no logo yet").
+    logoUrl: optionalHttpUrl(messages.logoUrl),
+    // The hide switch. Undefined keeps the stored value on an update (the
+    // form always sends it, so undefined only arrives from other clients);
+    // the create action defaults it to published.
+    isPublished: z.boolean().optional(),
   });
 }
 
 export type AgentInput = z.infer<ReturnType<typeof agentInputSchema>>;
+
+// What the form holds before the schema's transform runs: website/logo are
+// raw strings (empty means cleared), isPublished a boolean.
+export type AgentFormInput = z.input<ReturnType<typeof agentInputSchema>>;
 
 export type SiteSettingsFieldMessages = {
   whatsappNumber: string;

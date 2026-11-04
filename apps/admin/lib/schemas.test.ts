@@ -38,6 +38,9 @@ const M = {
   publishedAt: 'e',
   countryAr: 'e',
   countryEn: 'e',
+  websiteUrl: 'e',
+  websiteUrlLength: 'e',
+  logoUrl: 'e',
   beforeImageUrl: 'e',
   afterImageUrl: 'e',
 };
@@ -538,14 +541,143 @@ describe('newsInputSchema dates', () => {
 });
 
 describe('agentInputSchema', () => {
-  it('requires countries, leaves the rest optional', () => {
+  // Minimal valid identity, so each rule below is exercised one failure at
+  // a time.
+  const agent = {
+    countryAr: 'مصر',
+    countryEn: 'Egypt',
+    nameAr: 'المكتب الرئيسي',
+    nameEn: 'Head office',
+  };
+
+  it('requires countries and both names', () => {
+    expect(agentInputSchema(M).safeParse(agent).success).toBe(true);
+    expectInvalid(
+      agentInputSchema(M).safeParse({
+        ...agent,
+        countryAr: 'x',
+      }),
+      'countryAr'
+    );
+    expectInvalid(
+      agentInputSchema(M).safeParse({ ...agent, nameEn: '' }),
+      'nameEn'
+    );
+    expectInvalid(
+      agentInputSchema(M).safeParse({ ...agent, nameAr: undefined }),
+      'nameAr'
+    );
+  });
+
+  it('bounds agent names at 2 and 120 characters', () => {
     expect(
-      agentInputSchema(M).safeParse({ countryAr: 'مصر', countryEn: 'Egypt' })
+      agentInputSchema(M).safeParse({ ...agent, nameEn: 'A' }).success
+    ).toBe(false);
+    expect(
+      agentInputSchema(M).safeParse({ ...agent, nameEn: 'Ab' }).success
+    ).toBe(true);
+    expect(
+      agentInputSchema(M).safeParse({ ...agent, nameEn: 'N'.repeat(120) })
         .success
     ).toBe(true);
     expectInvalid(
-      agentInputSchema(M).safeParse({ countryAr: 'x', countryEn: 'Egypt' }),
-      'countryAr'
+      agentInputSchema(M).safeParse({ ...agent, nameEn: 'N'.repeat(121) }),
+      'nameEn'
+    );
+  });
+
+  it('accepts a website only as an absolute http(s) URL without credentials', () => {
+    const parse = (websiteUrl: string | undefined) =>
+      agentInputSchema(M).safeParse({ ...agent, websiteUrl });
+
+    function check(
+      result: { success: boolean; data?: unknown },
+      expected: string | null | undefined
+    ) {
+      expect(result.success).toBe(true);
+      assert(result.success && result.data !== undefined);
+      expect(
+        (result.data as { websiteUrl: string | null }).websiteUrl
+      ).toBe(expected);
+    }
+
+    check(parse('https://colina.example.com'), 'https://colina.example.com');
+    // http is allowed (same rule as every internal URL field).
+    check(
+      parse('http://colina.example.com/agents'),
+      'http://colina.example.com/agents'
+    );
+    // Whitespace outside the URL is trimmed, not rejected.
+    check(parse('  https://colina.example.com  '), 'https://colina.example.com');
+    // Missing and blank mean "no website" — the transform normalizes both
+    // to null, which is what the Server Action writes.
+    check(parse(undefined), null);
+    expect(
+      (agentInputSchema(M).safeParse({ ...agent, websiteUrl: '' }).data as
+        | { websiteUrl: string | null }
+        | undefined)?.websiteUrl
+    ).toBe(null);
+
+    for (const bad of [
+      'not a url',
+      'colina.example.com',
+      'ftp://colina.example.com',
+      'javascript:alert(1)',
+      'https://user:secret@colina.example.com',
+      'https://ops@colina.example.com',
+    ]) {
+      expectInvalid(parse(bad), 'websiteUrl');
+    }
+  });
+
+  it('caps the website URL length before parsing it', () => {
+    const long = `https://colina.example.com/${'x'.repeat(2048)}`;
+    expectInvalid(
+      agentInputSchema(M).safeParse({ ...agent, websiteUrl: long }),
+      'websiteUrl'
+    );
+    expect(
+      agentInputSchema(
+        M
+      ).safeParse({ ...agent, websiteUrl: long }).error?.issues[0]
+    ).toMatchObject({ path: ['websiteUrl'] });
+  });
+
+  it('validates the logo like the partner logo (absolute http(s), optional)', () => {
+    const withLogo = agentInputSchema(M).safeParse({
+      ...agent,
+      logoUrl: 'https://res.cloudinary.com/demo/image/upload/logo.png',
+    });
+    expect(withLogo.success).toBe(true);
+    expect(
+      (withLogo.data as { logoUrl: string }).logoUrl
+    ).toBe('https://res.cloudinary.com/demo/image/upload/logo.png');
+
+    expectInvalid(
+      agentInputSchema(M).safeParse({ ...agent, logoUrl: 'ftp://nope' }),
+      'logoUrl'
+    );
+    // Absent or blank is the normal "no logo yet" state.
+    expect(
+      agentInputSchema(M).safeParse({ ...agent }).success
+    ).toBe(true);
+    expect(
+      agentInputSchema(M).safeParse({ ...agent, logoUrl: '' }).success
+    ).toBe(true);
+  });
+
+  it('takes isPublished as an optional boolean', () => {
+    expect(
+      agentInputSchema(M).safeParse({ ...agent, isPublished: false }).success
+    ).toBe(true);
+    expect(
+      agentInputSchema(M).safeParse({ ...agent, isPublished: true }).success
+    ).toBe(true);
+    // Missing stays valid — the update keeps whatever the row has stored.
+    expect(agentInputSchema(M).safeParse({ ...agent }).success).toBe(true);
+    expectInvalid(
+      agentInputSchema(M).safeParse({ ...agent, isPublished: 'yes' }),
+      'isPublished'
     );
   });
 });

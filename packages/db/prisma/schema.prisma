@@ -215,6 +215,15 @@ model Agent {
   addressEn String?
   phone     String?
   email     String?
+  // Profile fields (Stage 37b), all optional/defaulted so rows that predate
+  // them stay valid and keep their behaviour. An agent with no name is still
+  // listed (grouped by country); `isPublished` is the hide switch for the
+  // public /agents page.
+  nameAr      String?
+  nameEn      String?
+  websiteUrl  String?
+  logoUrl     String?
+  isPublished Boolean  @default(true)
 }
 
 model NewsPost {

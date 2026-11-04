@@ -39,6 +39,49 @@ export const SHOWCASE_PHOTOS = {
 const DB_DIR = resolve(__dirname, '../packages/db');
 
 /**
+ * Refuses to touch anything that is not the test database.
+ *
+ * These helpers DELETE ROWS by design (fixture cleanup, the agents snapshot
+ * and restore, the insights page-view reset). The suite is documented to run
+ * against the throwaway database, but one mistaken shell export is enough to
+ * point them at the development database and wipe real rows — so every write
+ * route through this check before it runs: the URL must be the local test
+ * instance — 127.0.0.1 or localhost, port 5433, database `colina_test`. A
+ * missing DATABASE_URL throws too; without an explicit URL the child process
+ * would inherit the app's development default instead.
+ */
+export function assertTestDatabase(): void {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      'DATABASE_URL is not set: refusing to run destructive fixtures without an explicit test database.'
+    );
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(
+      `DATABASE_URL is not a valid URL: refusing to run destructive fixtures (${url}).`
+    );
+  }
+
+  const host = parsed.hostname;
+  const port = parsed.port;
+  const database = parsed.pathname.replace(/^\/+/, '');
+  const isTest =
+    (host === '127.0.0.1' || host === 'localhost') &&
+    port === '5433' &&
+    database === 'colina_test';
+  if (!isTest) {
+    throw new Error(
+      `DATABASE_URL ${host}:${port}/${database} is not the test database: destructive fixtures only run against 127.0.0.1:5433/colina_test.`
+    );
+  }
+}
+
+/**
  * Runs `body` against the database in a child process, with `prisma` in scope.
  *
  * `tsx -e` was the obvious way to do this and it proved flaky: the same bytes
@@ -51,6 +94,7 @@ const DB_DIR = resolve(__dirname, '../packages/db');
  * whether or not the script succeeds.
  */
 export function runInDb(body: string) {
+  assertTestDatabase();
   const dir = mkdtempSync(join(tmpdir(), 'colina-e2e-'));
   const file = join(dir, 'fixture.ts');
   // Absolute entry path: a script in the temp directory must not depend on
@@ -238,6 +282,7 @@ export function createMachine(fixture: MachineFixture) {
  * as JSON and the child's stdout is parsed.
  */
 export function runInDbValue<T>(body: string): T | null {
+  assertTestDatabase();
   const dir = mkdtempSync(join(tmpdir(), 'colina-e2e-'));
   const file = join(dir, 'query.ts');
   const entry = require.resolve('@colina/db', { paths: [DB_DIR] });
@@ -547,6 +592,11 @@ export function deleteLeadsByTag(tag = FIXTURE_TAG) {
 export type AgentFixture = {
   countryEn: string;
   countryAr: string;
+  nameEn?: string | null;
+  nameAr?: string | null;
+  websiteUrl?: string | null;
+  logoUrl?: string | null;
+  isPublished?: boolean | null;
   cityEn?: string | null;
   cityAr?: string | null;
   addressEn?: string | null;
@@ -558,8 +608,8 @@ export type AgentFixture = {
 /**
  * Creates Agent rows in one child process and returns their ids.
  *
- * The tag must be carried inside BOTH country names (Agent has no name, slug
- * or any other identifying column — it is grouped by country), so
+ * The tag must be carried inside BOTH country names (Agent has no slug or any
+ * other identifying column — it is grouped by country), so
  * `deleteAgentsByTag` can remove exactly this run's rows.
  */
 export function createAgents(rows: AgentFixture[]): string[] {
@@ -571,6 +621,11 @@ export function createAgents(rows: AgentFixture[]): string[] {
         data: {
           countryAr: row.countryAr,
           countryEn: row.countryEn,
+          nameAr: row.nameAr ?? null,
+          nameEn: row.nameEn ?? null,
+          websiteUrl: row.websiteUrl ?? null,
+          logoUrl: row.logoUrl ?? null,
+          isPublished: row.isPublished ?? true,
           cityAr: row.cityAr ?? null,
           cityEn: row.cityEn ?? null,
           addressAr: row.addressAr ?? null,
@@ -622,6 +677,11 @@ export type AgentRowSnapshot = {
   createdAt: string;
   countryAr: string;
   countryEn: string;
+  nameAr: string | null;
+  nameEn: string | null;
+  websiteUrl: string | null;
+  logoUrl: string | null;
+  isPublished: boolean;
   cityAr: string | null;
   cityEn: string | null;
   addressAr: string | null;
@@ -631,17 +691,24 @@ export type AgentRowSnapshot = {
 };
 
 export function snapshotAllAgents(): AgentRowSnapshot[] {
+  assertTestDatabase();
   return runInDbValue<AgentRowSnapshot[]>(`
     return prisma.agent.findMany({ orderBy: { createdAt: 'asc' } });
   `) ?? [];
 }
 
 export function restoreAgents(rows: AgentRowSnapshot[]) {
+  assertTestDatabase();
   runInDb(`
     const rows = ${JSON.stringify(rows)}.map((row) => ({
       id: row.id,
       countryAr: row.countryAr,
       countryEn: row.countryEn,
+      nameAr: row.nameAr,
+      nameEn: row.nameEn,
+      websiteUrl: row.websiteUrl,
+      logoUrl: row.logoUrl,
+      isPublished: row.isPublished,
       cityAr: row.cityAr,
       cityEn: row.cityEn,
       addressAr: row.addressAr,
@@ -659,7 +726,17 @@ export function restoreAgents(rows: AgentRowSnapshot[]) {
 
 /** Empties the Agent table (the empty-state test's short-lived state). */
 export function deleteAllAgents() {
+  assertTestDatabase();
   runInDb(`await prisma.agent.deleteMany({});`);
+}
+
+/**
+ * Empties the page-view table so the insights spec ranks exactly the traffic
+ * it seeds itself. Destructive, so it is guarded like every other wipe.
+ */
+export function resetPageViewDaily() {
+  assertTestDatabase();
+  runInDb(`await prisma.pageViewDaily.deleteMany({});`);
 }
 
 /**
@@ -668,6 +745,7 @@ export function deleteAllAgents() {
  * no-op, so cleanup never needs to know how far the run got.
  */
 export function cleanupFixtures(tag = FIXTURE_TAG) {
+  assertTestDatabase();
   try {
     runInDb(`
       // Children first: both relations are ON DELETE RESTRICT, so a parent

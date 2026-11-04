@@ -6,6 +6,20 @@ import { requireAdmin, type ActionResult } from '../admin-action';
 import { revalidateWebPaths } from '../revalidate-web';
 import { newsMessages } from './validation-messages';
 import { newsInputSchema } from '../schemas';
+import { NEWS_AUDIT_SPEC, buildChanges, buildSnapshot } from '../audit-changes';
+
+// The before-row is loaded with the same explicit allowlist the diff helper
+// reads, inside the write transaction. Nothing outside these columns can ever
+// reach the audit payload.
+const NEWS_AUDIT_SELECT = {
+  titleEn: true,
+  titleAr: true,
+  slug: true,
+  bodyEn: true,
+  bodyAr: true,
+  image: true,
+  publishedAt: true,
+} as const;
 
 // Validation messages come from the message files, in the admin's current
 // language (see `validation-messages.ts`).
@@ -71,6 +85,7 @@ export async function createNews(
           adminUserId: session.user.id,
           action: 'NEWS_CREATE',
           entity: `NewsPost:${row.slug}`,
+          details: buildSnapshot(row, NEWS_AUDIT_SPEC),
         },
       });
       return row;
@@ -111,13 +126,15 @@ export async function updateNews(
   }
 
   try {
-    const existing = await prisma.newsPost.findUnique({ where: { id } });
-    if (!existing) {
-      return { ok: false, error: 'not_found' };
-    }
-
     const publishedAt = toDate(parsed.data.publishedAt);
     const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.newsPost.findUnique({
+        where: { id },
+        select: NEWS_AUDIT_SELECT,
+      });
+      if (!existing) {
+        return null;
+      }
       const row = await tx.newsPost.update({
         where: { id },
         data: {
@@ -130,16 +147,21 @@ export async function updateNews(
           // Empty date keeps the stored value on update.
           ...(publishedAt ? { publishedAt } : {}),
         },
+        select: NEWS_AUDIT_SELECT,
       });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'NEWS_UPDATE',
           entity: `NewsPost:${row.slug}`,
+          details: buildChanges(existing, row, NEWS_AUDIT_SPEC),
         },
       });
       return row;
     });
+    if (updated === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     // No public consumer exists yet (see createNews).
     revalidateWebPaths([]);
@@ -160,22 +182,29 @@ export async function deleteNews(id: string): Promise<ActionResult> {
   }
 
   // No relations point at NewsPost: nothing to block on.
-  const existing = await prisma.newsPost.findUnique({ where: { id } });
-  if (!existing) {
-    return { ok: false, error: 'not_found' };
-  }
-
   try {
-    await prisma.$transaction(async (tx) => {
+    const deleted = await prisma.$transaction(async (tx) => {
+      const existing = await tx.newsPost.findUnique({
+        where: { id },
+        select: NEWS_AUDIT_SELECT,
+      });
+      if (!existing) {
+        return null;
+      }
       await tx.newsPost.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'NEWS_DELETE',
           entity: `NewsPost:${existing.slug}`,
+          details: buildSnapshot(existing, NEWS_AUDIT_SPEC, 'delete'),
         },
       });
+      return existing;
     });
+    if (deleted === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     // No public consumer exists yet (see createNews).
     revalidateWebPaths([]);

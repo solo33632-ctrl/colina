@@ -19,6 +19,7 @@ import {
   AUDIT_DELETED_ADMIN_FILTER,
   AUDIT_ENTITY_MESSAGE_KEYS,
   AUDIT_ENTITY_TYPES,
+  AUDIT_NAMELESS_ACTIONS,
   AUDIT_PAGE_SIZE,
   auditEntityType,
   parseAuditDate,
@@ -498,6 +499,9 @@ export default async function AuditLogPage({ searchParams }: Props) {
                     ? (details.label.ar ?? details.label.en)
                     : (details.label.en ?? details.label.ar)
                   : null;
+                const hasSentence =
+                  sentenceKey !== undefined &&
+                  (label !== null || AUDIT_NAMELESS_ACTIONS.has(entry.action));
                 const relative = relativeTime(entry.createdAt, locale);
                 const fullTime = entry.createdAt.toLocaleString(
                   intlLocale(locale)
@@ -509,12 +513,16 @@ export default async function AuditLogPage({ searchParams }: Props) {
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="break-words text-base font-semibold text-stone-900">
-                            {sentenceKey && label ? (
-                              t(
-                                `actions.${sentenceKey}` as never,
-                                {
-                                  name: label,
-                                } as never
+                            {hasSentence ? (
+                              label ? (
+                                t(
+                                  `actions.${sentenceKey}` as never,
+                                  {
+                                    name: label,
+                                  } as never
+                                )
+                              ) : (
+                                t(`actions.${sentenceKey}` as never)
                               )
                             ) : (
                               <span className="font-mono text-sm">

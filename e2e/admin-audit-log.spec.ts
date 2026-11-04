@@ -21,11 +21,16 @@ import {
   cleanupFixtures,
   createAuditLogs,
   createCategory,
+  createContactLeads,
   createMachine,
+  createMaintenanceCategory,
   createPartners,
   deleteAgentsByTag,
   deleteAuditLogsByTag,
+  deleteLeadsByTag,
   deletePartnersByTag,
+  deleteSiteSettings,
+  setSiteSettings,
 } from './db-fixture';
 
 // Stage 38a: the audit log now records WHAT changed and the page shows it.
@@ -107,6 +112,8 @@ test.describe('admin audit log', () => {
     deleteAuditLogsByTag(TAG);
     deletePartnersByTag(TAG);
     deleteAgentsByTag(TAG);
+    deleteLeadsByTag(TAG);
+    deleteSiteSettings();
     cleanupFixtures(TAG);
   }
 
@@ -307,6 +314,281 @@ test.describe('admin audit log', () => {
       expect(rendered).not.toContain(forbidden);
     }
     expect(stored).toContain(agentName);
+
+    await context.close();
+  });
+
+  test('a site-settings save shows exactly the changed contact fields', async ({
+    browser,
+  }) => {
+    const { context, page } = await signedInPage(browser);
+    const oldNumber = '201001234567';
+    const newNumber = '201009876543';
+    const oldEmail = `old-${TAG}@example.com`;
+    const newEmail = `audit-${TAG}@example.com`;
+
+    setSiteSettings({
+      whatsappNumber: oldNumber,
+      whatsappMessageEn: `Greeting ${TAG}`,
+      whatsappMessageAr: `تحية ${TAG}`,
+      contactPhone: '+20 100 123 4567',
+      contactEmail: oldEmail,
+      factoryAddressEn: `Old factory address ${TAG}`,
+      workingHoursEn: '9-5',
+      mapsUrl: 'https://maps.example.com/old',
+    });
+
+    await page.goto(`${ADMIN_URL}/en/settings`);
+    // Wait for the client form to hydrate before typing: filling the
+    // server-rendered value first can land before react-hook-form attaches,
+    // and the hydrated default then gets concatenated with the typed text.
+    const numberInput = page.locator('#settings-whatsapp-number');
+    await expect(numberInput).toHaveValue(oldNumber);
+    await numberInput.fill('');
+    await numberInput.fill(`+${newNumber}`);
+    const emailInput = page.locator('#settings-contact-email');
+    await expect(emailInput).toHaveValue(oldEmail);
+    await emailInput.fill('');
+    await emailInput.fill(newEmail);
+    await page.getByRole('button', { name: 'Save settings' }).click();
+    await expect(page.getByText('Saved successfully.')).toBeVisible();
+
+    await page.goto(
+      `${ADMIN_URL}/en/audit-log?entity=SiteSettings&action=SETTINGS_UPDATE`
+    );
+    // Older settings saves leave untagged entries behind (the settings
+    // action has no label or entity identifier), so scope to the newest:
+    // this save is always the most recent SETTINGS_UPDATE row.
+    const entry = page
+      .getByTestId('audit-entry')
+      .filter({ hasText: 'Updated site settings' })
+      .first();
+    await expect(entry).toBeVisible();
+    await expect(
+      entry.getByText('Site settings', { exact: true })
+    ).toBeVisible();
+
+    await openEntryDetails(entry);
+    const table = entry.getByRole('table');
+    await expect(table.locator('tbody tr')).toHaveCount(2);
+    const numberRow = table
+      .locator('tbody tr')
+      .filter({ hasText: 'WhatsApp number' });
+    await expect(numberRow).toContainText(oldNumber);
+    await expect(numberRow).toContainText(newNumber);
+    const emailRow = table
+      .locator('tbody tr')
+      .filter({ hasText: 'Contact email' });
+    await expect(emailRow).toContainText(oldEmail);
+    await expect(emailRow).toContainText(newEmail);
+
+    // Exactly the two fields the save changed: no unchanged business field
+    // and no secret-looking field is part of the payload or the page.
+    await expect(table).not.toContainText('WhatsApp greeting');
+    await expect(table).not.toContainText('Factory address');
+    const stored = JSON.stringify(
+      auditLogsByTag(TAG).filter((row) => row.action === 'SETTINGS_UPDATE')
+    );
+    expect(stored).toContain(oldNumber);
+    expect(stored).toContain(newNumber);
+    expect(stored).toContain(newEmail);
+    const rendered = await page.locator('body').innerText();
+    for (const forbidden of [
+      ADMIN_PASSWORD,
+      'passwordHash',
+      'passwordResetTokenHash',
+      'sessionToken',
+      'apiKey',
+    ]) {
+      expect(stored).not.toContain(forbidden);
+      expect(rendered).not.toContain(forbidden);
+    }
+
+    await context.close();
+  });
+
+  test('a maintenance category rename shows Before/After for exactly the name field', async ({
+    browser,
+  }) => {
+    const { context, page } = await signedInPage(browser);
+    const oldName = `Old line ${TAG}`;
+    const newName = `Renamed line ${TAG}`;
+    const description = `Description that must not enter the audit ${TAG}.`;
+    createMaintenanceCategory({
+      slug: `${TAG}-line`,
+      nameEn: oldName,
+      nameAr: `خط ${TAG}`,
+      descriptionEn: description,
+      sortOrder: 1,
+    });
+
+    await page.goto(`${ADMIN_URL}/en/maintenance-categories`);
+    const listRow = page.locator('tr', { hasText: oldName });
+    await expect(listRow).toHaveCount(1);
+    await listRow.getByRole('link', { name: 'Edit' }).click();
+    await expect(page).toHaveURL(/\/maintenance-categories\/[^/]+\/edit$/);
+    await expect(page.getByLabel('Name')).toHaveValue(oldName);
+    await page.getByLabel('Name').fill(newName);
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page).toHaveURL(`${ADMIN_URL}/en/maintenance-categories`);
+
+    await page.goto(
+      `${ADMIN_URL}/en/audit-log?entity=MaintenanceCategory&q=${encodeURIComponent(TAG)}`
+    );
+    const entry = page
+      .getByTestId('audit-entry')
+      .filter({ hasText: `Updated maintenance category ${newName}` });
+    await expect(entry).toHaveCount(1);
+    await expect(
+      entry.getByText('Maintenance category', { exact: true })
+    ).toBeVisible();
+
+    await openEntryDetails(entry);
+    const table = entry.getByRole('table');
+    await expect(table.locator('tbody tr')).toHaveCount(1);
+    const row = table.locator('tbody tr').first();
+    await expect(row).toContainText('Name (English)');
+    await expect(row).toContainText(oldName);
+    await expect(row).toContainText(newName);
+    await expect(row).not.toContainText('Name (Arabic)');
+
+    const stored = JSON.stringify(
+      auditLogsByTag(TAG).filter(
+        (audit) => audit.action === 'MAINTENANCE_CATEGORY_UPDATE'
+      )
+    );
+    expect(stored).toContain(newName);
+    expect(stored).not.toContain(description);
+
+    await context.close();
+  });
+
+  test('a lead status change records only the status diff, never the visitor data', async ({
+    browser,
+  }) => {
+    const { context, page } = await signedInPage(browser);
+    const leadId = `${TAG}-lead-status`;
+    const lead = {
+      id: leadId,
+      name: `Status lead ${TAG}`,
+      email: `status-${TAG}@example.com`,
+      phone: '+20 100 111 2222',
+      message: 'Private status message that must never enter the audit.',
+      status: 'NEW' as const,
+    };
+    createContactLeads([lead]);
+
+    await page.goto(`${ADMIN_URL}/en/leads/contact/${leadId}`);
+    // `getByLabel('Status')` also matches the delete button's accessible
+    // name ("Delete request from Status lead …"); the select has a stable id.
+    await page.locator('#lead-status').selectOption('RESOLVED');
+    await page.getByRole('button', { name: 'Update status' }).click();
+    await expect(
+      page.locator('header').getByText('Resolved', { exact: true })
+    ).toBeVisible();
+
+    await page.goto(
+      `${ADMIN_URL}/en/audit-log?entity=ContactMessage&q=${encodeURIComponent(TAG)}`
+    );
+    const entry = page
+      .getByTestId('audit-entry')
+      .filter({ hasText: 'Changed lead status' });
+    await expect(entry).toHaveCount(1);
+    await expect(
+      entry.getByText('Contact message', { exact: true })
+    ).toBeVisible();
+
+    await openEntryDetails(entry);
+    const table = entry.getByRole('table');
+    await expect(table.locator('tbody tr')).toHaveCount(1);
+    const row = table.locator('tbody tr').first();
+    await expect(row).toContainText('Status');
+    await expect(row).toContainText('NEW');
+    await expect(row).toContainText('RESOLVED');
+
+    const audits = auditLogsByTag(TAG).filter(
+      (audit) => audit.action === 'LEAD_STATUS_UPDATE'
+    );
+    expect(audits).toHaveLength(1);
+    const stored = JSON.stringify(audits);
+    expect(stored).toContain('"field":"status"');
+    expect(stored).toContain('"from":"NEW"');
+    expect(stored).toContain('"to":"RESOLVED"');
+    expect(stored).toContain(leadId);
+
+    const rendered = await page.locator('body').innerText();
+    for (const secret of [lead.name, lead.email, lead.phone, lead.message]) {
+      expect(stored).not.toContain(secret);
+      expect(rendered).not.toContain(secret);
+    }
+
+    await context.close();
+  });
+
+  test('a lead delete shows counts only and no personal data', async ({
+    browser,
+  }) => {
+    const { context, page } = await signedInPage(browser);
+    const leadId = `${TAG}-lead-delete`;
+    const lead = {
+      id: leadId,
+      name: `Delete lead ${TAG}`,
+      email: `delete-${TAG}@example.com`,
+      phone: '+20 100 333 4444',
+      message: 'Private delete message that must never enter the audit.',
+      status: 'NEW' as const,
+    };
+    createContactLeads([lead]);
+
+    await page.goto(`${ADMIN_URL}/en/leads/contact/${leadId}`);
+    await page
+      .getByRole('button', { name: `Delete request from ${lead.name}` })
+      .click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText(
+      `Delete the request from “${lead.name}”?`
+    );
+    await dialog.getByRole('button', { name: 'Delete request' }).click();
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get('deleted') === '1'
+    );
+
+    await page.goto(
+      `${ADMIN_URL}/en/audit-log?entity=Lead&action=DELETE&q=${encodeURIComponent(TAG)}`
+    );
+    const entry = page
+      .getByTestId('audit-entry')
+      .filter({ hasText: 'Deleted leads' });
+    await expect(entry).toHaveCount(1);
+    await expect(entry.getByText('Leads', { exact: true })).toBeVisible();
+
+    await openEntryDetails(entry);
+    const table = entry.getByRole('table');
+    await expect(table.locator('tbody tr')).toHaveCount(3);
+    const requested = table
+      .locator('tbody tr')
+      .filter({ hasText: 'Requested' });
+    await expect(requested).toContainText('1');
+    const deleted = table.locator('tbody tr').filter({ hasText: 'Deleted' });
+    await expect(deleted).toContainText('1');
+    const skipped = table.locator('tbody tr').filter({ hasText: 'Skipped' });
+    await expect(skipped).toContainText('0');
+
+    const audits = auditLogsByTag(TAG).filter(
+      (audit) => audit.action === 'DELETE'
+    );
+    expect(audits).toHaveLength(1);
+    const stored = JSON.stringify(audits);
+    expect(stored).toContain(leadId);
+    expect(stored).toContain('"requested"');
+    expect(stored).toContain('"deleted"');
+    expect(stored).toContain('"skipped"');
+
+    const rendered = await page.locator('body').innerText();
+    for (const secret of [lead.name, lead.email, lead.phone, lead.message]) {
+      expect(stored).not.toContain(secret);
+      expect(rendered).not.toContain(secret);
+    }
 
     await context.close();
   });

@@ -1,4 +1,4 @@
-import type { AuditChange } from './audit-changes';
+import { isForbiddenAuditField, type AuditChange } from './audit-changes';
 
 /**
  * Display metadata for the audit log page.
@@ -101,7 +101,34 @@ export const AUDIT_ACTION_SENTENCES: Readonly<Record<string, string>> = {
   AGENT_PUBLISH: 'agentPublish',
   AGENT_HIDE: 'agentHide',
   AGENT_DELETE: 'agentDelete',
+  NEWS_CREATE: 'newsCreate',
+  NEWS_UPDATE: 'newsUpdate',
+  NEWS_DELETE: 'newsDelete',
+  MAINTENANCE_CATEGORY_CREATE: 'maintenanceCategoryCreate',
+  MAINTENANCE_CATEGORY_UPDATE: 'maintenanceCategoryUpdate',
+  MAINTENANCE_CATEGORY_DELETE: 'maintenanceCategoryDelete',
+  MAINTENANCE_SHOWCASE_CREATE: 'showcaseCreate',
+  MAINTENANCE_SHOWCASE_UPDATE: 'showcaseUpdate',
+  MAINTENANCE_SHOWCASE_DELETE: 'showcaseDelete',
+  SERVICE_CREATE: 'maintenanceServiceCreate',
+  SERVICE_UPDATE: 'maintenanceServiceUpdate',
+  SERVICE_DELETE: 'maintenanceServiceDelete',
+  SETTINGS_UPDATE: 'settingsUpdate',
+  LEAD_STATUS_UPDATE: 'leadStatusUpdate',
+  DELETE: 'leadDelete',
 };
+
+/**
+ * Actions whose sentence intentionally has no `{name}` placeholder. Site
+ * settings and leads have no safe display name (a lead's name is the
+ * visitor's personal data), so the page renders their sentence even when the
+ * entry carries no label.
+ */
+export const AUDIT_NAMELESS_ACTIONS: ReadonlySet<string> = new Set([
+  'SETTINGS_UPDATE',
+  'LEAD_STATUS_UPDATE',
+  'DELETE',
+]);
 
 export type AuditViewDetails = {
   changes: AuditChange[];
@@ -145,7 +172,16 @@ export function parseAuditDetails(value: unknown): AuditViewDetails | null {
     return null;
   }
 
-  const changes = value.changes.filter(isAuditChange);
+  const changes = value.changes
+    .filter(isAuditChange)
+    // Defence in depth for the read side: the writers' allowlists already
+    // refuse credential names, but a row written by an older build (or by
+    // hand) must not be able to put a password/hash/token label on screen.
+    .filter(
+      (change) =>
+        !isForbiddenAuditField(change.field) &&
+        !isForbiddenAuditField(change.labelKey)
+    );
 
   let label: AuditViewDetails['label'] = null;
   if (isRecord(value.label)) {
@@ -165,11 +201,17 @@ export function parseAuditDetails(value: unknown): AuditViewDetails | null {
  */
 export function auditEntityType(entity: string): string {
   const colon = entity.indexOf(':');
+  const space = entity.indexOf(' ');
+  // Whichever separator comes first is the real one: `NewsPost:x` has no
+  // space, while a lead-delete entity starts with `Lead ` and only later
+  // contains the colon of its first `contact:<id>` item.
+  if (space > 0 && (colon < 0 || space < colon)) {
+    return entity.slice(0, space);
+  }
   if (colon > 0) {
     return entity.slice(0, colon);
   }
-  const space = entity.indexOf(' ');
-  return space > 0 ? entity.slice(0, space) : entity;
+  return entity;
 }
 
 /**

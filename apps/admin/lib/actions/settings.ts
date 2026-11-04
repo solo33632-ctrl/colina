@@ -6,6 +6,20 @@ import { requireAdmin, type ActionResult } from '../admin-action';
 import { revalidateWebPaths } from '../revalidate-web';
 import { siteSettingsMessages } from './validation-messages';
 import { siteSettingsInputSchema } from '../schemas';
+import { SITE_SETTINGS_AUDIT_SPEC, buildChanges } from '../audit-changes';
+
+const SITE_SETTINGS_AUDIT_SELECT = {
+  whatsappNumber: true,
+  whatsappMessageEn: true,
+  whatsappMessageAr: true,
+  contactPhone: true,
+  contactEmail: true,
+  factoryAddressEn: true,
+  factoryAddressAr: true,
+  workingHoursEn: true,
+  workingHoursAr: true,
+  mapsUrl: true,
+} as const;
 
 // Same translated-schema pattern as every other action: the rules live in
 // `lib/schemas.ts`, the wording comes from the current admin locale.
@@ -66,6 +80,12 @@ export async function saveSiteSettings(input: unknown): Promise<ActionResult> {
 
   try {
     await prisma.$transaction(async (tx) => {
+      // Read the previous business fields inside the transaction, so the diff
+      // is against the value this save actually replaced.
+      const before = await tx.siteSettings.findUnique({
+        where: { id: 'main' },
+        select: SITE_SETTINGS_AUDIT_SELECT,
+      });
       // One row, id "main". Upsert rather than create-or-update: the first
       // save creates it, every later save updates it, and a page visit never
       // creates anything. The audit row is the same single SETTINGS_UPDATE
@@ -81,6 +101,7 @@ export async function saveSiteSettings(input: unknown): Promise<ActionResult> {
           adminUserId: session.user.id,
           action: 'SETTINGS_UPDATE',
           entity: 'SiteSettings:main',
+          details: buildChanges(before ?? {}, data, SITE_SETTINGS_AUDIT_SPEC),
         },
       });
     });

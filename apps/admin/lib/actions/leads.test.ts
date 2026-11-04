@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@colina/db';
 import { requireAdmin } from '../admin-action';
-import { deleteLead, deleteLeads } from './leads';
+import { deleteLead, deleteLeads, updateLeadStatus } from './leads';
 
 // Delete-action contract tests. Prisma is replaced by a small in-memory
 // double so the transaction boundary, the delete counts and the audit payload
@@ -37,6 +37,7 @@ type FakeRow = {
   phone: string;
   email: string;
   message: string;
+  status: string;
   company?: string;
   machineModel?: string;
 };
@@ -48,6 +49,7 @@ const contactRow = (overrides: Partial<FakeRow> = {}): FakeRow => ({
   phone: '+20 100 000 0000',
   email: 'private-contact@example.com',
   message: 'Private contact message body',
+  status: 'NEW',
   ...overrides,
 });
 
@@ -60,6 +62,7 @@ const requestRow = (overrides: Partial<FakeRow> = {}): FakeRow => ({
   email: 'private-request@example.com',
   message: 'Private maintenance message body',
   machineModel: 'Private Machine',
+  status: 'NEW',
   ...overrides,
 });
 
@@ -88,17 +91,86 @@ function makeTx(state: FakeState) {
   );
   const createAudit = vi.fn(
     async (args: {
-      data: { adminUserId: string; action: string; entity: string };
+      data: {
+        adminUserId: string;
+        action: string;
+        entity: string;
+        details?: unknown;
+      };
     }) => ({ id: 'audit-1', ...args.data })
+  );
+
+  const findByStatus = (
+    rows: FakeRow[],
+    id: string,
+    select?: { status?: boolean }
+  ) => {
+    const row = rows.find((entry) => entry.id === id);
+    if (!row) {
+      return null;
+    }
+    return select?.status ? { status: row.status } : row;
+  };
+  const findContactById = vi.fn(
+    async ({
+      where,
+      select,
+    }: {
+      where: { id: string };
+      select?: { status?: boolean };
+    }) => findByStatus(state.contacts, where.id, select)
+  );
+  const findRequestById = vi.fn(
+    async ({
+      where,
+      select,
+    }: {
+      where: { id: string };
+      select?: { status?: boolean };
+    }) => findByStatus(state.requests, where.id, select)
+  );
+  const updateContact = vi.fn(
+    async ({
+      where,
+      data,
+    }: {
+      where: { id: string };
+      data: { status: string };
+    }) => {
+      const row = state.contacts.find((entry) => entry.id === where.id);
+      if (row) {
+        row.status = data.status;
+      }
+      return row;
+    }
+  );
+  const updateRequest = vi.fn(
+    async ({
+      where,
+      data,
+    }: {
+      where: { id: string };
+      data: { status: string };
+    }) => {
+      const row = state.requests.find((entry) => entry.id === where.id);
+      if (row) {
+        row.status = data.status;
+      }
+      return row;
+    }
   );
 
   const tx = {
     contactMessage: {
       findMany: findContacts,
+      findUnique: findContactById,
+      update: updateContact,
       deleteMany: deleteContacts,
     },
     maintenanceRequest: {
       findMany: findRequests,
+      findUnique: findRequestById,
+      update: updateRequest,
       deleteMany: deleteRequests,
     },
     auditLog: { create: createAudit },
@@ -108,6 +180,10 @@ function makeTx(state: FakeState) {
     tx,
     findContacts,
     findRequests,
+    findContactById,
+    findRequestById,
+    updateContact,
+    updateRequest,
     deleteContacts,
     deleteRequests,
     createAudit,
@@ -125,7 +201,12 @@ function useTx(state: FakeState) {
 function auditData(fake: ReturnType<typeof makeTx>) {
   expect(fake.createAudit).toHaveBeenCalledTimes(1);
   return fake.createAudit.mock.calls[0]?.[0] as unknown as {
-    data: { adminUserId: string; action: string; entity: string };
+    data: {
+      adminUserId: string;
+      action: string;
+      entity: string;
+      details?: unknown;
+    };
   };
 }
 
@@ -169,18 +250,20 @@ describe('delete actions: authentication', () => {
 describe('delete actions: validation', () => {
   it('rejects an unknown lead kind before opening a transaction', async () => {
     for (const kind of ['quote', 'Contact', '', null]) {
-      await expect(
-        deleteLead({ kind, id: 'contact-1' })
-      ).resolves.toEqual({ ok: false, error: 'validation_failed' });
+      await expect(deleteLead({ kind, id: 'contact-1' })).resolves.toEqual({
+        ok: false,
+        error: 'validation_failed',
+      });
     }
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('rejects a blank or oversized id', async () => {
     for (const id of ['', '   ', 'x'.repeat(65), 42]) {
-      await expect(
-        deleteLead({ kind: 'contact', id })
-      ).resolves.toEqual({ ok: false, error: 'validation_failed' });
+      await expect(deleteLead({ kind: 'contact', id })).resolves.toEqual({
+        ok: false,
+        error: 'validation_failed',
+      });
     }
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
@@ -366,7 +449,8 @@ describe('delete actions: audit payload', () => {
       ],
     });
 
-    const { entity } = auditData(fake).data;
+    const { entity, details } = auditData(fake).data;
+    const stored = `${entity} ${JSON.stringify(details)}`;
     for (const secret of [
       'Private Contact Name',
       'Private Request Name',
@@ -379,8 +463,48 @@ describe('delete actions: audit payload', () => {
       'Private contact message body',
       'Private maintenance message body',
     ]) {
-      expect(entity).not.toContain(secret);
+      expect(stored).not.toContain(secret);
     }
+  });
+
+  it('records only requested/deleted/skipped counts in details', async () => {
+    const fake = useTx({
+      contacts: [contactRow()],
+      requests: [requestRow()],
+    });
+
+    await deleteLeads({
+      items: [
+        { kind: 'contact', id: 'contact-1' },
+        { kind: 'maintenance', id: 'request-1' },
+      ],
+    });
+
+    expect(auditData(fake).data.details).toEqual({
+      changes: [
+        {
+          field: 'requested',
+          labelKey: 'requested',
+          type: 'number',
+          from: null,
+          to: 2,
+        },
+        {
+          field: 'deleted',
+          labelKey: 'deleted',
+          type: 'number',
+          from: null,
+          to: 2,
+        },
+        {
+          field: 'skipped',
+          labelKey: 'skipped',
+          type: 'number',
+          from: null,
+          to: 0,
+        },
+      ],
+    });
   });
 
   it('revalidates both locales after a real deletion', async () => {
@@ -390,6 +514,145 @@ describe('delete actions: audit payload', () => {
 
     expect(revalidatePath).toHaveBeenCalledWith('/ar', 'layout');
     expect(revalidatePath).toHaveBeenCalledWith('/en', 'layout');
+  });
+});
+
+describe('updateLeadStatus: audit payload', () => {
+  it('records the status diff plus the internal kind and id', async () => {
+    const fake = useTx({
+      contacts: [contactRow({ id: 'contact-1', status: 'NEW' })],
+      requests: [],
+    });
+
+    await expect(
+      updateLeadStatus({
+        kind: 'contact',
+        id: 'contact-1',
+        status: 'RESOLVED',
+      })
+    ).resolves.toEqual({ ok: true });
+
+    const data = auditData(fake).data;
+    expect(data).toMatchObject({
+      adminUserId: 'admin-1',
+      action: 'LEAD_STATUS_UPDATE',
+      entity: 'ContactMessage:contact-1 -> RESOLVED',
+    });
+    expect(data.details).toEqual({
+      changes: [
+        {
+          field: 'status',
+          labelKey: 'status',
+          type: 'text',
+          from: 'NEW',
+          to: 'RESOLVED',
+        },
+      ],
+      lead: { kind: 'contact', id: 'contact-1' },
+    });
+    expect(fake.findContactById).toHaveBeenCalledWith({
+      where: { id: 'contact-1' },
+      select: { status: true },
+    });
+
+    const json = JSON.stringify(data.details);
+    for (const pii of [
+      'Private Contact Name',
+      '+20 100 000 0000',
+      'private-contact@example.com',
+      'Private contact message body',
+    ]) {
+      expect(json).not.toContain(pii);
+    }
+  });
+
+  it('handles maintenance leads through the request table', async () => {
+    const fake = useTx({
+      contacts: [],
+      requests: [requestRow({ id: 'request-1', status: 'NEW' })],
+    });
+
+    await expect(
+      updateLeadStatus({
+        kind: 'maintenance',
+        id: 'request-1',
+        status: 'IN_PROGRESS',
+      })
+    ).resolves.toEqual({ ok: true });
+
+    expect(fake.findRequestById).toHaveBeenCalledWith({
+      where: { id: 'request-1' },
+      select: { status: true },
+    });
+    expect(fake.updateRequest).toHaveBeenCalledWith({
+      where: { id: 'request-1' },
+      data: { status: 'IN_PROGRESS' },
+    });
+    expect(auditData(fake).data).toMatchObject({
+      action: 'LEAD_STATUS_UPDATE',
+      entity: 'MaintenanceRequest:request-1 -> IN_PROGRESS',
+      details: {
+        changes: [
+          {
+            field: 'status',
+            labelKey: 'status',
+            type: 'text',
+            from: 'NEW',
+            to: 'IN_PROGRESS',
+          },
+        ],
+        lead: { kind: 'maintenance', id: 'request-1' },
+      },
+    });
+  });
+
+  it('still writes an entry with an empty changes list for a no-op save', async () => {
+    const fake = useTx({
+      contacts: [contactRow({ id: 'contact-1', status: 'RESOLVED' })],
+      requests: [],
+    });
+
+    await updateLeadStatus({
+      kind: 'contact',
+      id: 'contact-1',
+      status: 'RESOLVED',
+    });
+
+    expect(auditData(fake).data.details).toEqual({
+      changes: [],
+      lead: { kind: 'contact', id: 'contact-1' },
+    });
+  });
+
+  it('returns not_found without writing an entry when the lead is gone', async () => {
+    const fake = useTx({ contacts: [], requests: [] });
+
+    await expect(
+      updateLeadStatus({
+        kind: 'contact',
+        id: 'missing',
+        status: 'RESOLVED',
+      })
+    ).resolves.toEqual({ ok: false, error: 'not_found' });
+    expect(fake.createAudit).not.toHaveBeenCalled();
+  });
+
+  it('maps a database failure to a generic server_error', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    vi.mocked(prisma.$transaction).mockRejectedValue(
+      new Error('raw database detail that must not reach the client')
+    );
+
+    await expect(
+      updateLeadStatus({
+        kind: 'contact',
+        id: 'contact-1',
+        status: 'RESOLVED',
+      })
+    ).resolves.toEqual({ ok: false, error: 'server_error' });
+    consoleError.mockRestore();
   });
 });
 

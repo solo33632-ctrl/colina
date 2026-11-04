@@ -494,6 +494,12 @@ export function deleteSiteSettings() {
 export type LeadStatusFixture = 'NEW' | 'IN_PROGRESS' | 'RESOLVED';
 
 export type ContactLeadFixture = {
+  /**
+   * Optional caller-chosen id. The audit rows for a status change name only
+   * this id, so a spec that wants a tag-searchable audit entry passes an id
+   * containing its fixture tag.
+   */
+  id?: string;
   name: string;
   email?: string | null;
   phone?: string | null;
@@ -523,6 +529,7 @@ export function createContactLeads(rows: ContactLeadFixture[]): string[] {
     for (const row of rows) {
       const created = await prisma.contactMessage.create({
         data: {
+          ...(row.id ? { id: row.id } : {}),
           name: row.name,
           email: row.email ?? null,
           phone: row.phone ?? null,
@@ -772,21 +779,13 @@ export type AuditLogFixtureRow = {
 export function auditLogsByTag(tag = FIXTURE_TAG): AuditLogFixtureRow[] {
   return (
     runInDbValue<AuditLogFixtureRow[]>(`
-      return prisma.auditLog.findMany({
-        where: {
-          OR: [
-            { entity: { contains: ${JSON.stringify(tag)} } },
-            {
-              details: {
-                path: ['search'],
-                string_contains: ${JSON.stringify(tag.toLowerCase())},
-              },
-            },
-          ],
-        },
-        orderBy: { createdAt: 'desc' },
-        select: { id: true, action: true, entity: true, details: true },
-      });
+      // The tag can be in the entity (slugs/ids) OR only inside details — a
+      // settings update names no entity identifier and has no label/search
+      // text, so its changed values are the only place the tag can live.
+      return prisma.$queryRawUnsafe(
+        'SELECT id, action, entity, details FROM "AuditLog" WHERE entity LIKE $1 OR details::text LIKE $1 ORDER BY "createdAt" DESC',
+        ${JSON.stringify(`%${tag}%`)}
+      );
     `) ?? []
   );
 }
@@ -795,19 +794,10 @@ export function auditLogsByTag(tag = FIXTURE_TAG): AuditLogFixtureRow[] {
 export function deleteAuditLogsByTag(tag = FIXTURE_TAG) {
   try {
     runInDb(`
-      await prisma.auditLog.deleteMany({
-        where: {
-          OR: [
-            { entity: { contains: ${JSON.stringify(tag)} } },
-            {
-              details: {
-                path: ['search'],
-                string_contains: ${JSON.stringify(tag.toLowerCase())},
-              },
-            },
-          ],
-        },
-      });
+      await prisma.$executeRawUnsafe(
+        'DELETE FROM "AuditLog" WHERE entity LIKE $1 OR details::text LIKE $1',
+        ${JSON.stringify(`%${tag}%`)}
+      );
     `);
   } catch {
     // Intentionally ignored: cleanup must never mask a test result.

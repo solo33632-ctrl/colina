@@ -6,6 +6,36 @@ import { requireAdmin, type ActionResult } from '../admin-action';
 import { revalidateWebPaths } from '../revalidate-web';
 import { showcaseMessages } from './validation-messages';
 import { showcaseInputSchema } from '../schemas';
+import {
+  SHOWCASE_AUDIT_SPEC,
+  buildChanges,
+  buildSnapshot,
+} from '../audit-changes';
+
+const SHOWCASE_AUDIT_SELECT = {
+  nameEn: true,
+  nameAr: true,
+  categoryId: true,
+  category: { select: { nameEn: true } },
+  descriptionEn: true,
+  descriptionAr: true,
+  beforeImageUrl: true,
+  afterImageUrl: true,
+} as const;
+
+type ShowcaseAuditRow = {
+  categoryId: string | null;
+  category?: { nameEn: string } | null;
+};
+
+// The audit shows the production line by name; the legacy id is only the
+// fallback for rows from before categories existed.
+function withCategoryName<T extends ShowcaseAuditRow>(row: T) {
+  return {
+    ...row,
+    category: row.category?.nameEn ?? row.categoryId ?? null,
+  };
+}
 
 // Validation messages come from the message files, in the admin's current
 // language (see `validation-messages.ts`).
@@ -63,6 +93,7 @@ export async function createShowcase(
           adminUserId: session.user.id,
           action: 'MAINTENANCE_SHOWCASE_CREATE',
           entity: `MaintenanceShowcase:${row.id}`,
+          details: buildSnapshot(row, SHOWCASE_AUDIT_SPEC),
         },
       });
       return row;
@@ -100,15 +131,15 @@ export async function updateShowcase(
   }
 
   try {
-    const existing = await prisma.maintenanceShowcase.findUnique({
-      where: { id },
-    });
-    if (!existing) {
-      return { ok: false, error: 'not_found' };
-    }
-
-    await prisma.$transaction(async (tx) => {
-      await tx.maintenanceShowcase.update({
+    const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.maintenanceShowcase.findUnique({
+        where: { id },
+        select: SHOWCASE_AUDIT_SELECT,
+      });
+      if (!existing) {
+        return false;
+      }
+      const row = await tx.maintenanceShowcase.update({
         where: { id },
         data: {
           nameAr: parsed.data.nameAr,
@@ -119,15 +150,25 @@ export async function updateShowcase(
           beforeImageUrl: parsed.data.beforeImageUrl,
           afterImageUrl: parsed.data.afterImageUrl,
         },
+        select: SHOWCASE_AUDIT_SELECT,
       });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'MAINTENANCE_SHOWCASE_UPDATE',
           entity: `MaintenanceShowcase:${id}`,
+          details: buildChanges(
+            withCategoryName(existing),
+            withCategoryName(row),
+            SHOWCASE_AUDIT_SPEC
+          ),
         },
       });
+      return true;
     });
+    if (!updated) {
+      return { ok: false, error: 'not_found' };
+    }
 
     revalidateWebPaths(['/', '/maintenance']);
     return { ok: true };
@@ -144,24 +185,29 @@ export async function deleteShowcase(id: string): Promise<ActionResult> {
   }
 
   // No relations point at MaintenanceShowcase: nothing to block on, straight delete.
-  const existing = await prisma.maintenanceShowcase.findUnique({
-    where: { id },
-  });
-  if (!existing) {
-    return { ok: false, error: 'not_found' };
-  }
-
   try {
-    await prisma.$transaction(async (tx) => {
+    const deleted = await prisma.$transaction(async (tx) => {
+      const existing = await tx.maintenanceShowcase.findUnique({
+        where: { id },
+        select: SHOWCASE_AUDIT_SELECT,
+      });
+      if (!existing) {
+        return false;
+      }
       await tx.maintenanceShowcase.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'MAINTENANCE_SHOWCASE_DELETE',
           entity: `MaintenanceShowcase:${id}`,
+          details: buildSnapshot(existing, SHOWCASE_AUDIT_SPEC, 'delete'),
         },
       });
+      return true;
     });
+    if (!deleted) {
+      return { ok: false, error: 'not_found' };
+    }
 
     revalidateWebPaths(['/', '/maintenance']);
     return { ok: true };

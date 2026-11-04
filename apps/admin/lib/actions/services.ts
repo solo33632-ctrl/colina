@@ -6,6 +6,22 @@ import { requireAdmin, type ActionResult } from '../admin-action';
 import { revalidateWebPaths } from '../revalidate-web';
 import { serviceMessages } from './validation-messages';
 import { serviceInputSchema } from '../schemas';
+import {
+  MAINTENANCE_SERVICE_AUDIT_SPEC,
+  buildChanges,
+  buildSnapshot,
+} from '../audit-changes';
+
+const SERVICE_AUDIT_SELECT = {
+  titleEn: true,
+  titleAr: true,
+  slug: true,
+  descriptionEn: true,
+  descriptionAr: true,
+  scopeEn: true,
+  scopeAr: true,
+  icon: true,
+} as const;
 
 // Validation messages come from the message files, in the admin's current
 // language (see `validation-messages.ts`).
@@ -53,6 +69,7 @@ export async function createService(
           adminUserId: session.user.id,
           action: 'SERVICE_CREATE',
           entity: `MaintenanceService:${row.slug}`,
+          details: buildSnapshot(row, MAINTENANCE_SERVICE_AUDIT_SPEC),
         },
       });
       return row;
@@ -92,27 +109,32 @@ export async function updateService(
   }
 
   try {
-    const existing = await prisma.maintenanceService.findUnique({
-      where: { id },
-    });
-    if (!existing) {
-      return { ok: false, error: 'not_found' };
-    }
-
     const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.maintenanceService.findUnique({
+        where: { id },
+        select: SERVICE_AUDIT_SELECT,
+      });
+      if (!existing) {
+        return null;
+      }
       const row = await tx.maintenanceService.update({
         where: { id },
         data: { ...parsed.data },
+        select: SERVICE_AUDIT_SELECT,
       });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'SERVICE_UPDATE',
           entity: `MaintenanceService:${row.slug}`,
+          details: buildChanges(existing, row, MAINTENANCE_SERVICE_AUDIT_SPEC),
         },
       });
       return row;
     });
+    if (updated === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     revalidateWebPaths(['/services']);
     return { ok: true, slug: updated.slug };
@@ -132,24 +154,33 @@ export async function deleteService(id: string): Promise<ActionResult> {
   }
 
   // No relations point at MaintenanceService: nothing to block on.
-  const existing = await prisma.maintenanceService.findUnique({
-    where: { id },
-  });
-  if (!existing) {
-    return { ok: false, error: 'not_found' };
-  }
-
   try {
-    await prisma.$transaction(async (tx) => {
+    const deleted = await prisma.$transaction(async (tx) => {
+      const existing = await tx.maintenanceService.findUnique({
+        where: { id },
+        select: SERVICE_AUDIT_SELECT,
+      });
+      if (!existing) {
+        return null;
+      }
       await tx.maintenanceService.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'SERVICE_DELETE',
           entity: `MaintenanceService:${existing.slug}`,
+          details: buildSnapshot(
+            existing,
+            MAINTENANCE_SERVICE_AUDIT_SPEC,
+            'delete'
+          ),
         },
       });
+      return existing;
     });
+    if (deleted === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     revalidateWebPaths(['/services']);
     return { ok: true };

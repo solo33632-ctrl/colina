@@ -6,6 +6,23 @@ import { requireAdmin, type ActionResult } from '../admin-action';
 import { maintenanceCategoryMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { maintenanceCategoryInputSchema } from '../schemas';
+import {
+  MAINTENANCE_CATEGORY_AUDIT_SPEC,
+  buildChanges,
+  buildSnapshot,
+} from '../audit-changes';
+
+// The before-row is loaded with the same explicit allowlist the diff helper
+// reads, inside the write transaction.
+const MAINTENANCE_CATEGORY_AUDIT_SELECT = {
+  nameEn: true,
+  nameAr: true,
+  slug: true,
+  descriptionEn: true,
+  descriptionAr: true,
+  imageUrl: true,
+  sortOrder: true,
+} as const;
 
 // Validation messages come from the message files, in the admin's current
 // language (see `validation-messages.ts`).
@@ -63,6 +80,7 @@ export async function createMaintenanceCategory(
           adminUserId: session.user.id,
           action: 'MAINTENANCE_CATEGORY_CREATE',
           entity: `MaintenanceCategory:${row.slug}`,
+          details: buildSnapshot(row, MAINTENANCE_CATEGORY_AUDIT_SPEC),
         },
       });
       return row;
@@ -109,14 +127,14 @@ export async function updateMaintenanceCategory(
   }
 
   try {
-    const existing = await prisma.maintenanceCategory.findUnique({
-      where: { id },
-    });
-    if (!existing) {
-      return { ok: false, error: 'not_found' };
-    }
-
     const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.maintenanceCategory.findUnique({
+        where: { id },
+        select: MAINTENANCE_CATEGORY_AUDIT_SELECT,
+      });
+      if (!existing) {
+        return null;
+      }
       const row = await tx.maintenanceCategory.update({
         where: { id },
         data: {
@@ -128,24 +146,30 @@ export async function updateMaintenanceCategory(
           imageUrl: parsed.data.imageUrl || null,
           sortOrder: parsed.data.sortOrder,
         },
+        select: MAINTENANCE_CATEGORY_AUDIT_SELECT,
       });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'MAINTENANCE_CATEGORY_UPDATE',
           entity: `MaintenanceCategory:${row.slug}`,
+          details: buildChanges(existing, row, MAINTENANCE_CATEGORY_AUDIT_SPEC),
         },
       });
-      return row;
+      return { row, previousSlug: existing.slug };
     });
+    if (updated === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
     // Both the old and the new detail path when the slug changed.
+    const { row: updatedRow, previousSlug } = updated;
     const detailPaths =
-      existing.slug === updated.slug
-        ? [`/maintenance/${updated.slug}`]
-        : [`/maintenance/${existing.slug}`, `/maintenance/${updated.slug}`];
+      previousSlug === updatedRow.slug
+        ? [`/maintenance/${updatedRow.slug}`]
+        : [`/maintenance/${previousSlug}`, `/maintenance/${updatedRow.slug}`];
     revalidateWebPaths(['/', '/maintenance', ...detailPaths]);
-    return { ok: true, slug: updated.slug };
+    return { ok: true, slug: updatedRow.slug };
   } catch (error) {
     if (
       typeof error === 'object' &&
@@ -186,18 +210,34 @@ export async function deleteMaintenanceCategory(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const deleted = await prisma.$transaction(async (tx) => {
+      const existing = await tx.maintenanceCategory.findUnique({
+        where: { id },
+        select: MAINTENANCE_CATEGORY_AUDIT_SELECT,
+      });
+      if (!existing) {
+        return null;
+      }
       await tx.maintenanceCategory.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
           adminUserId: session.user.id,
           action: 'MAINTENANCE_CATEGORY_DELETE',
           entity: `MaintenanceCategory:${existing.slug}`,
+          details: buildSnapshot(
+            existing,
+            MAINTENANCE_CATEGORY_AUDIT_SPEC,
+            'delete'
+          ),
         },
       });
+      return existing;
     });
+    if (deleted === null) {
+      return { ok: false, error: 'not_found' };
+    }
 
-    revalidateWebPaths(['/', '/maintenance', `/maintenance/${existing.slug}`]);
+    revalidateWebPaths(['/', '/maintenance', `/maintenance/${deleted.slug}`]);
     return { ok: true };
   } catch (error) {
     // ...with the schema's onDelete: Restrict as the race-proof backstop:

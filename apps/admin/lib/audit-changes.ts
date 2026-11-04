@@ -105,6 +105,12 @@ export type AuditDetails = {
    * `mode`), and so old rows simply have no search text.
    */
   search?: string;
+  /**
+   * The lead a status change belongs to. A lead has no safe display name (its
+   * name/phone/email are the visitor's personal data), so the log records
+   * only the kind and internal id alongside the status diff.
+   */
+  lead?: { kind: 'contact' | 'maintenance'; id: string };
 };
 
 type AuditListValue = Array<string | number | boolean>;
@@ -408,9 +414,9 @@ export function buildSnapshot(
 // ---------------------------------------------------------------------------
 // Entity specs
 //
-// These are the ONLY fields the audit log can record for the four wired
-// entities. They are deliberately narrow: no ids, timestamps, relations or
-// auth columns, and nothing from the leads/contact tables. The label keys are
+// These are the ONLY fields the audit log can record for each wired entity.
+// They are deliberately narrow: no ids, timestamps, relations or auth
+// columns, and nothing from the leads/contact tables. The label keys are
 // shared with the audit page's `AuditLog.fields.*` messages.
 // ---------------------------------------------------------------------------
 
@@ -483,4 +489,118 @@ export const AGENT_AUDIT_SPEC: AuditEntitySpec = {
     'isPublished',
   ],
   labelFields: { en: 'nameEn', ar: 'nameAr' },
+};
+
+export const MAINTENANCE_CATEGORY_AUDIT_SPEC: AuditEntitySpec = {
+  fields: {
+    nameEn: { labelKey: 'nameEn', type: 'text' },
+    nameAr: { labelKey: 'nameAr', type: 'text' },
+    slug: { labelKey: 'slug', type: 'text' },
+    descriptionEn: { labelKey: 'descriptionEn', type: 'longText' },
+    descriptionAr: { labelKey: 'descriptionAr', type: 'longText' },
+    imageUrl: { labelKey: 'image', type: 'imageUrl' },
+    sortOrder: { labelKey: 'sortOrder', type: 'number' },
+  },
+  snapshotFields: ['nameEn', 'nameAr', 'slug'],
+  labelFields: { en: 'nameEn', ar: 'nameAr' },
+};
+
+export const MAINTENANCE_SERVICE_AUDIT_SPEC: AuditEntitySpec = {
+  fields: {
+    titleEn: { labelKey: 'titleEn', type: 'text' },
+    titleAr: { labelKey: 'titleAr', type: 'text' },
+    slug: { labelKey: 'slug', type: 'text' },
+    descriptionEn: { labelKey: 'descriptionEn', type: 'longText' },
+    descriptionAr: { labelKey: 'descriptionAr', type: 'longText' },
+    scopeEn: { labelKey: 'scopeEn', type: 'longText' },
+    scopeAr: { labelKey: 'scopeAr', type: 'longText' },
+    icon: { labelKey: 'icon', type: 'text' },
+  },
+  snapshotFields: ['titleEn', 'titleAr', 'slug'],
+  labelFields: { en: 'titleEn', ar: 'titleAr' },
+};
+
+export const SHOWCASE_AUDIT_SPEC: AuditEntitySpec = {
+  fields: {
+    nameEn: { labelKey: 'nameEn', type: 'text' },
+    nameAr: { labelKey: 'nameAr', type: 'text' },
+    // The action flattens the relation to the category's English name (or
+    // its id when the legacy row has none) so a change reads as a name.
+    category: { labelKey: 'category', type: 'text' },
+    descriptionEn: { labelKey: 'descriptionEn', type: 'longText' },
+    descriptionAr: { labelKey: 'descriptionAr', type: 'longText' },
+    beforeImageUrl: { labelKey: 'beforeImage', type: 'imageUrl' },
+    afterImageUrl: { labelKey: 'afterImage', type: 'imageUrl' },
+  },
+  snapshotFields: ['nameEn', 'nameAr'],
+  labelFields: { en: 'nameEn', ar: 'nameAr' },
+};
+
+export const NEWS_AUDIT_SPEC: AuditEntitySpec = {
+  fields: {
+    titleEn: { labelKey: 'titleEn', type: 'text' },
+    titleAr: { labelKey: 'titleAr', type: 'text' },
+    slug: { labelKey: 'slug', type: 'text' },
+    bodyEn: { labelKey: 'bodyEn', type: 'longText' },
+    bodyAr: { labelKey: 'bodyAr', type: 'longText' },
+    image: { labelKey: 'image', type: 'imageUrl' },
+    publishedAt: { labelKey: 'publishedAt', type: 'date' },
+  },
+  snapshotFields: ['titleEn', 'titleAr', 'slug'],
+  labelFields: { en: 'titleEn', ar: 'titleAr' },
+};
+
+/**
+ * Business display fields only. The allowlist is closed, so the settings row
+ * can grow new columns (or auth metadata) without ever being copied here.
+ * Contact details are deliberately included: they are the public business
+ * values the page must show; there is no secret in this model.
+ */
+export const SITE_SETTINGS_AUDIT_SPEC: AuditEntitySpec = {
+  fields: {
+    whatsappNumber: { labelKey: 'whatsappNumber', type: 'text' },
+    whatsappMessageEn: { labelKey: 'whatsappMessageEn', type: 'longText' },
+    whatsappMessageAr: { labelKey: 'whatsappMessageAr', type: 'longText' },
+    contactPhone: { labelKey: 'contactPhone', type: 'text' },
+    contactEmail: { labelKey: 'contactEmail', type: 'text' },
+    factoryAddressEn: { labelKey: 'factoryAddressEn', type: 'longText' },
+    factoryAddressAr: { labelKey: 'factoryAddressAr', type: 'longText' },
+    workingHoursEn: { labelKey: 'workingHoursEn', type: 'text' },
+    workingHoursAr: { labelKey: 'workingHoursAr', type: 'text' },
+    mapsUrl: { labelKey: 'mapsUrl', type: 'url' },
+  },
+};
+
+/**
+ * A lead status change records the status diff only. The action adds
+ * `details.lead = { kind, id }`; names, phones, emails and message bodies are
+ * never selected from the lead tables.
+ */
+export const LEAD_STATUS_AUDIT_SPEC: AuditEntitySpec = {
+  fields: {
+    status: { labelKey: 'status', type: 'text' },
+  },
+};
+
+/** Counts for one lead-delete call; the entity alone carries ids/dates. */
+export const LEAD_DELETE_AUDIT_SPEC: AuditEntitySpec = {
+  fields: {
+    requested: { labelKey: 'requested', type: 'number' },
+    deleted: { labelKey: 'deleted', type: 'number' },
+    skipped: { labelKey: 'skipped', type: 'number' },
+  },
+  snapshotFields: ['requested', 'deleted', 'skipped'],
+};
+
+/**
+ * Defensive allowlist for admin-user actions. No admin-user action writes an
+ * audit entry today, but if one is added it may record role/active state and
+ * nothing else — the credential columns are excluded by name as well.
+ */
+export const ADMIN_USER_AUDIT_SPEC: AuditEntitySpec = {
+  fields: {
+    role: { labelKey: 'role', type: 'text' },
+    isActive: { labelKey: 'isActive', type: 'boolean' },
+  },
+  snapshotFields: ['role', 'isActive'],
 };

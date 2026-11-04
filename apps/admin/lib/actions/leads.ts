@@ -6,6 +6,12 @@ import { prisma } from '@colina/db';
 import { routing } from '@/i18n/routing';
 import { requireAdmin, type ActionResult } from '../admin-action';
 import {
+  LEAD_DELETE_AUDIT_SPEC,
+  LEAD_STATUS_AUDIT_SPEC,
+  buildChanges,
+  buildSnapshot,
+} from '../audit-changes';
+import {
   leadDeleteAuditEntity,
   type FoundLead,
   type LeadDeleteTarget,
@@ -113,6 +119,16 @@ async function performDelete(
             found,
             deleted,
           }),
+          // Counts only: the visitor's name, phone, email and message never
+          // enter the payload.
+          details: buildSnapshot(
+            {
+              requested: items.length,
+              deleted,
+              skipped: items.length - deleted,
+            },
+            LEAD_DELETE_AUDIT_SPEC
+          ),
         },
       });
 
@@ -177,33 +193,64 @@ export async function updateLeadStatus(input: unknown) {
 
   const { kind, id, status } = parsed.data;
 
-  // Explicit branches (not a shared union): the two delegates have
-  // incompatible call signatures, so a single `model` variable won't
-  // typecheck.
-  const existing =
-    kind === 'contact'
-      ? await prisma.contactMessage.findUnique({ where: { id } })
-      : await prisma.maintenanceRequest.findUnique({ where: { id } });
-  if (!existing) {
-    return { ok: false as const, error: 'not_found' };
-  }
+  // The lead's name/phone/email/message are deliberately not selected: the
+  // only fields the audit needs are the status it replaced and the id it
+  // already has from the request.
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      // Explicit branches (not a shared union): the two delegates have
+      // incompatible call signatures, so a single `model` variable won't
+      // typecheck.
+      const existing =
+        kind === 'contact'
+          ? await tx.contactMessage.findUnique({
+              where: { id },
+              select: { status: true },
+            })
+          : await tx.maintenanceRequest.findUnique({
+              where: { id },
+              select: { status: true },
+            });
+      if (!existing) {
+        return false;
+      }
 
-  const entity =
-    kind === 'contact' ? `ContactMessage:${id}` : `MaintenanceRequest:${id}`;
-  await prisma.$transaction(async (tx) => {
-    if (kind === 'contact') {
-      await tx.contactMessage.update({ where: { id }, data: { status } });
-    } else {
-      await tx.maintenanceRequest.update({ where: { id }, data: { status } });
-    }
-    await tx.auditLog.create({
-      data: {
-        adminUserId: session.user.id,
-        action: 'LEAD_STATUS_UPDATE',
-        entity: `${entity} -> ${status}`,
-      },
+      if (kind === 'contact') {
+        await tx.contactMessage.update({ where: { id }, data: { status } });
+      } else {
+        await tx.maintenanceRequest.update({ where: { id }, data: { status } });
+      }
+
+      const entity =
+        kind === 'contact'
+          ? `ContactMessage:${id}`
+          : `MaintenanceRequest:${id}`;
+      await tx.auditLog.create({
+        data: {
+          adminUserId: session.user.id,
+          action: 'LEAD_STATUS_UPDATE',
+          entity: `${entity} -> ${status}`,
+          details: {
+            // Only the status diff belongs in `changes`; kind/id are the
+            // lead's internal identifiers, never the visitor's data.
+            ...buildChanges(
+              { status: existing.status },
+              { status },
+              LEAD_STATUS_AUDIT_SPEC
+            ),
+            lead: { kind, id },
+          },
+        },
+      });
+      return true;
     });
-  });
+    if (!updated) {
+      return { ok: false as const, error: 'not_found' };
+    }
+  } catch (error) {
+    console.error('[admin] updateLeadStatus failed:', error);
+    return { ok: false as const, error: 'server_error' };
+  }
 
   // Deliberately no revalidateWebPaths: lead rows are never rendered on
   // any public page (Phase 12 inbox only).

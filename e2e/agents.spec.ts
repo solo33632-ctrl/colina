@@ -11,13 +11,19 @@ import {
 
 const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 
-// Stage 37a: the public agents page.
+// The read side only allows https logos, and the dev site itself is http, so
+// the logo fixture points at this https URL and the published-agent test
+// intercepts it, serving the web app's OWN /logo.png bytes. The card still
+// decodes a real image; the production rule is not weakened for a test.
+const AGENT_LOGO_URL = 'https://media.st28a.example/agent-logo.png';
+
+// Stage 37c: the public agents page shows the admin-entered profile.
 //
-// The Agent model has no name, no website, no logo and no active/published
-// flag (reported in Step 0; the stage forbids schema changes), so an agent
-// is addressed by its country + city and there are NO website tests here:
-// the page renders only tel:/mailto: links, and "untrusted DB text" is
-// exercised through the phone/email values instead.
+// The fixtures carry the whole new surface: a published agent with a name, a
+// website, a logo and both contact links; a legacy nameless row; a row with
+// values the admin form would have refused (written straight to the database,
+// which is the point); and two hidden rows — one inside a visible country and
+// one whose whole country must disappear.
 //
 // The tag rides inside BOTH country names — the country pair is the only
 // identifying text an agent has, and `deleteAgentsByTag` matches on it.
@@ -30,21 +36,29 @@ const FIXTURE_AGENTS = [
   {
     countryEn: `Egypt ${FIXTURE_TAG}`,
     countryAr: `مصر ${FIXTURE_TAG}`,
+    nameEn: 'Banha Office',
+    nameAr: 'مكتب بنها',
     cityEn: 'Banha',
     cityAr: 'بنها',
     addressEn: '12 Industrial Zone, Banha',
     addressAr: 'المنطقة الصناعية الأولى، بنها',
     phone: '+20 40 555 0100',
     email: 'banha-agent@example.com',
+    websiteUrl: 'https://banha.example.com/about',
+    logoUrl: AGENT_LOGO_URL,
   },
   {
+    // Legacy nameless card: the headline falls back to the city, and with no
+    // contacts at all the card is title-only.
     countryEn: `Egypt ${FIXTURE_TAG}`,
     countryAr: `مصر ${FIXTURE_TAG}`,
     cityEn: 'Tanta',
     cityAr: 'طنطا',
-    // No phone, no email, no address: a contact-less card still renders.
   },
   {
+    // Unsafe values written directly to the database, bypassing the form:
+    // the read side must drop the phone, the email, the javascript: website
+    // and the http (non-https) logo instead of rendering broken/unsafe links.
     countryEn: `Egypt ${FIXTURE_TAG}`,
     countryAr: `مصر ${FIXTURE_TAG}`,
     cityEn: 'Qena',
@@ -52,6 +66,8 @@ const FIXTURE_AGENTS = [
     addressEn: '', // blank address behaves as absent
     phone: 'not a phone',
     email: 'scheme:payload@example.com',
+    websiteUrl: 'javascript:alert(1)',
+    logoUrl: 'http://insecure.example.com/logo.png',
   },
   {
     countryEn: `Qatar ${FIXTURE_TAG}`,
@@ -60,16 +76,39 @@ const FIXTURE_AGENTS = [
     cityAr: 'الدوحة',
     phone: '+974 4000 0000',
   },
+  {
+    // Hidden inside a visible country: absent from both locales, while the
+    // country section itself stays because its other agents are published.
+    countryEn: `Egypt ${FIXTURE_TAG}`,
+    countryAr: `مصر ${FIXTURE_TAG}`,
+    nameEn: 'Hidden Suez Office',
+    nameAr: 'مكتب السويس المخفي',
+    cityEn: 'Suez',
+    cityAr: 'السويس',
+    isPublished: false,
+  },
+  {
+    // The country's only agent is hidden, so its section disappears entirely.
+    countryEn: `Kuwait ${FIXTURE_TAG}`,
+    countryAr: `الكويت ${FIXTURE_TAG}`,
+    nameEn: 'Hidden Kuwait Office',
+    nameAr: 'مكتب الكويت المخفي',
+    cityEn: 'Kuwait City',
+    cityAr: 'مدينة الكويت',
+    isPublished: false,
+  },
 ];
 
 const EN_TAGGED = `Egypt ${FIXTURE_TAG}`;
 const QA_TAGGED = `Qatar ${FIXTURE_TAG}`;
+const KWT_TAGGED = `Kuwait ${FIXTURE_TAG}`;
 // The Arabic page headings carry the localized (Arabic) wording of the
 // country pair — the DB pair, read in the page's language.
 const QA_TAGGED_AR = `قطر ${FIXTURE_TAG}`;
 const EN_TAGGED_AR = `مصر ${FIXTURE_TAG}`;
+const KWT_TAGGED_AR = `الكويت ${FIXTURE_TAG}`;
 
-type SectionListing = { heading: string; cities: string[] };
+type SectionListing = { heading: string; titles: string[] };
 
 // One round trip: each country section with its heading and the card titles
 // under it. Tagging the filter keeps the assertions independent of the
@@ -78,8 +117,8 @@ async function countrySections(page: import('@playwright/test').Page) {
   return page.locator('main section').evaluateAll((nodes) =>
     nodes.map((section) => ({
       heading: section.querySelector('h2')?.textContent?.trim() ?? '',
-      cities: Array.from(section.querySelectorAll('h3')).map(
-        (city) => city.textContent?.trim() ?? ''
+      titles: Array.from(section.querySelectorAll('h3')).map(
+        (title) => title.textContent?.trim() ?? ''
       ),
     }))
   );
@@ -109,13 +148,16 @@ test.describe('agents page (en)', () => {
       section.heading.includes(FIXTURE_TAG)
     );
 
+    // The hidden-only Kuwait section is absent, so only the two visible
+    // countries are listed.
     expect(tagged.map((section) => section.heading)).toEqual([
       EN_TAGGED,
       QA_TAGGED,
     ]);
-    // Latin order: B < Q < T. (Same rows read in Arabic swap Q and T.)
-    expect(tagged[0].cities).toEqual(['Banha', 'Qena', 'Tanta']);
-    expect(tagged[1].cities).toEqual(['Doha']);
+    // Latin city order: B < Q < T. Banha's card is titled by its name now;
+    // the other two rows are legacy nameless rows titled by their city.
+    expect(tagged[0].titles).toEqual(['Banha Office', 'Qena', 'Tanta']);
+    expect(tagged[1].titles).toEqual(['Doha']);
 
     // The section heading is the only h2 with the country's name on it, and
     // each card is a list item inside its country section.
@@ -130,13 +172,14 @@ test.describe('agents page (en)', () => {
 
     const banha = page
       .locator('main li')
-      .filter({ has: page.locator('h3', { hasText: 'Banha' }) });
-    // The address is the stored English text; the phone keeps its stored
-    // formatting as the LINK TEXT (the href is asserted next).
+      .filter({ has: page.locator('h3', { hasText: 'Banha Office' }) });
+    // The name is the headline, the city sits under it, and the address and
+    // phone keep their stored English text/formatting.
+    await expect(banha).toContainText('Banha');
     await expect(banha).toContainText('12 Industrial Zone, Banha');
     await expect(banha).toContainText('+20 40 555 0100');
 
-    // A card with no usable contacts still renders — title + nothing else.
+    // A legacy nameless, contact-less card still renders — city title only.
     const tanta = page
       .locator('main li')
       .filter({ has: page.locator('h3', { hasText: 'Tanta' }) });
@@ -148,6 +191,92 @@ test.describe('agents page (en)', () => {
     await expect(page.locator('main p').first()).toContainText(
       'Find a Colina agent near you'
     );
+  });
+
+  test('renders the name, the logo and the website of a published agent', async ({
+    page,
+  }) => {
+    // Serve the web app's own logo bytes from the https fixture URL (the read
+    // side accepts no other scheme); the image is real and decodes normally.
+    await page.route(AGENT_LOGO_URL, async (route) => {
+      const image = await page.request.get(`${WEB_URL}/logo.png`);
+      await route.fulfill({ response: image });
+    });
+
+    await page.goto(`${WEB_URL}/en/agents`);
+
+    const banha = page
+      .locator('main li')
+      .filter({ has: page.locator('h3', { hasText: 'Banha Office' }) });
+    await expect(banha).toHaveCount(1);
+
+    // The logo is a real decoded image, not the initial-letter placeholder.
+    const logo = banha.locator('img');
+    await expect(logo).toHaveCount(1);
+    await expect
+      .poll(() =>
+        logo.evaluate((image) => (image as HTMLImageElement).naturalWidth)
+      )
+      .toBeGreaterThan(0);
+
+    // The website row shows the host, opens a new tab and cannot reach back
+    // through `window.opener`.
+    const website = banha.locator('a[target="_blank"]');
+    await expect(website).toHaveCount(1);
+    await expect(website).toHaveAttribute(
+      'href',
+      'https://banha.example.com/about'
+    );
+    await expect(website).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(website).toHaveText('banha.example.com');
+    await expect(website).toHaveAccessibleName('Website: banha.example.com');
+
+    // Both stored contacts stay real links on the same card.
+    await expect(banha.locator('a[href^="tel:"]')).toHaveCount(1);
+    await expect(banha.locator('a[href^="mailto:"]')).toHaveCount(1);
+  });
+
+  test('an unsafe website or non-https logo renders no link and no image', async ({
+    page,
+  }) => {
+    await page.goto(`${WEB_URL}/en/agents`);
+
+    // The Qena row stores `javascript:alert(1)` and an http logo URL. Both
+    // are dropped on read: no website link, no <img>, no leaked URLs.
+    const qena = page
+      .locator('main li')
+      .filter({ has: page.locator('h3', { hasText: 'Qena' }) });
+    await expect(qena).toHaveCount(1);
+    await expect(qena.locator('a[target="_blank"]')).toHaveCount(0);
+    await expect(qena.locator('img')).toHaveCount(0);
+    await expect(qena).not.toContainText('javascript:');
+    await expect(qena).not.toContainText('insecure.example.com');
+
+    // Belt and braces across the WHOLE page: every href is an internal path,
+    // a tel:/mailto: link, or an absolute http(s) URL — never a dangerous
+    // scheme and never protocol-relative.
+    const hrefs = await page
+      .locator('main a')
+      .evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href')));
+    for (const href of hrefs) {
+      expect(href ?? '', `${href} must use a safe scheme`).toMatch(
+        /^(https?:\/\/|tel:|mailto:|\/(?!\/))/
+      );
+    }
+  });
+
+  test('never shows a hidden agent in a visible country', async ({ page }) => {
+    await page.goto(`${WEB_URL}/en/agents`);
+
+    await expect(page.locator('main')).not.toContainText('Hidden Suez Office');
+    // Egypt keeps its three published cards; the hidden Suez row adds none.
+    expect(
+      await page
+        .locator('main section')
+        .filter({ has: page.locator('h2').filter({ hasText: EN_TAGGED }) })
+        .locator('li')
+        .count()
+    ).toBe(3);
   });
 });
 
@@ -169,16 +298,34 @@ test.describe('agents page (ar)', () => {
     );
 
     // Arabic collation: ق comes before م. The headings are the ARABIC
-    // labels, because the page reads in Arabic.
+    // labels, because the page reads in Arabic. Kuwait is hidden-only, so it
+    // must not appear at all.
     expect(tagged.map((section) => section.heading)).toEqual([
       QA_TAGGED_AR,
       EN_TAGGED_AR,
     ]);
-    // Arabic order: ب < ط < ق — where the Latin page had Q before T.
-    expect(tagged[1].cities).toEqual(['بنها', 'طنطا', 'قنا']);
-    expect(tagged[0].cities).toEqual(['الدوحة']);
+    // Arabic city order: ب < ط < ق — where the Latin page had Q before T.
+    // Banha's card is titled by its Arabic name.
+    expect(tagged[1].titles).toEqual(['مكتب بنها', 'طنطا', 'قنا']);
+    expect(tagged[0].titles).toEqual(['الدوحة']);
 
     await expect(page.locator('main h1')).toHaveText('وكلاؤنا');
+  });
+
+  test('renders the Arabic name and the website row', async ({ page }) => {
+    await page.goto(`${WEB_URL}/ar/agents`);
+
+    const banha = page
+      .locator('main li')
+      .filter({ has: page.locator('h3', { hasText: 'مكتب بنها' }) });
+    await expect(banha).toHaveCount(1);
+
+    const website = banha.locator('a[target="_blank"]');
+    await expect(website).toHaveText('banha.example.com');
+    await expect(website).toHaveAccessibleName(
+      'الموقع الإلكتروني: banha.example.com'
+    );
+    await expect(website).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   test('isolates the phone number LTR inside the RTL card', async ({
@@ -188,7 +335,7 @@ test.describe('agents page (ar)', () => {
 
     const banha = page
       .locator('main li')
-      .filter({ has: page.locator('h3', { hasText: 'بنها' }) });
+      .filter({ has: page.locator('h3', { hasText: 'مكتب بنها' }) });
     const phoneLink = banha.locator('a', { hasText: '+20 40 555 0100' });
     await expect(phoneLink).toHaveCount(1);
 
@@ -203,6 +350,29 @@ test.describe('agents page (ar)', () => {
     // The class marks the bidi-isolation style shared with contact info.
     expect((await isolate.getAttribute('class')) ?? '').toContain(
       'colina-ltr-isolate'
+    );
+  });
+
+  test('never shows a hidden agent and drops its empty country section', async ({
+    page,
+  }) => {
+    await page.goto(`${WEB_URL}/ar/agents`);
+
+    const main = page.locator('main');
+    await expect(main).not.toContainText('مكتب السويس المخفي');
+    await expect(main).not.toContainText('مكتب الكويت المخفي');
+
+    // The Kuwait heading never renders, while Egypt still does.
+    const headings = await page.locator('main section h2').allTextContents();
+    expect(headings.some((heading) => heading.includes(KWT_TAGGED_AR))).toBe(
+      false
+    );
+    expect(headings.some((heading) => heading.includes(EN_TAGGED_AR))).toBe(
+      true
+    );
+    // And the Arabic page has no visible Kuwait section either.
+    expect(headings.some((heading) => heading.includes(KWT_TAGGED))).toBe(
+      false
     );
   });
 });
@@ -244,18 +414,6 @@ test.describe('contact links', () => {
     await expect(qena.locator('a[href^="mailto:"]')).toHaveCount(0);
     await expect(qena).not.toContainText('not a phone');
     await expect(qena).not.toContainText('scheme:payload@example.com');
-
-    // Belt and braces across the WHOLE page: no main-level link is external
-    // or scheme-suffixed. The Agent model has no website column (reported),
-    // so nothing here can produce one, now or after a bad admin edit.
-    const hrefs = await page
-      .locator('main a')
-      .evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href')));
-    for (const href of hrefs) {
-      expect(href ?? '', `${href} must not be external`).not.toMatch(
-        /^(https?:|javascript:|data:|\/\/)/
-      );
-    }
   });
 });
 
@@ -267,9 +425,10 @@ test.describe('agents page empty state', () => {
 
   test('points to the contact page when no agent exists', async ({ page }) => {
     const snapshot = snapshotAllAgents() as AgentRowSnapshot[];
-    expect(snapshot.length, 'seeded agents must exist before the test').toBeGreaterThan(
-      0
-    );
+    expect(
+      snapshot.length,
+      'seeded agents must exist before the test'
+    ).toBeGreaterThan(0);
 
     try {
       deleteAllAgents();

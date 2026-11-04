@@ -192,6 +192,7 @@
     "address": "Address",
     "phone": "Phone",
     "email": "Email",
+    "website": "Website",
     "hours": "Working hours",
     "openInMaps": "Open in maps"
   },

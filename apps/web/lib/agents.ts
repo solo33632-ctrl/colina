@@ -14,18 +14,19 @@ export type AgentLocale = 'ar' | 'en';
  * The Agent row is admin-entered data and therefore untrusted: every free-text
  * field is trimmed (blank → null) and the contact values are re-validated on
  * read, so a stale or hand-edited row hides that contact instead of producing
- * a broken `tel:` or `mailto:` link. Rendering only ever uses React text
- * nodes — the database is never interpreted as HTML.
+ * a broken `tel:`/`mailto:` link or an off-site `javascript:` one. Rendering
+ * only ever uses React text nodes — the database is never interpreted as HTML.
  *
- * NOTE (Stage 37a): the Agent model has NO website, NO logo/photo, NO
- * active/published flag and NO agent-name field, and the stage forbids schema
- * changes, so those simply do not appear here. The identity of an agent is
- * its country + city; a future schema change can extend this type.
+ * Unpublished rows never reach this type: `getAgents` filters them in the
+ * query and `sanitizeAgent` drops any row that still says otherwise.
  */
 export type AgentContact = {
   id: string;
   countryEn: string;
   countryAr: string;
+  /** Display name, already falling back to the other language / null. */
+  nameEn: string | null;
+  nameAr: string | null;
   cityEn: string | null;
   cityAr: string | null;
   addressEn: string | null;
@@ -34,6 +35,12 @@ export type AgentContact = {
   phone: string | null;
   /** Address, already validated by `sanitizeContactEmail`. */
   email: string | null;
+  /** Absolute http(s) URL without credentials, or null. */
+  websiteUrl: string | null;
+  /** The URL's host, for the visible link text (e.g. `nile.example.com`). */
+  websiteHost: string | null;
+  /** Absolute https image URL, or null. */
+  logoUrl: string | null;
 };
 
 /** One country section: the agents that share the same country. */
@@ -48,33 +55,113 @@ const AGENT_SELECT = {
   id: true,
   countryEn: true,
   countryAr: true,
+  nameEn: true,
+  nameAr: true,
   cityEn: true,
   cityAr: true,
   addressEn: true,
   addressAr: true,
   phone: true,
   email: true,
+  websiteUrl: true,
+  logoUrl: true,
+  isPublished: true,
 } as const;
 
 type AgentRow = {
   id: string;
   countryEn: string;
   countryAr: string;
+  nameEn: string | null;
+  nameAr: string | null;
   cityEn: string | null;
   cityAr: string | null;
   addressEn: string | null;
   addressAr: string | null;
   phone: string | null;
   email: string | null;
+  websiteUrl: string | null;
+  logoUrl: string | null;
+  isPublished: boolean;
 };
+
+/**
+ * Parses a stored URL that must be absolute, credential-free and use one of
+ * the allowed schemes. Returns the trimmed original (the href a visitor gets)
+ * and the parsed host (the value the card shows), or null.
+ *
+ * The length cap matches the admin form's maximum: a value past it is not
+ * something the write side could have produced, so the read side ignores it.
+ */
+function parseAbsoluteUrl(
+  value: string | null | undefined,
+  protocols: readonly string[]
+): { url: string; host: string } | null {
+  const trimmed = trimmedOrNull(value);
+  if (trimmed === null || trimmed.length > 2048) {
+    return null;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (!protocols.includes(parsed.protocol)) {
+    return null;
+  }
+  // `https://user:secret@host` would put credentials in both the href and the
+  // visible host; the admin form refuses them, and a hand-edited row must too.
+  if (parsed.username !== '' || parsed.password !== '') {
+    return null;
+  }
+  if (parsed.hostname === '') {
+    return null;
+  }
+
+  return { url: trimmed, host: parsed.host };
+}
+
+/**
+ * The agent's website, or null.
+ *
+ * Absolute http(s) only: a bare `nile.example.com` is display text, not a
+ * link, and anything with another scheme — `javascript:` in particular — must
+ * never become an `href` on a public page.
+ */
+export function sanitizeAgentWebsite(
+  value: string | null | undefined
+): { url: string; host: string } | null {
+  return parseAbsoluteUrl(value, ['http:', 'https:']);
+}
+
+/**
+ * The agent's logo, or null.
+ *
+ * https only: the public site's CSP allows any https image but no http one,
+ * so an http URL would be a broken tile the browser refuses to fetch.
+ */
+export function sanitizeAgentLogo(
+  value: string | null | undefined
+): string | null {
+  return parseAbsoluteUrl(value, ['https:'])?.url ?? null;
+}
 
 /**
  * Re-validates one agent row for public display, or drops it.
  *
  * A row whose country is blank in both languages cannot be grouped or
  * identified, so it is dropped rather than rendered under an empty heading.
+ * A row that is not explicitly published is dropped too — the query already
+ * excludes it, but the public page must not depend on that one line alone.
  */
 export function sanitizeAgent(row: AgentRow): AgentContact | null {
+  if (row.isPublished !== true) {
+    return null;
+  }
+
   const countryEn = trimmedOrNull(row.countryEn);
   const countryAr = trimmedOrNull(row.countryAr);
   if (countryEn === null && countryAr === null) {
@@ -86,19 +173,41 @@ export function sanitizeAgent(row: AgentRow): AgentContact | null {
   // scheme into the href (`javascript:x@y.z` is caught by the `@` rule, while
   // `scheme:payload@host` is not), so the agent read side rejects colons.
   const email = sanitizeContactEmail(row.email);
+  const website = sanitizeAgentWebsite(row.websiteUrl);
   return {
     id: row.id,
     countryEn: countryEn ?? countryAr ?? '',
     countryAr: countryAr ?? countryEn ?? '',
     // Both language sides fall back to the other language's wording, keeping
     // a half-filled row from rendering blank fields on the page.
+    nameEn: trimmedOrNull(row.nameEn) ?? trimmedOrNull(row.nameAr),
+    nameAr: trimmedOrNull(row.nameAr) ?? trimmedOrNull(row.nameEn),
     cityEn: trimmedOrNull(row.cityEn) ?? trimmedOrNull(row.cityAr),
     cityAr: trimmedOrNull(row.cityAr) ?? trimmedOrNull(row.cityEn),
     addressEn: trimmedOrNull(row.addressEn) ?? trimmedOrNull(row.addressAr),
     addressAr: trimmedOrNull(row.addressAr) ?? trimmedOrNull(row.addressEn),
     phone: sanitizeContactPhone(row.phone),
     email: email !== null && !email.includes(':') ? email : null,
+    websiteUrl: website?.url ?? null,
+    websiteHost: website?.host ?? null,
+    logoUrl: sanitizeAgentLogo(row.logoUrl),
   };
+}
+
+/**
+ * Nullable localized text: both null ties, null sorts last, otherwise the
+ * locale's collation decides. Used for the city and the name so the two rules
+ * cannot drift apart.
+ */
+function compareLocalized(
+  a: string | null,
+  b: string | null,
+  collator: Intl.Collator
+): number {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return collator.compare(a, b);
 }
 
 /**
@@ -112,16 +221,15 @@ export function sanitizeAgent(row: AgentRow): AgentContact | null {
  * Ordering: countries alphabetically by the LOCALIZED name (Arabic collation
  * for `ar`, English for `en` — the localized name is exactly what the section
  * heading shows, so the visual order is the alphabetical order). Agents are
- * sorted by the localized city, agents with no city kept last, ties keeping
- * the admin's creation order via the id — the model has no name or sortOrder
- * field to sort by (reported in Stage 37a), so this is the deterministic
- * fallback.
+ * sorted by the localized city (city-less last), then the localized name
+ * (nameless last), then the id — the last two tiebreaks keep the order
+ * deterministic when several agents share a city.
  */
 export function buildAgentGroups(
   agents: AgentContact[],
   locale: AgentLocale
 ): AgentCountryGroup[] {
-  const localized = (agent: AgentContact) =>
+  const localizedCountry = (agent: AgentContact) =>
     locale === 'ar' ? agent.countryAr : agent.countryEn;
   const collator = new Intl.Collator(locale === 'ar' ? 'ar' : 'en');
 
@@ -144,24 +252,26 @@ export function buildAgentGroups(
 
   for (const group of groups.values()) {
     group.agents.sort((a, b) => {
-      const cityA = locale === 'ar' ? a.cityAr : a.cityEn;
-      const cityB = locale === 'ar' ? b.cityAr : b.cityEn;
-      // No city sorts last — a city-less agent belongs under the country but
-      // not ahead of agents a visitor can geographically place.
-      if (cityA === null && cityB !== null) return 1;
-      if (cityA !== null && cityB === null) return -1;
-      const byCity =
-        cityA === null || cityB === null ? 0 : collator.compare(cityA, cityB);
+      const byCity = compareLocalized(
+        locale === 'ar' ? a.cityAr : a.cityEn,
+        locale === 'ar' ? b.cityAr : b.cityEn,
+        collator
+      );
       if (byCity !== 0) return byCity;
-      // No name/sortOrder field exists (reported in Stage 37a): within a
-      // group the country is shared, so the id is the only meaningful,
-      // deterministic tiebreak.
+
+      const byName = compareLocalized(
+        locale === 'ar' ? a.nameAr : a.nameEn,
+        locale === 'ar' ? b.nameAr : b.nameEn,
+        collator
+      );
+      if (byName !== 0) return byName;
+
       return compareIds(a, b);
     });
   }
 
   return [...groups.values()].sort((a, b) =>
-    collator.compare(localized(a.agents[0]), localized(b.agents[0]))
+    collator.compare(localizedCountry(a.agents[0]), localizedCountry(b.agents[0]))
   );
 }
 
@@ -171,7 +281,7 @@ function compareIds(a: AgentContact, b: AgentContact): number {
 }
 
 /**
- * Every agent, grouped for the /agents page.
+ * Every published agent, grouped for the /agents page.
  *
  * Same contract as `getSiteSettings`: a missing table, a connection failure
  * or an unexpected value must never take a public page down, so the failure
@@ -186,6 +296,9 @@ export const getAgents = cache(async (
 ): Promise<AgentCountryGroup[]> => {
   try {
     const rows = await prisma.agent.findMany({
+      // Hidden agents never reach the page. The read-side check in
+      // `sanitizeAgent` repeats this rule defensively.
+      where: { isPublished: true },
       // Creation order is the base order; `buildAgentGroups` applies the
       // localized display sort on top of it.
       orderBy: [{ createdAt: 'asc' }],

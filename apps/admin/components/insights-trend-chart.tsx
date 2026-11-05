@@ -1,120 +1,248 @@
 import { getLocale, getTranslations } from 'next-intl/server';
-import type { DailyViews } from '@colina/db';
-import { trendBars, trendLabelStep, TREND } from '@/lib/insights';
+import type { TrafficReport } from '@/lib/insights-traffic';
 import { intlLocale } from '@/lib/format';
 
-// The per-day traffic trend, drawn as an inline SVG bar chart.
-//
-// No charting dependency: one `<rect>` per day plus a text label, which is why
-// the geometry is a pure function in `lib/insights.ts` (unit-tested) and this
-// file only decides what to draw.
-//
-// Three deliberate choices:
-//
-//   - Oldest on the left in BOTH locales. SVG coordinates do not flip with
-//     `dir`, so a mirrored chart would silently disagree with the page's own
-//     reading order in Arabic. A mirrored time axis is a known RTL readability
-//     trap, and a chart that reads the same way in both languages is worth more
-//     than one that mirrors. The labels themselves are localised, so Arabic
-//     readers get Arabic-Indic digits regardless.
-//   - The SVG is capped at its natural width, because `viewBox` + `w-full`
-//     scales text along with the bars: allowed to stretch, a 700-unit chart in a
-//     1100px card would render its axis labels at 16px.
-//   - Below `sm` the axis labels are dropped rather than shrunk. A 30-bar chart
-//     at phone width scales its labels to roughly 5px — smaller than useless and
-//     worse than none. The per-day numbers stay reachable in each bar's tooltip
-//     and in the screen-reader list below, so nothing is lost but the pixels.
-export async function InsightsTrendChart({ days }: { days: DailyViews[] }) {
-  const locale = await getLocale();
+// Hand-built inline SVG: no charting dependency, and the geometry is simple
+// enough to keep in the component. The chart is always LTR (time flows left to
+// right in both languages) while every label is localized.
+const CHART = {
+  width: 720,
+  height: 260,
+  left: 44,
+  right: 16,
+  top: 16,
+  bottom: 34,
+} as const;
+
+type Scale = { max: number; ticks: number[] };
+
+/**
+ * Rounded axis ticks (0, 2, 4, 6… rather than 0, 1.73, 3.46…). The tick count
+ * is a target, not a promise: the step is snapped to 1/2/5/10 so the labels
+ * stay readable. Views are counts, so the step never goes below 1.
+ */
+function niceScale(maxValue: number): Scale {
+  const safe = Math.max(1, maxValue);
+  const rough = safe / 5;
+  const power = 10 ** Math.floor(Math.log10(rough));
+  const normalized = rough / power;
+  const step = Math.max(
+    1,
+    (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) *
+      power
+  );
+  const max = Math.ceil(safe / step) * step;
+  const ticks: number[] = [];
+  for (let value = 0; value <= max; value += step) {
+    ticks.push(Math.round(value * 1_000_000) / 1_000_000);
+  }
+  return { max, ticks };
+}
+
+function labelStep(count: number): number {
+  return count <= 7 ? 1 : Math.ceil(count / 6);
+}
+
+export async function InsightsTrendChart({
+  report,
+}: {
+  report: TrafficReport;
+}) {
   const t = await getTranslations('Insights');
-  const intl = intlLocale(locale);
-
-  // Drawn height for a day with no views. Presentation-only, so it lives here
-  // rather than in the tested geometry function: `bar.height === 0` stays the
-  // truthful answer to "how tall is this bar", and the stub is how a zero is
-  // made visible.
-  const ZERO_BAR_HEIGHT = 2;
-
-  const bars = trendBars(days);
-  const labelEvery = trendLabelStep(bars.length);
-  // The floor every bar stands on: the bottom of the plot area.
-  const baselineY = TREND.height - TREND.paddingBottom;
-
-  const dayLabel = (date: Date) =>
-    new Intl.DateTimeFormat(intl, { day: 'numeric', month: 'short' }).format(
-      date
-    );
-  const fullLabel = (date: Date) =>
+  const locale = await getLocale();
+  const intl = intlLocale(locale as 'ar' | 'en');
+  const number = (value: number) => value.toLocaleString(intl);
+  const shortDate = (date: Date) =>
+    new Intl.DateTimeFormat(intl, {
+      day: 'numeric',
+      month: 'short',
+    }).format(date);
+  const fullDate = (date: Date) =>
     new Intl.DateTimeFormat(intl, {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
     }).format(date);
 
-  const total = days.reduce((sum, day) => sum + day.count, 0);
-  const summary = t('trendSummary', { total, days: days.length });
+  const { series, previousSeries } = report;
+  if (series.length === 0) {
+    return null;
+  }
+
+  const scale = niceScale(
+    Math.max(
+      ...series.map((day) => day.count),
+      ...previousSeries.map((day) => day.count)
+    )
+  );
+  const plotWidth = CHART.width - CHART.left - CHART.right;
+  const plotHeight = CHART.height - CHART.top - CHART.bottom;
+  const baseline = CHART.top + plotHeight;
+
+  const x = (index: number) =>
+    CHART.left +
+    (series.length === 1
+      ? plotWidth / 2
+      : (index / (series.length - 1)) * plotWidth);
+  const y = (count: number) =>
+    CHART.top + plotHeight - (count / scale.max) * plotHeight;
+
+  const points = series.map((day, index) => ({
+    day,
+    x: Math.round(x(index) * 100) / 100,
+    y: Math.round(y(day.count) * 100) / 100,
+  }));
+  const previousPoints = previousSeries.map((day, index) => ({
+    day,
+    x: Math.round(x(index) * 100) / 100,
+    y: Math.round(y(day.count) * 100) / 100,
+  }));
+
+  const linePath = points
+    .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x} ${point.y}`)
+    .join(' ');
+  const areaPath = `M${points[0].x} ${baseline} ${linePath.replace(
+    /^M/,
+    'L'
+  )} L${points[points.length - 1].x} ${baseline} Z`;
+  const previousPath = previousPoints
+    .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x} ${point.y}`)
+    .join(' ');
+
+  const step = labelStep(series.length);
+  const total = report.total;
+  const summary = t('trendSummary', { total, days: report.days });
+  const showPrevious = report.previousTotal > 0;
 
   return (
-    <figure className="mt-4">
+    <figure className="min-w-0" dir="ltr">
       <svg
-        viewBox={`0 0 ${TREND.width} ${TREND.height}`}
+        viewBox={`0 0 ${CHART.width} ${CHART.height}`}
         role="img"
         aria-label={summary}
-        className="h-auto w-full max-w-[700px]"
+        className="h-auto w-full max-w-[720px]"
       >
         <title>{summary}</title>
-        <line
-          x1={TREND.paddingX}
-          y1={baselineY}
-          x2={TREND.width - TREND.paddingX}
-          y2={baselineY}
-          strokeWidth="1"
-          className="stroke-stone-300"
+
+        {scale.ticks.map((tick) => (
+          <g key={tick}>
+            <line
+              x1={CHART.left}
+              y1={y(tick)}
+              x2={CHART.width - CHART.right}
+              y2={y(tick)}
+              strokeWidth="1"
+              className={tick === 0 ? 'stroke-stone-300' : 'stroke-stone-200'}
+            />
+            <text
+              x={CHART.left - 8}
+              y={y(tick) + 4}
+              textAnchor="end"
+              className="fill-stone-500 text-[11px]"
+            >
+              {number(tick)}
+            </text>
+          </g>
+        ))}
+
+        <path d={areaPath} className="fill-brand-100" />
+        {showPrevious ? (
+          <path
+            d={previousPath}
+            fill="none"
+            strokeWidth="1.5"
+            strokeDasharray="4 4"
+            className="stroke-stone-400"
+          />
+        ) : null}
+        <path
+          d={linePath}
+          fill="none"
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          className="stroke-brand-600"
         />
-        {bars.map((bar, index) => {
-          // A zero-height bar is invisible, which would make a quiet stretch
-          // of the window look like the window was shorter than it is. So a day
-          // with no views gets a 2-unit stub in pale grey: unmistakably "none",
-          // and it keeps the axis showing every day that was asked about.
-          const drawnHeight = bar.height === 0 ? ZERO_BAR_HEIGHT : bar.height;
+
+        {points.map((point) => {
+          const label = t('trendPointLabel', {
+            date: fullDate(point.day.date),
+            count: number(point.day.count),
+          });
           return (
-            <g key={bar.date.toISOString()}>
-              <rect
-                x={bar.x}
-                y={baselineY - drawnHeight}
-                width={bar.width}
-                height={drawnHeight}
-                rx="2"
-                className={
-                  bar.count === 0 ? 'fill-stone-200' : 'fill-brand-600'
-                }
-              >
-                {/* The tooltip is the one-bar-at-a-time label. */}
-                <title>{`${fullLabel(bar.date)} — ${bar.count.toLocaleString(intl)}`}</title>
-              </rect>
-              {index % labelEvery === 0 || index === bars.length - 1 ? (
-                <text
-                  x={bar.x + bar.width / 2}
-                  y={baselineY + 16}
-                  textAnchor="middle"
-                  className="fill-stone-500 text-[11px] max-sm:hidden"
-                >
-                  {dayLabel(bar.date)}
-                </text>
-              ) : null}
+            <g
+              key={point.day.date.toISOString()}
+              tabIndex={0}
+              role="img"
+              aria-label={label}
+              className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+            >
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r="2.5"
+                className="fill-brand-600"
+              />
+              <title>{label}</title>
             </g>
           );
         })}
+
+        {points.map((point, index) =>
+          index % step === 0 || index === points.length - 1 ? (
+            <text
+              key={`label-${point.day.date.toISOString()}`}
+              x={point.x}
+              y={baseline + 20}
+              textAnchor="middle"
+              className="fill-stone-500 text-[11px]"
+            >
+              {shortDate(point.day.date)}
+            </text>
+          ) : null
+        )}
       </svg>
-      {/* The chart's numbers, for anyone the picture does not serve. */}
-      <dl className="sr-only">
-        {days.map((day) => (
-          <div key={day.date.toISOString()}>
-            <dt>{fullLabel(day.date)}</dt>
-            <dd>{day.count.toLocaleString(intl)}</dd>
-          </div>
-        ))}
-      </dl>
+
+      {showPrevious ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-stone-600">
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="h-0.5 w-4 rounded bg-brand-600"
+              aria-hidden="true"
+            />
+            {t('trendLegendCurrent')}
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="h-0.5 w-4 border-t-2 border-dashed border-stone-400"
+              aria-hidden="true"
+            />
+            {t('trendLegendPrevious')}
+          </span>
+        </div>
+      ) : null}
+
+      {/* The same numbers as a table, for screen readers and keyboard users
+          who would rather read than inspect points. */}
+      <table className="sr-only">
+        <caption>{t('trendTableCaption')}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t('tableDate')}</th>
+            <th scope="col">{t('tableViews')}</th>
+            <th scope="col">{t('tablePrevious')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {series.map((day, index) => (
+            <tr key={day.date.toISOString()}>
+              <th scope="row">{fullDate(day.date)}</th>
+              <td>{number(day.count)}</td>
+              <td>{number(previousSeries[index]?.count ?? 0)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </figure>
   );
 }

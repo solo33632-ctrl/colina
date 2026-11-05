@@ -1,17 +1,13 @@
 import type { Metadata } from 'next';
-import {
-  countSecurityEventsByType,
-  listSecurityEvents,
-  pageViewDailySeries,
-  pageViewTotal,
-  topPageViews,
-} from '@colina/db';
-import { getTranslations } from 'next-intl/server';
+import { countSecurityEventsByType, listSecurityEvents } from '@colina/db';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Card, Container } from '@colina/ui';
 import { InsightsEventFilter } from '@/components/insights-event-filter';
 import { InsightsEventTable } from '@/components/insights-event-table';
-import { InsightsRangeFilter } from '@/components/insights-range-filter';
+import { InsightsLocaleSplit } from '@/components/insights-locale-split';
+import { InsightsSections } from '@/components/insights-sections';
 import { InsightsTopPages } from '@/components/insights-top-pages';
+import { InsightsTrafficKpis } from '@/components/insights-traffic-kpis';
 import { InsightsTrendChart } from '@/components/insights-trend-chart';
 import { ListPagination } from '@/components/list-pagination';
 import { MetricCard } from '@/components/metric-card';
@@ -19,13 +15,17 @@ import { Link } from '@/i18n/navigation';
 import { requireSuperAdmin } from '@/lib/admin-action';
 import {
   clampPage,
-  dailySeriesForWindow,
   parseEventType,
   parsePage,
-  parseRangeDays,
-  rangeWindow,
   SECURITY_EVENT_TYPES,
 } from '@/lib/insights';
+import {
+  loadTrafficReport,
+  parseTrafficRange,
+  TRAFFIC_RANGE_DAYS,
+  windowForDays,
+} from '@/lib/insights-traffic';
+import { intlLocale } from '@/lib/format';
 import { sectionMetadata } from '@/lib/metadata';
 
 export async function generateMetadata({
@@ -38,7 +38,6 @@ export async function generateMetadata({
 }
 
 const PAGE_SIZE = 20;
-const TOP_PAGES = 10;
 
 type Props = {
   searchParams: Promise<{ range?: string; type?: string; page?: string }>;
@@ -70,28 +69,28 @@ export default async function InsightsPage({ searchParams }: Props) {
   }
 
   const params = await searchParams;
-  const days = parseRangeDays(params.range);
+  const days = parseTrafficRange(params.range);
   const eventType = parseEventType(params.type);
   const page = parsePage(params.page);
-  const window = rangeWindow(days);
+  const now = new Date();
+  const window = windowForDays(days, now);
+  const locale = await getLocale();
+  const intl = intlLocale(locale as 'ar' | 'en');
 
-  const [totalViews, series, topPages, eventsByType, events] =
-    await Promise.all([
-      pageViewTotal(window),
-      pageViewDailySeries(window),
-      topPageViews(window, TOP_PAGES),
-      // Unfiltered on purpose: the tiles describe the shape of the window, and
-      // only the table below answers to the type filter. Filtering the tiles too
-      // would make three of them read zero the moment a filter is applied, which
-      // looks like a data problem rather than a filter.
-      countSecurityEventsByType(window),
-      listSecurityEvents({
-        range: window,
-        type: eventType,
-        page,
-        pageSize: PAGE_SIZE,
-      }),
-    ]);
+  const [report, eventsByType, events] = await Promise.all([
+    loadTrafficReport(days, now),
+    // Unfiltered on purpose: the tiles describe the shape of the window, and
+    // only the table below answers to the type filter. Filtering the tiles too
+    // would make three of them read zero the moment a filter is applied, which
+    // looks like a data problem rather than a filter.
+    countSecurityEventsByType(window),
+    listSecurityEvents({
+      range: window,
+      type: eventType,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(events.total / PAGE_SIZE));
   const safePage = clampPage(page, totalPages);
@@ -128,24 +127,57 @@ export default async function InsightsPage({ searchParams }: Props) {
     return `/insights?${query.toString()}`;
   };
 
-  const dailySeries = dailySeriesForWindow(series, window);
-  const busiestDay = dailySeries.reduce(
-    (max, day) => Math.max(max, day.count),
-    0
-  );
   const totalEvents = SECURITY_EVENT_TYPES.reduce(
     (sum, type) => sum + eventsByType[type],
     0
   );
+  const updatedTime = new Intl.DateTimeFormat(intl, {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(now);
 
   return (
     <main>
       <Container className="py-10">
-        <h1 className="text-2xl font-bold text-stone-900">{t('heading')}</h1>
-        <p className="mt-1 max-w-3xl text-sm text-stone-600">{t('intro')}</p>
-
-        {/* One control for both sections: "over what period?" has one answer. */}
-        <InsightsRangeFilter days={days} eventType={eventType} />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-stone-900">
+              {t('heading')}
+            </h1>
+            <p className="mt-1 max-w-3xl text-sm text-stone-600">
+              {t('intro')}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <nav
+              aria-label={t('rangeLabel')}
+              data-testid="insights-range-switch"
+              className="inline-flex overflow-hidden rounded-lg border border-stone-300"
+            >
+              {TRAFFIC_RANGE_DAYS.map((option) => {
+                const active = option === days;
+                return (
+                  <Link
+                    key={option}
+                    href={href({ range: option })}
+                    aria-current={active ? 'page' : undefined}
+                    className={[
+                      'px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600',
+                      active
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-white text-stone-700 hover:bg-stone-100',
+                    ].join(' ')}
+                  >
+                    {t(`ranges.${option}` as never)}
+                  </Link>
+                );
+              })}
+            </nav>
+            <p className="text-sm text-stone-500">
+              {t('updatedAt', { time: updatedTime })}
+            </p>
+          </div>
+        </div>
 
         <section aria-labelledby="insights-traffic-heading" className="mt-8">
           <h2
@@ -154,35 +186,60 @@ export default async function InsightsPage({ searchParams }: Props) {
           >
             {t('trafficHeading')}
           </h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <MetricCard
-              label={t('totalViews')}
-              count={totalViews}
-              testId="insights-total-views"
-            />
-            <MetricCard label={t('busiestDay')} count={busiestDay} />
-            <MetricCard
-              label={t('averagePerDay')}
-              count={Math.round(totalViews / days)}
-            />
-          </div>
 
-          <h3 className="mt-8 text-sm font-semibold text-stone-700">
-            {t('trendHeading')}
-          </h3>
-          {totalViews === 0 ? (
+          <InsightsTrafficKpis report={report} />
+
+          {report.total === 0 ? (
             <Card className="mt-4" description={t('trafficEmpty')} />
           ) : (
-            <InsightsTrendChart days={dailySeries} />
-          )}
+            <>
+              <h3 className="mt-8 text-sm font-semibold text-stone-700">
+                {t('trendHeading')}
+              </h3>
+              <Card className="mt-4">
+                <InsightsTrendChart report={report} />
+              </Card>
 
-          <h3 className="mt-8 text-sm font-semibold text-stone-700">
-            {t('topPagesHeading')}
-          </h3>
-          {topPages.length === 0 ? (
-            <Card className="mt-4" description={t('trafficEmpty')} />
-          ) : (
-            <InsightsTopPages pages={topPages} />
+              <div className="mt-8 grid min-w-0 gap-6 xl:grid-cols-2">
+                <section aria-labelledby="insights-top-pages-heading">
+                  <h3
+                    id="insights-top-pages-heading"
+                    className="text-sm font-semibold text-stone-700"
+                  >
+                    {t('topPagesHeading')}
+                  </h3>
+                  <Card className="mt-4">
+                    <InsightsTopPages pages={report.topPages} />
+                  </Card>
+                </section>
+
+                <div className="grid min-w-0 gap-6">
+                  <section aria-labelledby="insights-sections-heading">
+                    <h3
+                      id="insights-sections-heading"
+                      className="text-sm font-semibold text-stone-700"
+                    >
+                      {t('sectionsHeading')}
+                    </h3>
+                    <Card className="mt-4">
+                      <InsightsSections sections={report.sections} />
+                    </Card>
+                  </section>
+
+                  <section aria-labelledby="insights-locale-heading">
+                    <h3
+                      id="insights-locale-heading"
+                      className="text-sm font-semibold text-stone-700"
+                    >
+                      {t('localeSplitHeading')}
+                    </h3>
+                    <Card className="mt-4">
+                      <InsightsLocaleSplit locales={report.locales} />
+                    </Card>
+                  </section>
+                </div>
+              </div>
+            </>
           )}
         </section>
 
@@ -194,12 +251,17 @@ export default async function InsightsPage({ searchParams }: Props) {
             {t('securityHeading')}
           </h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard label={t('totalEvents')} count={totalEvents} />
+            <MetricCard
+              label={t('totalEvents')}
+              count={totalEvents}
+              value={totalEvents.toLocaleString(intl)}
+            />
             {SECURITY_EVENT_TYPES.map((type) => (
               <MetricCard
                 key={type}
                 label={t(`eventTypes.${type}`)}
                 count={eventsByType[type]}
+                value={eventsByType[type].toLocaleString(intl)}
                 tone="alert"
               />
             ))}

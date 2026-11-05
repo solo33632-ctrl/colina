@@ -1,65 +1,61 @@
 import { getLocale, getTranslations } from 'next-intl/server';
-import type { TopPageViews } from '@colina/db';
-import { AdminTable, type AdminTableColumn } from '@/components/admin-table';
-import { routing } from '@/i18n/routing';
+import type { PageLabel, TrafficTopPage } from '@/lib/insights-traffic';
 import { intlLocale } from '@/lib/format';
 
-type Locale = (typeof routing.locales)[number];
-
-// The busiest paths in the selected window, with the language split the schema
-// keeps for exactly this reason.
-//
-// The paths are the site-internal, locale-agnostic routes (`/`, `/privacy`,
-// `/machines/colina-pack-s`) — the column a reader recognises from the URL bar,
-// with the locale as its own column rather than baked into the string.
-export async function InsightsTopPages({ pages }: { pages: TopPageViews[] }) {
-  const locale = await getLocale();
+// The busiest paths, as a horizontal bar list. The friendly label is a reading
+// aid; the stored path stays visible in muted monospace so an operator can
+// still match it against the address bar or the sitemap.
+export async function InsightsTopPages({ pages }: { pages: TrafficTopPage[] }) {
   const t = await getTranslations('Insights');
-  const intl = intlLocale(locale as Locale);
+  const locale = await getLocale();
+  const intl = intlLocale(locale as 'ar' | 'en');
+  const number = (value: number) => value.toLocaleString(intl);
+  const percent = (value: number) =>
+    new Intl.NumberFormat(intl, {
+      style: 'percent',
+      maximumFractionDigits: 1,
+    }).format(value / 100);
 
-  const columns: AdminTableColumn<TopPageViews>[] = [
-    {
-      key: 'path',
-      header: t('pathColumn'),
-      render: (row) => (
-        // Verbatim route, in code style: it is a path, not prose, and the
-        // admin's job is to match it against the address bar or the sitemap.
-        <span
-          dir="ltr"
-          className="block max-w-[22rem] truncate font-mono text-xs text-stone-900"
-        >
-          {row.path}
-        </span>
-      ),
-    },
-    ...routing.locales.map((code) => ({
-      key: `locale-${code}`,
-      header: t('localeColumn', { locale: code }),
-      className: 'hidden sm:table-cell',
-      render: (row: TopPageViews) => (
-        <span className="tabular-nums">
-          {(row.byLocale[code] ?? 0).toLocaleString(intl)}
-        </span>
-      ),
-    })),
-    {
-      key: 'total',
-      header: t('viewsColumn'),
-      className: 'text-end',
-      render: (row) => (
-        <span className="font-semibold tabular-nums text-stone-900">
-          {row.total.toLocaleString(intl)}
-        </span>
-      ),
-    },
-  ];
+  const labelText = (label: PageLabel) => {
+    const key = `pageLabels.${label.key}` as never;
+    return label.name ? t(key, { name: label.name } as never) : t(key);
+  };
 
   return (
-    <AdminTable
-      label={t('topPagesHeading')}
-      columns={columns}
-      rows={pages}
-      rowKey={(row) => row.path}
-    />
+    <ol data-testid="insights-top-pages" className="grid gap-4">
+      {pages.map((page) => (
+        <li key={page.path} data-testid="insights-top-page">
+          <div className="flex items-baseline justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate font-medium text-stone-900">
+                {labelText(page.label)}
+              </p>
+              <p
+                dir="ltr"
+                className="truncate font-mono text-xs text-stone-500"
+              >
+                {page.path}
+              </p>
+            </div>
+            <p className="shrink-0 text-sm tabular-nums text-stone-900">
+              <span className="font-semibold">{number(page.total)}</span>
+              <span className="text-stone-500">
+                {' · '}
+                {percent(page.share)}
+              </span>
+            </p>
+          </div>
+          <div
+            className="mt-1.5 h-2 overflow-hidden rounded-full bg-stone-100"
+            aria-hidden="true"
+          >
+            <div
+              className="h-full rounded-full bg-brand-600"
+              style={{ width: `${page.share}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }

@@ -105,12 +105,12 @@ describe('admin message files', () => {
   });
 
   it('keeps the security event type codes in sync with the message keys', () => {
-    // Same guard for `SECURITY_EVENT_TYPES` in lib/insights.ts, whose
-    // `Insights.eventTypes.*` keys are their labels. The dashboard also
-    // renders a tile per type, so a code without a label would show a raw
+    // Same guard for `SECURITY_EVENT_TYPES` in lib/insights-security.ts,
+    // whose `Insights.eventTypes.*` keys are their labels. The dashboard also
+    // renders a card per type, so a code without a label would show a raw
     // enum value where a translated name belongs.
     const source = readFileSync(
-      join(import.meta.dirname, 'insights.ts'),
+      join(import.meta.dirname, 'insights-security.ts'),
       'utf8'
     );
     const declared = source.match(/SECURITY_EVENT_TYPES = \[([^\]]*)\]/)?.[1];

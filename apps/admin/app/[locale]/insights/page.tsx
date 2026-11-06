@@ -1,29 +1,28 @@
 import type { Metadata } from 'next';
-import { countSecurityEventsByType, listSecurityEvents } from '@colina/db';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Card, Container } from '@colina/ui';
-import { InsightsEventFilter } from '@/components/insights-event-filter';
-import { InsightsEventTable } from '@/components/insights-event-table';
 import { InsightsLocaleSplit } from '@/components/insights-locale-split';
 import { InsightsSections } from '@/components/insights-sections';
+import { InsightsSecurityChart } from '@/components/insights-security-chart';
+import { InsightsSecurityEvents } from '@/components/insights-security-events';
+import { InsightsSecurityFilter } from '@/components/insights-security-filter';
+import { InsightsSecurityKpis } from '@/components/insights-security-kpis';
+import { InsightsSecurityTargets } from '@/components/insights-security-targets';
 import { InsightsTopPages } from '@/components/insights-top-pages';
 import { InsightsTrafficKpis } from '@/components/insights-traffic-kpis';
 import { InsightsTrendChart } from '@/components/insights-trend-chart';
 import { ListPagination } from '@/components/list-pagination';
-import { MetricCard } from '@/components/metric-card';
 import { Link } from '@/i18n/navigation';
 import { requireSuperAdmin } from '@/lib/admin-action';
 import {
-  clampPage,
+  loadSecurityReport,
   parseEventType,
   parsePage,
-  SECURITY_EVENT_TYPES,
-} from '@/lib/insights';
+} from '@/lib/insights-security';
 import {
   loadTrafficReport,
   parseTrafficRange,
   TRAFFIC_RANGE_DAYS,
-  windowForDays,
 } from '@/lib/insights-traffic';
 import { intlLocale } from '@/lib/format';
 import { sectionMetadata } from '@/lib/metadata';
@@ -37,8 +36,6 @@ export async function generateMetadata({
   return sectionMetadata(locale, 'Insights', 'heading');
 }
 
-const PAGE_SIZE = 20;
-
 type Props = {
   searchParams: Promise<{ range?: string; type?: string; page?: string }>;
 };
@@ -51,9 +48,9 @@ export default async function InsightsPage({ searchParams }: Props) {
   const t = await getTranslations('Insights');
 
   // Second super-admin-only page in the panel (the audit log is the first).
-  // It shows IP addresses and the shape of an attack, so an editor is refused
-  // with the same explanatory card rather than a bare 403 — and, as on the
-  // audit log, none of the queries below run for them.
+  // It shows masked addresses and the shape of an attack, so an editor is
+  // refused with the same explanatory card rather than a bare 403 — and, as
+  // on the audit log, none of the queries below run for them.
   const session = await requireSuperAdmin();
   if (!session) {
     return (
@@ -73,40 +70,16 @@ export default async function InsightsPage({ searchParams }: Props) {
   const eventType = parseEventType(params.type);
   const page = parsePage(params.page);
   const now = new Date();
-  const window = windowForDays(days, now);
   const locale = await getLocale();
   const intl = intlLocale(locale as 'ar' | 'en');
 
-  const [report, eventsByType, events] = await Promise.all([
+  const [report, security] = await Promise.all([
     loadTrafficReport(days, now),
-    // Unfiltered on purpose: the tiles describe the shape of the window, and
-    // only the table below answers to the type filter. Filtering the tiles too
-    // would make three of them read zero the moment a filter is applied, which
-    // looks like a data problem rather than a filter.
-    countSecurityEventsByType(window),
-    listSecurityEvents({
-      range: window,
-      type: eventType,
-      page,
-      pageSize: PAGE_SIZE,
-    }),
+    // The KPIs describe the shape of the whole window; only the events list
+    // below answers to the type filter. Filtering the cards too would make
+    // the other types read zero the moment a filter is applied.
+    loadSecurityReport(days, { type: eventType, page }, now),
   ]);
-
-  const totalPages = Math.max(1, Math.ceil(events.total / PAGE_SIZE));
-  const safePage = clampPage(page, totalPages);
-  // Only a page past the end has to be read again; otherwise the page already
-  // fetched is the page being shown.
-  const rows =
-    safePage === page
-      ? events.rows
-      : (
-          await listSecurityEvents({
-            range: window,
-            type: eventType,
-            page: safePage,
-            pageSize: PAGE_SIZE,
-          })
-        ).rows;
 
   // Every link on this page carries the other controls forward, so switching
   // the range or the filter never silently resets the page number.
@@ -127,10 +100,6 @@ export default async function InsightsPage({ searchParams }: Props) {
     return `/insights?${query.toString()}`;
   };
 
-  const totalEvents = SECURITY_EVENT_TYPES.reduce(
-    (sum, type) => sum + eventsByType[type],
-    0
-  );
   const updatedTime = new Intl.DateTimeFormat(intl, {
     hour: '2-digit',
     minute: '2-digit',
@@ -250,50 +219,81 @@ export default async function InsightsPage({ searchParams }: Props) {
           >
             {t('securityHeading')}
           </h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard
-              label={t('totalEvents')}
-              count={totalEvents}
-              value={totalEvents.toLocaleString(intl)}
-            />
-            {SECURITY_EVENT_TYPES.map((type) => (
-              <MetricCard
-                key={type}
-                label={t(`eventTypes.${type}`)}
-                count={eventsByType[type]}
-                value={eventsByType[type].toLocaleString(intl)}
-                tone="alert"
-              />
-            ))}
-          </div>
 
-          <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
-            <InsightsEventFilter selected={eventType} rangeDays={days} />
-            {eventType ? (
-              <Link
-                href={href({ type: null })}
-                className="rounded pb-2 text-sm font-medium text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-              >
-                {t('clearTypeFilter')}
-              </Link>
-            ) : null}
-          </div>
+          <InsightsSecurityKpis report={security} />
 
-          {rows.length === 0 ? (
-            <Card
-              className="mt-6"
-              description={
-                eventType ? t('eventsEmptyFiltered') : t('eventsEmpty')
-              }
-            />
+          {security.total === 0 ? (
+            <div data-testid="insights-security-all-clear">
+              <Card className="mt-6">
+                <p className="text-base font-semibold text-stone-900">
+                  {t('securityAllClearTitle')}
+                </p>
+                <p className="mt-1 text-sm text-stone-600">
+                  {t('securityAllClearDetail')}
+                </p>
+              </Card>
+            </div>
           ) : (
             <>
-              <InsightsEventTable events={rows} />
-              <ListPagination
-                page={safePage}
-                totalPages={totalPages}
-                buildHref={(target) => href({ page: target })}
-              />
+              <div className="mt-8 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <section
+                  aria-labelledby="insights-security-trend-heading"
+                  className="min-w-0"
+                >
+                  <h3
+                    id="insights-security-trend-heading"
+                    className="text-sm font-semibold text-stone-700"
+                  >
+                    {t('securityTrendHeading')}
+                  </h3>
+                  <Card className="mt-4 min-w-0">
+                    <InsightsSecurityChart report={security} />
+                  </Card>
+                </section>
+
+                <section aria-labelledby="insights-security-targets-heading">
+                  <h3
+                    id="insights-security-targets-heading"
+                    className="text-sm font-semibold text-stone-700"
+                  >
+                    {t('securityTopTargetsHeading')}
+                  </h3>
+                  <Card className="mt-4">
+                    <InsightsSecurityTargets targets={security.topTargets} />
+                  </Card>
+                </section>
+              </div>
+
+              <div className="mt-8">
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <h3 className="text-sm font-semibold text-stone-700">
+                    {t('eventsHeading')}
+                  </h3>
+                  <InsightsSecurityFilter
+                    selected={eventType}
+                    rangeDays={days}
+                  />
+                </div>
+
+                {security.events.rows.length === 0 ? (
+                  <Card
+                    className="mt-6"
+                    description={t('eventsEmptyFiltered')}
+                  />
+                ) : (
+                  <>
+                    <InsightsSecurityEvents
+                      events={security.events.rows}
+                      now={now}
+                    />
+                    <ListPagination
+                      page={security.events.page}
+                      totalPages={security.events.totalPages}
+                      buildHref={(target) => href({ page: target })}
+                    />
+                  </>
+                )}
+              </div>
             </>
           )}
         </section>

@@ -882,6 +882,132 @@ export function resetPageViewDaily() {
   runInDb(`await prisma.pageViewDaily.deleteMany({});`);
 }
 
+export type SecurityEventFixture = {
+  type: 'RATE_LIMITED' | 'HONEYPOT_CAUGHT' | 'LOGIN_FAILED';
+  /** The endpoint/form target stored in `SecurityEvent.source`. */
+  source: string;
+  ip?: string | null;
+  detail?: string | null;
+  /** ISO timestamp; omitted rows use the database's `now()`. */
+  createdAt?: string;
+};
+
+/**
+ * Creates security events directly, for the insights dashboard's exact
+ * counts, type breakdown, top-target order and pagination.
+ *
+ * Every row must carry the fixture tag in source, ip or detail so
+ * `deleteSecurityEventsByTag` can remove precisely this run's rows.
+ */
+export function createSecurityEvents(
+  rows: SecurityEventFixture[],
+  tag = FIXTURE_TAG
+): string[] {
+  for (const row of rows) {
+    if (
+      ![row.source, row.ip, row.detail].some((value) => value?.includes(tag))
+    ) {
+      throw new Error(
+        `createSecurityEvents: a row for ${row.source} does not carry the "${tag}" tag`
+      );
+    }
+  }
+
+  const ids = runInDbValue<string[]>(`
+    const rows = ${JSON.stringify(rows)};
+    const ids = [];
+    for (const row of rows) {
+      const created = await prisma.securityEvent.create({
+        data: {
+          type: row.type,
+          source: row.source,
+          ip: row.ip ?? null,
+          detail: row.detail ?? null,
+          ...(row.createdAt ? { createdAt: new Date(row.createdAt) } : {}),
+        },
+        select: { id: true },
+      });
+      ids.push(created.id);
+    }
+    return ids;
+  `);
+  if (!ids) {
+    throw new Error('createSecurityEvents: no ids returned');
+  }
+  return ids;
+}
+
+/** Removes the security rows a spec created, matched by the same tag. */
+export function deleteSecurityEventsByTag(tag = FIXTURE_TAG) {
+  try {
+    runInDb(`
+      await prisma.securityEvent.deleteMany({
+        where: {
+          OR: [
+            { source: { contains: ${JSON.stringify(tag)} } },
+            { ip: { contains: ${JSON.stringify(tag)} } },
+            { detail: { contains: ${JSON.stringify(tag)} } },
+          ],
+        },
+      });
+    `);
+  } catch {
+    // Intentionally ignored: cleanup must never mask a test result.
+  }
+}
+
+/**
+ * The whole SecurityEvent table, serialized.
+ *
+ * The all-clear test needs an empty window, but the test database legitimately
+ * contains security rows written by earlier specs and manual runs. Snapshot,
+ * clear, assert, then restore is the only way to test the zero state without
+ * destroying that data or relying on a range that happens to be quiet.
+ * Nothing references SecurityEvent, so ids and timestamps can be put back.
+ */
+export type SecurityEventRowSnapshot = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  type: SecurityEventFixture['type'];
+  source: string;
+  ip: string | null;
+  detail: string | null;
+};
+
+export function snapshotAllSecurityEvents(): SecurityEventRowSnapshot[] {
+  assertTestDatabase();
+  return (
+    runInDbValue<SecurityEventRowSnapshot[]>(`
+      return prisma.securityEvent.findMany({ orderBy: { createdAt: 'asc' } });
+    `) ?? []
+  );
+}
+
+export function deleteAllSecurityEvents() {
+  assertTestDatabase();
+  runInDb(`await prisma.securityEvent.deleteMany({});`);
+}
+
+export function restoreSecurityEvents(rows: SecurityEventRowSnapshot[]) {
+  assertTestDatabase();
+  runInDb(`
+    const rows = ${JSON.stringify(rows)}.map((row) => ({
+      id: row.id,
+      type: row.type,
+      source: row.source,
+      ip: row.ip,
+      detail: row.detail,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt),
+    }));
+    await prisma.securityEvent.deleteMany({});
+    if (rows.length > 0) {
+      await prisma.securityEvent.createMany({ data: rows });
+    }
+  `);
+}
+
 /**
  * Removes every fixture these specs made. Safe to call twice and safe to call
  * when nothing was created — deleting a prefix that matches no rows is a

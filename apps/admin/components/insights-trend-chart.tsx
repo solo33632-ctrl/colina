@@ -115,7 +115,7 @@ export async function InsightsTrendChart({
   const showPrevious = report.previousTotal > 0;
 
   return (
-    <figure className="min-w-0" dir="ltr">
+    <figure className="min-w-0" dir="ltr" data-testid="insights-traffic-chart">
       <svg
         viewBox={`0 0 ${CHART.width} ${CHART.height}`}
         role="img"

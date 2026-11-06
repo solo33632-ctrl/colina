@@ -14,7 +14,19 @@ import {
   ensureEditor,
   removeEditor,
 } from './admin-editor';
-import { resetPageViewDaily, runInDb, runInDbValue } from './db-fixture';
+import {
+  FIXTURE_TAG,
+  createSecurityEvents,
+  deleteAllSecurityEvents,
+  deleteSecurityEventsByTag,
+  resetPageViewDaily,
+  restoreSecurityEvents,
+  runInDb,
+  runInDbValue,
+  snapshotAllSecurityEvents,
+  type SecurityEventFixture,
+  type SecurityEventRowSnapshot,
+} from './db-fixture';
 
 const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -35,10 +47,16 @@ const RANGE_LABELS = {
 const COPY = {
   en: {
     traffic: 'Visitor traffic',
-    security: 'Blocked and rejected requests',
+    security: 'Security',
     empty: 'No visits recorded in this period yet.',
     events: 'Recent events',
+    topTargets: 'Top targets',
     honeypot: 'Honeypot caught',
+    rateLimited: 'Rate limited',
+    failedLogins: 'Failed logins',
+    allClear: 'All clear',
+    allClearDetail: 'No blocked or rejected requests in this period.',
+    hintRate: 'A public form sent too many requests.',
     home: 'Home',
     machine: 'Machine — colina-pack-s',
     privacy: 'Privacy',
@@ -47,14 +65,22 @@ const COPY = {
     english: 'English',
     arabic: 'Arabic',
     noPrevious: 'No previous data',
+    pagination: 'Pagination',
+    nextPage: 'Next',
     updated: /^Updated \d{2}:\d{2}$/,
   },
   ar: {
     traffic: 'زيارات الزوار',
-    security: 'الطلبات المحظورة والمرفوضة',
+    security: 'الأمان',
     empty: 'لم تُسجَّل أي زيارات في هذه الفترة بعد.',
     events: 'أحدث الأحداث',
+    topTargets: 'أكثر الأهداف تكراراً',
     honeypot: 'ضبط حقل الفخ',
+    rateLimited: 'تجاوز الحد المسموح',
+    failedLogins: 'محاولات دخول فاشلة',
+    allClear: 'لا توجد أحداث أمنية',
+    allClearDetail: 'لا توجد طلبات محظورة أو مرفوضة في هذه الفترة.',
+    hintRate: 'أرسل نموذج عام طلبات أكثر من الحد المسموح.',
     home: 'الرئيسية',
     machine: 'آلة — colina-pack-s',
     privacy: 'الخصوصية',
@@ -63,6 +89,8 @@ const COPY = {
     english: 'الإنجليزية',
     arabic: 'العربية',
     noPrevious: 'لا توجد بيانات للفترة السابقة',
+    pagination: 'التنقل بين الصفحات',
+    nextPage: 'التالي',
     updated: /^آخر تحديث /,
   },
 } as const;
@@ -107,8 +135,36 @@ function seedPageViews(rows: PageViewSeed[]) {
   `);
 }
 
+function fixtureTimestamp(offset: number, hour = 12, minute = 0): string {
+  return `${fixtureDay(offset)}T${String(hour).padStart(2, '0')}:${String(
+    minute
+  ).padStart(2, '0')}:00.000Z`;
+}
+
+type SecuritySeed = Omit<SecurityEventFixture, 'detail'> & {
+  detail?: string;
+};
+
+/**
+ * Security rows are written directly because the exact mix, timestamps and
+ * top-target order are the assertion. Every row carries the fixture tag in
+ * `detail`, which is the column `deleteSecurityEventsByTag` removes by.
+ */
+function seedSecurityEvents(rows: SecuritySeed[]) {
+  return createSecurityEvents(
+    rows.map((row) => ({
+      ...row,
+      detail: row.detail ?? `${FIXTURE_TAG} security fixture`,
+    }))
+  );
+}
+
 const kpiValue = (page: Page, id: string) => page.getByTestId(`${id}-value`);
 const kpiDetail = (page: Page, id: string) => page.getByTestId(`${id}-detail`);
+const securityValue = (page: Page, id: string) =>
+  page.getByTestId(`insights-security-${id}-value`);
+const securityDetail = (page: Page, id: string) =>
+  page.getByTestId(`insights-security-${id}-detail`);
 
 /**
  * The dashboard ranks page views and security events across whatever is in
@@ -301,12 +357,16 @@ test.describe('insights dashboard', () => {
       range.getByRole('link', { name: RANGE_LABELS.en[30] })
     ).toHaveAttribute('aria-current', 'page');
     await expect(kpiValue(page, 'insights-total-views')).toHaveText('55');
-    await expect(page.locator('figure table tbody tr')).toHaveCount(30);
+    await expect(
+      page.getByTestId('insights-traffic-chart').locator('tbody tr')
+    ).toHaveCount(30);
 
     await range.getByRole('link', { name: RANGE_LABELS.en[7] }).click();
     await page.waitForURL(/\/en\/insights\?range=7$/);
     await expect(kpiValue(page, 'insights-total-views')).toHaveText('20');
-    await expect(page.locator('figure table tbody tr')).toHaveCount(7);
+    await expect(
+      page.getByTestId('insights-traffic-chart').locator('tbody tr')
+    ).toHaveCount(7);
     await expect(
       range.getByRole('link', { name: RANGE_LABELS.en[7] })
     ).toHaveAttribute('aria-current', 'page');
@@ -314,7 +374,9 @@ test.describe('insights dashboard', () => {
     await range.getByRole('link', { name: RANGE_LABELS.en[90] }).click();
     await page.waitForURL(/\/en\/insights\?range=90$/);
     await expect(kpiValue(page, 'insights-total-views')).toHaveText('102');
-    await expect(page.locator('figure table tbody tr')).toHaveCount(90);
+    await expect(
+      page.getByTestId('insights-traffic-chart').locator('tbody tr')
+    ).toHaveCount(90);
     await expect(
       range.getByRole('link', { name: RANGE_LABELS.en[90] })
     ).toHaveAttribute('aria-current', 'page');
@@ -422,8 +484,8 @@ test.describe('insights dashboard', () => {
       );
       await expect(page.getByText(copy.empty)).toBeVisible();
 
-      // No chart or ranking is fabricated from zero rows.
-      await expect(page.locator('figure')).toHaveCount(0);
+      // No traffic chart or ranking is fabricated from zero page views.
+      await expect(page.getByTestId('insights-traffic-chart')).toHaveCount(0);
       await expect(page.getByTestId('insights-top-page')).toHaveCount(0);
       await expect(page.getByTestId('insights-sections')).toHaveCount(0);
 
@@ -461,7 +523,7 @@ test.describe('insights dashboard', () => {
     for (const locale of LOCALES) {
       await page.goto(`${ADMIN_URL}/${locale.id}/insights?range=7`);
 
-      const figure = page.locator('figure');
+      const figure = page.getByTestId('insights-traffic-chart');
       await expect(figure).toBeVisible();
       const svg = figure.locator('svg');
       const svgHtml = await svg.evaluate((element) => element.outerHTML);
@@ -492,6 +554,453 @@ test.describe('insights dashboard', () => {
     }
 
     await context.close();
+  });
+
+  test.describe('security section', () => {
+    // The test database already holds real security rows (admin sign-ins and
+    // previous runs). Snapshot and empty the table once, so every count below
+    // is exactly what this section seeds, then put the original rows back.
+    let originalRows: SecurityEventRowSnapshot[] = [];
+
+    test.beforeAll(() => {
+      deleteSecurityEventsByTag();
+      originalRows = snapshotAllSecurityEvents();
+      deleteAllSecurityEvents();
+    });
+
+    test.afterAll(() => {
+      try {
+        restoreSecurityEvents(originalRows);
+      } finally {
+        deleteSecurityEventsByTag();
+      }
+    });
+
+    test.beforeEach(() => {
+      deleteSecurityEventsByTag();
+    });
+
+    test('shows exact totals, per-type deltas, top targets and the shared range', async ({
+      browser,
+    }) => {
+      resetPageViewDaily();
+      seedPageViews([
+        { dayOffset: -1, path: '/', locale: 'en', count: 5 },
+        { dayOffset: -8, path: '/', locale: 'en', count: 2 },
+        {
+          dayOffset: -20,
+          path: '/machines/colina-pack-s',
+          locale: 'en',
+          count: 15,
+        },
+      ]);
+      seedSecurityEvents([
+        {
+          type: 'LOGIN_FAILED',
+          source: 'admin-login',
+          ip: '203.0.113.42',
+          createdAt: fixtureTimestamp(0, 23),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'admin-login',
+          ip: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
+          createdAt: fixtureTimestamp(0, 22),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-2, 12),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'admin-login',
+          createdAt: fixtureTimestamp(-3, 12),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-4, 12),
+        },
+        {
+          type: 'RATE_LIMITED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(0, 21),
+        },
+        {
+          type: 'RATE_LIMITED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-1, 21),
+        },
+        {
+          type: 'RATE_LIMITED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-3, 21),
+        },
+        {
+          type: 'HONEYPOT_CAUGHT',
+          source: 'maintenance-request',
+          createdAt: fixtureTimestamp(-1, 10),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'admin-login',
+          createdAt: fixtureTimestamp(-8, 12),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-9, 12),
+        },
+        {
+          type: 'RATE_LIMITED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-8, 21),
+        },
+      ]);
+
+      const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const context = await browser.newContext({ storageState: state });
+      const page = await context.newPage();
+
+      for (const locale of LOCALES) {
+        const copy = COPY[locale.id];
+        const localized = (value: number) =>
+          value.toLocaleString(locale.id === 'ar' ? 'ar-EG' : 'en-GB');
+
+        await page.goto(`${ADMIN_URL}/${locale.id}/insights?range=7`);
+
+        // Current: 5 failed logins, 3 rate-limited, 1 honeypot = 9.
+        // Previous 7 days: 2 failed logins + 1 rate-limited = 3.
+        await expect(securityValue(page, 'total')).toHaveText(localized(9));
+        await expect(securityValue(page, 'login-failed')).toHaveText(
+          localized(5)
+        );
+        await expect(securityValue(page, 'rate-limited')).toHaveText(
+          localized(3)
+        );
+        await expect(securityValue(page, 'honeypot-caught')).toHaveText(
+          localized(1)
+        );
+
+        if (locale.id === 'ar') {
+          await expect(securityDetail(page, 'total')).toContainText('زيادة');
+          await expect(securityDetail(page, 'total')).toContainText(
+            localized(200)
+          );
+        } else {
+          await expect(securityDetail(page, 'total')).toHaveText(
+            '↑ Up 200% vs previous period'
+          );
+          await expect(securityDetail(page, 'rate-limited')).toContainText(
+            '↑ Up 200% vs previous period'
+          );
+          await expect(securityDetail(page, 'login-failed')).toContainText(
+            '↑ Up 150% vs previous period'
+          );
+          await expect(securityDetail(page, 'rate-limited')).toContainText(
+            copy.hintRate
+          );
+        }
+        await expect(securityDetail(page, 'honeypot-caught')).toContainText(
+          copy.noPrevious
+        );
+
+        // A zero-padded column per day, not only the days with events.
+        const securityChart = page.getByTestId('insights-security-chart');
+        await expect(securityChart).toBeVisible();
+        await expect(
+          securityChart.getByTestId('insights-security-chart-table')
+        ).toBeAttached();
+        await expect(securityChart.locator('tbody tr')).toHaveCount(7);
+
+        // Top targets are ordered by count and show a share of the window.
+        const targets = page.getByTestId('insights-security-target');
+        await expect(targets).toHaveCount(3);
+        await expect(targets.nth(0)).toContainText('contact');
+        await expect(targets.nth(0)).toContainText(localized(5));
+        await expect(targets.nth(0)).toContainText(
+          locale.id === 'ar' ? '٥٥٫٦' : '55.6%'
+        );
+        await expect(targets.nth(1)).toContainText('admin-login');
+        await expect(targets.nth(2)).toContainText('maintenance-request');
+
+        const eventTable = page.getByRole('table', { name: copy.events });
+        await expect(eventTable.locator('tbody tr')).toHaveCount(9);
+        await expect(eventTable.locator('tbody tr').first()).toContainText(
+          '203.0.113.x'
+        );
+        await expect(eventTable.locator('tbody tr').nth(1)).toContainText(
+          '2001:db8:85a3…'
+        );
+
+        // The one range control is shared: switching it changes the traffic
+        // total and the security total together.
+        const range = page.getByTestId('insights-range-switch');
+        await range
+          .getByRole('link', { name: RANGE_LABELS[locale.id][30] })
+          .click();
+        await page.waitForURL(/\/insights\?range=30$/);
+        await expect(kpiValue(page, 'insights-total-views')).toHaveText(
+          localized(22)
+        );
+        await expect(securityValue(page, 'total')).toHaveText(localized(12));
+        await expect(securityDetail(page, 'total')).toHaveText(copy.noPrevious);
+        await expect(
+          page.getByTestId('insights-security-chart').locator('tbody tr')
+        ).toHaveCount(30);
+      }
+
+      await context.close();
+    });
+
+    test('filters and paginates while preserving the range, and never leaks an IP', async ({
+      browser,
+    }) => {
+      const rows: SecuritySeed[] = [
+        {
+          type: 'LOGIN_FAILED',
+          source: 'admin-login',
+          ip: '203.0.113.77',
+          createdAt: fixtureTimestamp(0, 23, 59),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'contact',
+          ip: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
+          createdAt: fixtureTimestamp(0, 23, 58),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'contact',
+          ip: 'not-an-ip-st28a',
+          createdAt: fixtureTimestamp(0, 23, 57),
+        },
+      ];
+      for (let index = 0; index < 22; index += 1) {
+        rows.push({
+          type: 'LOGIN_FAILED',
+          source: 'admin-login',
+          createdAt: fixtureTimestamp(-1, 12, index % 60),
+        });
+      }
+      for (let index = 0; index < 3; index += 1) {
+        rows.push({
+          type: 'RATE_LIMITED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-2, 12, index),
+        });
+      }
+      seedSecurityEvents(rows);
+
+      const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const context = await browser.newContext({ storageState: state });
+      const page = await context.newPage();
+      const copy = COPY.en;
+
+      await page.goto(`${ADMIN_URL}/en/insights?range=7`);
+      await expect(securityValue(page, 'total')).toHaveText('28');
+      await expect(securityValue(page, 'login-failed')).toHaveText('25');
+      await expect(securityValue(page, 'rate-limited')).toHaveText('3');
+      await expect(securityValue(page, 'honeypot-caught')).toHaveText('0');
+
+      const table = page.getByTestId('insights-security-events-table');
+      await expect(table.locator('tbody tr')).toHaveCount(20);
+      await expect(table.locator('tbody tr').first()).toContainText(
+        '203.0.113.x'
+      );
+      await expect(table.locator('tbody tr').nth(1)).toContainText(
+        '2001:db8:85a3…'
+      );
+      await expect(table.locator('tbody tr').nth(2)).not.toContainText(
+        'not-an-ip-st28a'
+      );
+
+      // Check the whole document, not just the visible cells: a full address
+      // must not have reached the page's props or hidden serialized state.
+      const html = await page.content();
+      expect(html).toContain('203.0.113.x');
+      expect(html).toContain('2001:db8:85a3…');
+      expect(html).not.toContain('203.0.113.77');
+      expect(html).not.toContain('2001:0db8:85a3:0000:0000:8a2e:0370:7334');
+      expect(html).not.toContain('not-an-ip-st28a');
+
+      const filter = page.getByTestId('insights-security-filter');
+      await filter.getByRole('link', { name: copy.failedLogins }).click();
+      await page.waitForURL(/\/insights\?range=7&type=LOGIN_FAILED$/);
+      await expect(
+        filter.getByRole('link', { name: copy.failedLogins })
+      ).toHaveAttribute('aria-current', 'page');
+
+      const pagination = page.getByRole('navigation', {
+        name: copy.pagination,
+      });
+      await expect(pagination).toContainText('Page 1 of 2');
+      await expect(table.locator('tbody tr')).toHaveCount(20);
+      await pagination.getByRole('link', { name: copy.nextPage }).click();
+      await page.waitForURL(/\/insights\?range=7&type=LOGIN_FAILED&page=2$/);
+      await expect(pagination).toContainText('Page 2 of 2');
+      await expect(table.locator('tbody tr')).toHaveCount(5);
+
+      // Switching the shared range keeps the filter and starts at page 1.
+      await page
+        .getByTestId('insights-range-switch')
+        .getByRole('link', { name: RANGE_LABELS.en[30] })
+        .click();
+      await page.waitForURL(/\/insights\?range=30&type=LOGIN_FAILED$/);
+      await expect(
+        filter.getByRole('link', { name: copy.failedLogins })
+      ).toHaveAttribute('aria-current', 'page');
+      await expect(pagination).toContainText('Page 1 of 2');
+
+      // "All types" keeps the range and clears both type and page.
+      await filter.getByRole('link', { name: 'All types' }).click();
+      await page.waitForURL(/\/insights\?range=30$/);
+      await expect(securityValue(page, 'total')).toHaveText('28');
+      await expect(table.locator('tbody tr')).toHaveCount(20);
+
+      await context.close();
+    });
+
+    test('shows a calm All clear state when the range has no events', async ({
+      browser,
+    }) => {
+      const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const context = await browser.newContext({ storageState: state });
+      const page = await context.newPage();
+
+      for (const locale of LOCALES) {
+        const copy = COPY[locale.id];
+        await page.goto(`${ADMIN_URL}/${locale.id}/insights?range=7`);
+
+        await expect(securityValue(page, 'total')).toHaveText(
+          locale.id === 'ar' ? '٠' : '0'
+        );
+        for (const id of ['login-failed', 'rate-limited', 'honeypot-caught']) {
+          await expect(securityValue(page, id)).toHaveText(
+            locale.id === 'ar' ? '٠' : '0'
+          );
+        }
+
+        const allClear = page.getByTestId('insights-security-all-clear');
+        await expect(allClear).toBeVisible();
+        await expect(allClear).toContainText(copy.allClear);
+        await expect(allClear).toContainText(copy.allClearDetail);
+        expect(await allClear.innerHTML()).not.toContain('amber');
+
+        await expect(page.getByTestId('insights-security-chart')).toHaveCount(
+          0
+        );
+        await expect(page.getByTestId('insights-security-targets')).toHaveCount(
+          0
+        );
+        await expect(page.getByTestId('insights-security-filter')).toHaveCount(
+          0
+        );
+        await expect(
+          page.getByTestId('insights-security-events-table')
+        ).toHaveCount(0);
+      }
+
+      await context.close();
+    });
+
+    test('draws finite geometry and uses cards instead of a table at 390px', async ({
+      browser,
+    }) => {
+      seedSecurityEvents([
+        {
+          type: 'LOGIN_FAILED',
+          source: 'admin-login',
+          createdAt: fixtureTimestamp(-1, 10),
+        },
+        {
+          type: 'HONEYPOT_CAUGHT',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-1, 11),
+        },
+        {
+          type: 'RATE_LIMITED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-2, 12),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'contact',
+          createdAt: fixtureTimestamp(-2, 13),
+        },
+        {
+          type: 'LOGIN_FAILED',
+          source: 'admin-login',
+          createdAt: fixtureTimestamp(-4, 14),
+        },
+        {
+          type: 'RATE_LIMITED',
+          source: 'admin-login',
+          createdAt: fixtureTimestamp(-4, 15),
+        },
+      ]);
+
+      const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const context = await browser.newContext({ storageState: state });
+      const page = await context.newPage();
+      await page.setViewportSize({ width: 390, height: 844 });
+
+      for (const locale of LOCALES) {
+        await page.goto(`${ADMIN_URL}/${locale.id}/insights?range=7`);
+
+        const chart = page.getByTestId('insights-security-chart');
+        await expect(chart).toBeVisible();
+        await expect(chart).toHaveAttribute('dir', 'ltr');
+        const svg = chart.locator('svg');
+        await expect(svg).toHaveAttribute('aria-label', /.+/);
+        const svgHtml = await svg.evaluate((element) => element.outerHTML);
+        expect(
+          svgHtml,
+          `${locale.id}: security chart has no NaN`
+        ).not.toContain('NaN');
+
+        const bars = await chart.locator('rect').evaluateAll((elements) =>
+          elements.map((element) => ({
+            x: Number(element.getAttribute('x')),
+            y: Number(element.getAttribute('y')),
+            width: Number(element.getAttribute('width')),
+            height: Number(element.getAttribute('height')),
+          }))
+        );
+        expect(bars.length, `${locale.id}: stacked bars exist`).toBeGreaterThan(
+          0
+        );
+        for (const bar of bars) {
+          expect(Number.isFinite(bar.x)).toBe(true);
+          expect(Number.isFinite(bar.y)).toBe(true);
+          expect(bar.width).toBeGreaterThan(0);
+          expect(bar.height).toBeGreaterThan(0);
+        }
+
+        await expect(chart.locator('tbody tr')).toHaveCount(7);
+        await expect(
+          page.getByTestId('insights-security-events-table')
+        ).toBeHidden();
+        await expect(
+          page.getByTestId('insights-security-events-cards')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('insights-security-events-cards').locator('li')
+        ).toHaveCount(6);
+
+        const overflow = await page.evaluate(() => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        }));
+        expect(
+          overflow.scrollWidth,
+          `${locale.id}: the page must not overflow a 390px viewport`
+        ).toBeLessThanOrEqual(overflow.clientWidth);
+      }
+
+      await context.close();
+    });
   });
 
   test('an editor is refused and never sees the link', async ({ browser }) => {

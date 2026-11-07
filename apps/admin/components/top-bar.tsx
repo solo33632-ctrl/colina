@@ -6,7 +6,9 @@ import { AdminLanguageSwitcher } from './language-switcher';
 import { Icon } from './icons';
 import { LogoutButton } from './logout-button';
 import { SidebarDrawer, SIDEBAR_DRAWER_ID } from './sidebar-drawer';
+import { ThemeToggle } from './theme-toggle';
 import type { SidebarGroup } from '@/lib/sidebar';
+import type { AdminTheme } from '@/lib/theme';
 
 // Top bar of the page column. It owns the drawer state because the hamburger
 // that opens the drawer lives here, and the drawer is rendered as a sibling of
@@ -14,10 +16,12 @@ import type { SidebarGroup } from '@/lib/sidebar';
 export function AdminTopBar({
   groups,
   email,
+  theme,
   roleLabel,
 }: {
   groups: SidebarGroup[];
   email: string;
+  theme: AdminTheme;
   roleLabel: string;
 }) {
   const t = useTranslations('Nav');
@@ -50,9 +54,10 @@ export function AdminTopBar({
           >
             <Icon name="menu" className="h-6 w-6" />
           </button>
-          <div className="ms-auto flex items-center gap-3">
+          <div className="ms-auto flex items-center gap-2 sm:gap-3">
+            <ThemeToggle initialTheme={theme} />
             <AdminLanguageSwitcher />
-            <div className="flex flex-col items-end text-sm leading-tight">
+            <div className="hidden flex-col items-end text-sm leading-tight md:flex">
               {/* An address is Latin script even on an Arabic page: without an
                   explicit `dir`, RTL text-overflow clips it from the left and
                   the ellipsis lands in the middle of the address. */}

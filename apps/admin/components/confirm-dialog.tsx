@@ -105,7 +105,7 @@ export function ConfirmDialog({
       aria-labelledby={titleId}
       aria-describedby={error ? undefined : messageId}
       onClick={handleBackdropClick}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-stone-200 bg-white p-6 text-start text-stone-900 shadow-xl backdrop:bg-stone-900/50"
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-stone-200 bg-white p-6 text-start text-stone-900 shadow-xl backdrop:bg-overlay/50"
     >
       {/* Rendered only while open: a list puts one of these on every row, and
           a closed <dialog> is display:none, so its text would sit in the DOM

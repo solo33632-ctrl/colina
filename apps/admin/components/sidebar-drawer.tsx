@@ -49,7 +49,7 @@ export function SidebarDrawer({
         aria-hidden="true"
         onClick={onClose}
         className={[
-          'fixed inset-0 z-30 bg-stone-900/40 transition-opacity duration-200 lg:hidden',
+          'fixed inset-0 z-30 bg-overlay/40 transition-opacity duration-200 lg:hidden',
           open ? 'opacity-100' : 'pointer-events-none opacity-0',
         ].join(' ')}
       />

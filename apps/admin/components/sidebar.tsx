@@ -28,14 +28,20 @@ export function AdminSidebar({
           onClick={onNavigate}
           className="rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
         >
-          <Image
-            src="/logo.png"
-            alt={t('brand')}
-            width={773}
-            height={534}
-            priority
-            className="h-10 w-auto"
-          />
+          {/* Constant light plate: see the note in auth-header.tsx. */}
+          <span
+            data-plate="true"
+            className="-m-1 inline-flex rounded-lg bg-plate p-1"
+          >
+            <Image
+              src="/logo.png"
+              alt={t('brand')}
+              width={773}
+              height={534}
+              priority
+              className="h-10 w-auto"
+            />
+          </span>
         </Link>
       </div>
       <SidebarNav groups={groups} onNavigate={onNavigate} />

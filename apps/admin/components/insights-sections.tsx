@@ -6,12 +6,12 @@ import type {
 import { intlLocale } from '@/lib/format';
 
 const SECTION_COLORS: Record<TrafficSection, string> = {
-  home: 'bg-brand-700',
-  machines: 'bg-brand-500',
-  categories: 'bg-brand-300',
-  maintenance: 'bg-amber-500',
-  contact: 'bg-stone-500',
-  other: 'bg-stone-300',
+  home: 'bg-chart-section-home',
+  machines: 'bg-chart-section-machines',
+  categories: 'bg-chart-section-categories',
+  maintenance: 'bg-chart-section-maintenance',
+  contact: 'bg-chart-section-contact',
+  other: 'bg-chart-section-other',
 };
 
 // A stacked bar gives the shape of the window at a glance; the list beside it

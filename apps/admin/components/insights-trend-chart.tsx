@@ -132,27 +132,29 @@ export async function InsightsTrendChart({
               x2={CHART.width - CHART.right}
               y2={y(tick)}
               strokeWidth="1"
-              className={tick === 0 ? 'stroke-stone-300' : 'stroke-stone-200'}
+              className={
+                tick === 0 ? 'stroke-chart-grid' : 'stroke-chart-grid-muted'
+              }
             />
             <text
               x={CHART.left - 8}
               y={y(tick) + 4}
               textAnchor="end"
-              className="fill-stone-500 text-[11px]"
+              className="fill-chart-axis text-[11px]"
             >
               {number(tick)}
             </text>
           </g>
         ))}
 
-        <path d={areaPath} className="fill-brand-100" />
+        <path d={areaPath} className="fill-chart-brand-area" />
         {showPrevious ? (
           <path
             d={previousPath}
             fill="none"
             strokeWidth="1.5"
             strokeDasharray="4 4"
-            className="stroke-stone-400"
+            className="stroke-chart-previous"
           />
         ) : null}
         <path
@@ -161,7 +163,7 @@ export async function InsightsTrendChart({
           strokeWidth="2.5"
           strokeLinejoin="round"
           strokeLinecap="round"
-          className="stroke-brand-600"
+          className="stroke-chart-brand-line"
         />
 
         {points.map((point) => {
@@ -181,7 +183,7 @@ export async function InsightsTrendChart({
                 cx={point.x}
                 cy={point.y}
                 r="2.5"
-                className="fill-brand-600"
+                className="fill-chart-brand-line"
               />
               <title>{label}</title>
             </g>
@@ -195,7 +197,7 @@ export async function InsightsTrendChart({
               x={point.x}
               y={baseline + 20}
               textAnchor="middle"
-              className="fill-stone-500 text-[11px]"
+              className="fill-chart-axis text-[11px]"
             >
               {shortDate(point.day.date)}
             </text>
@@ -207,14 +209,14 @@ export async function InsightsTrendChart({
         <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-stone-600">
           <span className="inline-flex items-center gap-2">
             <span
-              className="h-0.5 w-4 rounded bg-brand-600"
+              className="h-0.5 w-4 rounded bg-chart-brand-line"
               aria-hidden="true"
             />
             {t('trendLegendCurrent')}
           </span>
           <span className="inline-flex items-center gap-2">
             <span
-              className="h-0.5 w-4 border-t-2 border-dashed border-stone-400"
+              className="h-0.5 w-4 border-t-2 border-dashed border-chart-previous"
               aria-hidden="true"
             />
             {t('trendLegendPrevious')}

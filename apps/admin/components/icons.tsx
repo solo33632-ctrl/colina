@@ -28,7 +28,10 @@ export type IconName =
   | 'chevron'
   | 'moveUp'
   | 'moveDown'
-  | 'plus';
+  | 'plus'
+  | 'sun'
+  | 'moon'
+  | 'monitor';
 
 const GLYPHS: Record<IconName, ReactNode> = {
   // Four tiles.
@@ -153,6 +156,22 @@ const GLYPHS: Record<IconName, ReactNode> = {
     <>
       <path d="M12 5v14" />
       <path d="M5 12h14" />
+    </>
+  ),
+  // Sun: the light choice.
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4" />
+    </>
+  ),
+  // Crescent: the dark choice.
+  moon: <path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z" />,
+  // Monitor: follow the operating system.
+  monitor: (
+    <>
+      <rect x="3" y="4" width="18" height="12.5" rx="2" />
+      <path d="M8 20.5h8M12 16.5v4" />
     </>
   ),
 };

@@ -3,6 +3,7 @@ import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
 import { getAdminSession } from '@/lib/auth';
 import { sidebarGroups } from '@/lib/sidebar';
+import type { AdminTheme } from '@/lib/theme';
 import { AdminFooter } from './footer';
 import { AdminSidebar } from './sidebar';
 import { AuthHeader } from './auth-header';
@@ -11,7 +12,13 @@ import { AdminTopBar } from './top-bar';
 // The admin app shell: a docked sidebar on large screens (the drawer takes
 // over below `lg`) plus a page column holding the top bar, the page and the
 // footer.
-export async function AdminAppShell({ children }: { children: ReactNode }) {
+export async function AdminAppShell({
+  children,
+  theme,
+}: {
+  children: ReactNode;
+  theme: AdminTheme;
+}) {
   const session = await getAdminSession();
 
   // No session means login / forgot-password / reset-password: proxy.ts
@@ -21,7 +28,7 @@ export async function AdminAppShell({ children }: { children: ReactNode }) {
   if (!session?.user) {
     return (
       <>
-        <AuthHeader />
+        <AuthHeader theme={theme} />
         {children}
         <AdminFooter />
       </>
@@ -53,6 +60,7 @@ export async function AdminAppShell({ children }: { children: ReactNode }) {
         <AdminTopBar
           groups={groups}
           email={session.user.email ?? ''}
+          theme={theme}
           roleLabel={
             session.user.role === 'SUPER_ADMIN'
               ? t('roleSuperAdmin')

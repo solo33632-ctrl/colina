@@ -3,8 +3,8 @@ import type { TrafficLocaleTotal } from '@/lib/insights-traffic';
 import { intlLocale } from '@/lib/format';
 
 const LOCALE_COLORS: Record<string, string> = {
-  ar: 'bg-brand-700',
-  en: 'bg-brand-300',
+  ar: 'bg-chart-locale-ar',
+  en: 'bg-chart-locale-en',
 };
 
 // Arabic vs English as one two-segment bar, with the exact counts and shares

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from 'next/font/google';
+import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import {
@@ -10,6 +11,7 @@ import {
 import { notFound } from 'next/navigation';
 import { AdminAppShell } from '@/components/app-shell';
 import { routing } from '@/i18n/routing';
+import { parseTheme, themeAttribute, THEME_COOKIE } from '@/lib/theme';
 import '../globals.css';
 
 // Arabic UI face: full Arabic coverage, pairs metrically with IBM Plex Sans
@@ -73,10 +75,16 @@ export default async function AdminLocaleLayout({
   // Direction is driven by the active locale — never hardcoded.
   const direction = locale === 'ar' ? 'rtl' : 'ltr';
 
+  // Read the explicit choice on the server so the first byte of HTML already
+  // carries the right theme. No cookie means "system": `data-theme` is omitted
+  // and the prefers-color-scheme media query in globals.css decides.
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+
   return (
     <html
       lang={locale}
       dir={direction}
+      data-theme={themeAttribute(theme)}
       className={`${arabic.variable} ${latin.variable}`}
     >
       <body
@@ -87,7 +95,7 @@ export default async function AdminLocaleLayout({
         }
       >
         <NextIntlClientProvider messages={messages}>
-          <AdminAppShell>{children}</AdminAppShell>
+          <AdminAppShell theme={theme}>{children}</AdminAppShell>
         </NextIntlClientProvider>
       </body>
     </html>

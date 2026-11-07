@@ -37,6 +37,12 @@
     "arabic": "العربية",
     "english": "English"
   },
+  "Theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
   "Footer": {
     "internalUse": "© {year} Colina Admin — internal use only."
   },

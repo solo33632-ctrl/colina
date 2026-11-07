@@ -75,9 +75,10 @@ export function AdminThumb({
       <div
         role="img"
         aria-label={name}
+        data-plate="true"
         // A logo plate is empty when the artwork is missing, so it keeps the
         // white plate; only the compact square becomes the brand letter tile.
-        className={`${plateBase} ${plateSize} ${contain ? 'bg-white' : 'bg-brand-100'}`}
+        className={`${plateBase} ${plateSize} ${contain ? 'bg-plate' : 'bg-brand-100'}`}
       >
         <span aria-hidden="true" className="text-lg font-bold text-brand-800">
           {initial}
@@ -92,10 +93,11 @@ export function AdminThumb({
       src={src}
       alt=""
       loading="lazy"
+      data-plate="true"
       // The probe already confirmed the load; this only covers a URL that
       // breaks between the probe and the render.
       onError={() => setLoaded(false)}
-      className={`${plateBase} ${plateSize} bg-white ${contain ? 'object-contain' : 'object-cover'}`}
+      className={`${plateBase} ${plateSize} bg-plate ${contain ? 'object-contain' : 'object-cover'}`}
     />
   );
 }

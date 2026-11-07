@@ -118,7 +118,12 @@ test.describe('admin login', () => {
     const context = await browser.newContext({ storageState: state });
     const page = await context.newPage();
     await page.goto(`${ADMIN_URL}/en/machines`);
-    await page.locator('header .ms-auto button').first().click();
+    // The theme toggle now precedes the language switcher in the header, so
+    // target the switcher by its accessible name instead of the first button.
+    await page
+      .locator('header')
+      .getByRole('button', { name: 'العربية' })
+      .click();
     await page.waitForURL(/\/ar\/machines$/, { timeout: 15_000 });
     // Same section, other language.
     expect(new URL(page.url()).pathname).toBe('/ar/machines');

@@ -21,9 +21,18 @@ const CHART = {
 
 const TYPE_COLORS: Record<SecurityEventType, { fill: string; swatch: string }> =
   {
-    RATE_LIMITED: { fill: 'fill-amber-500', swatch: 'bg-amber-500' },
-    HONEYPOT_CAUGHT: { fill: 'fill-brand-500', swatch: 'bg-brand-500' },
-    LOGIN_FAILED: { fill: 'fill-brand-700', swatch: 'bg-brand-700' },
+    RATE_LIMITED: {
+      fill: 'fill-chart-security-rate',
+      swatch: 'bg-chart-security-rate',
+    },
+    HONEYPOT_CAUGHT: {
+      fill: 'fill-chart-security-honeypot',
+      swatch: 'bg-chart-security-honeypot',
+    },
+    LOGIN_FAILED: {
+      fill: 'fill-chart-security-login',
+      swatch: 'bg-chart-security-login',
+    },
   };
 
 type Scale = { max: number; ticks: number[] };
@@ -114,13 +123,15 @@ export async function InsightsSecurityChart({
                 x2={CHART.width - CHART.right}
                 y2={y}
                 strokeWidth="1"
-                className={tick === 0 ? 'stroke-stone-300' : 'stroke-stone-200'}
+                className={
+                  tick === 0 ? 'stroke-chart-grid' : 'stroke-chart-grid-muted'
+                }
               />
               <text
                 x={CHART.left - 8}
                 y={y + 4}
                 textAnchor="end"
-                className="fill-stone-500 text-[11px]"
+                className="fill-chart-axis text-[11px]"
               >
                 {number(tick)}
               </text>
@@ -180,7 +191,7 @@ export async function InsightsSecurityChart({
               x={x(index) + barWidth / 2}
               y={baseline + 20}
               textAnchor="middle"
-              className="fill-stone-500 text-[11px]"
+              className="fill-chart-axis text-[11px]"
             >
               {shortDate(day.date)}
             </text>

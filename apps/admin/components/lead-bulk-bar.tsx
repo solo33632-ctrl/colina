@@ -77,7 +77,7 @@ export function LeadBulkBar({
 
   return (
     <>
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 shadow-[0_-4px_12px_rgb(var(--overlay)/0.08)] backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <p
             role="status"

@@ -45,7 +45,7 @@ export default async function ServicesPage({ params }: Props) {
   });
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path="/services" locale={locale} />
       <Container className="py-16">
         <h1 className="text-center text-2xl font-bold text-stone-900 sm:text-3xl">

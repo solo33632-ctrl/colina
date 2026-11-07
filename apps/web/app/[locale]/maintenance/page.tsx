@@ -45,7 +45,7 @@ export default async function MaintenanceIndexPage({ params }: Props) {
   const lines = await getMaintenanceLines();
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path="/maintenance" locale={locale} />
       <Container className="py-16">
         <Breadcrumb

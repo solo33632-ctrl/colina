@@ -50,7 +50,7 @@ export default async function PrivacyPage({ params }: Props) {
   const t = await getTranslations('PrivacyPage');
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path="/privacy" locale={locale} />
       <Container className="max-w-3xl py-16">
         <h1 className="text-center text-2xl font-bold text-stone-900 sm:text-3xl">

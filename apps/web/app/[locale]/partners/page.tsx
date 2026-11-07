@@ -42,7 +42,7 @@ export default async function PartnersPage({ params }: Props) {
   });
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path="/partners" locale={locale} />
       {/* The same section as the home strip, so the listing page and the home
           page cannot drift apart. This one is the page's `h1` and keeps its

@@ -94,7 +94,7 @@ export default async function MaintenanceMachinePage({ params }: Props) {
   })}#maintenance-form-heading`;
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path={`/maintenance/${slug}/${id}`} locale={locale} />
       <Container className="py-16">
         <Breadcrumb

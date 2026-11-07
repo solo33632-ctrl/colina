@@ -48,7 +48,7 @@ export default async function AgentsPage({ params }: Props) {
   const groups = await getAgents(locale);
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path="/agents" locale={locale} />
       <Container className="py-16">
         {/* The same centered heading over a brand hairline the partners

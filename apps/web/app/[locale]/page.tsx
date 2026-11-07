@@ -70,16 +70,16 @@ export default async function HomePage({ params }: Props) {
   // Organization structured data: name + canonical URL only. No logo file
   // or contact details exist yet (Phase 0) — omitted rather than faked.
   const site = await getTranslations('Site');
-  const { canonical } = await localeAlternates('/', locale);
+  const alternates = await localeAlternates('/', locale);
   const organizationJsonLd = serializeJsonLd({
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: site('name'),
-    url: canonical,
+    ...(alternates?.canonical ? { url: alternates.canonical } : {}),
   });
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path="/" locale={locale} />
       <script
         type="application/ld+json"

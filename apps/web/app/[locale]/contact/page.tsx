@@ -80,7 +80,7 @@ export default async function ContactPage({ params }: Props) {
   );
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path="/contact" locale={locale} />
       <Container className="py-16">
         <div className="mx-auto max-w-5xl">

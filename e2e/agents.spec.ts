@@ -483,8 +483,9 @@ test.describe('agents page navigation', () => {
     }) => {
       await page.goto(`${WEB_URL}/${locale}/agents`);
 
-      // The header nav is the desktop-only list (no mobile menu exists —
-      // that is Stage 37a scope, deliberately).
+      // The header nav is the desktop-only list; the mobile panel is
+      // rendered only while open, so the closed DOM holds one copy of each
+      // link.
       await expect(
         page.locator('header nav').locator(`a[href="/${locale}/agents"]`)
       ).toHaveCount(1);

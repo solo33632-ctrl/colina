@@ -66,7 +66,7 @@ export default async function MaintenanceLinePage({ params }: Props) {
   const hasDescription = (description ?? '').trim().length > 0;
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path={`/maintenance/${slug}`} locale={locale} />
 
       {/* The line's title band. No photo: a production line's cover belongs on

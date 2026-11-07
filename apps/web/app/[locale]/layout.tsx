@@ -12,7 +12,13 @@ import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { WhatsappButton } from '@/components/whatsapp-button';
 import { routing } from '@/i18n/routing';
-import { localeAlternates } from '@/lib/seo';
+import {
+  buildOpenGraph,
+  buildTwitter,
+  defaultShareImageUrl,
+  getMetadataBase,
+  localeAlternates,
+} from '@/lib/seo';
 import { getSiteSettings } from '@/lib/site-settings';
 import { buildWhatsappUrl } from '@/lib/whatsapp';
 import '../globals.css';
@@ -58,10 +64,22 @@ export async function generateMetadata({
     notFound();
   }
   const t = await getTranslations({ locale, namespace: 'Metadata' });
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  const shareImage = defaultShareImageUrl();
   return {
+    metadataBase: getMetadataBase(),
     title: t('title'),
     description: t('description'),
     alternates: await localeAlternates('/', locale),
+    openGraph: buildOpenGraph({
+      locale,
+      siteName: site('name'),
+      imageUrl: shareImage,
+      imageAlt: `${site('name')} — ${site('tagline')}`,
+      imageWidth: 1200,
+      imageHeight: 630,
+    }),
+    twitter: buildTwitter(shareImage),
   };
 }
 
@@ -83,6 +101,7 @@ export default async function LocaleLayout({ children, params }: LocaleParams) {
   // the same cached value). The locale's stored greeting wins; a blank or
   // missing one falls back to the standard greeting in the messages file.
   const whatsapp = await getTranslations('Whatsapp');
+  const header = await getTranslations('Header');
   const settings = await getSiteSettings();
   const storedMessage =
     locale === 'ar' ? settings.whatsappMessageAr : settings.whatsappMessageEn;
@@ -106,6 +125,15 @@ export default async function LocaleLayout({ children, params }: LocaleParams) {
             : 'bg-stone-50 font-sans text-stone-900'
         }
       >
+        {/* First focusable element in the document: hidden until keyboard
+            focus, then pinned above the header. It targets the `<main>`
+            landmark every page renders. */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-stone-900 focus:shadow-lg focus:outline-2 focus:outline-offset-2 focus:outline-brand-600"
+        >
+          {header('skipToContent')}
+        </a>
         <NextIntlClientProvider messages={messages}>
           <SiteHeader />
           {children}

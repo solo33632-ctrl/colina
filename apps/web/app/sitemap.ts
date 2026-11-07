@@ -22,13 +22,16 @@ const STATIC_PATHS = [
   '/privacy',
 ] as const;
 
-async function alternatesFor(href: string): Promise<Record<string, string>> {
+async function alternatesFor(
+  href: string,
+  base: string
+): Promise<Record<string, string>> {
   const languages: Record<string, string> = {};
   for (const locale of routing.locales) {
-    languages[locale] = getBaseUrl() + (await getPathname({ locale, href }));
+    languages[locale] = base + (await getPathname({ locale, href }));
   }
   languages['x-default'] =
-    getBaseUrl() + (await getPathname({ locale: routing.defaultLocale, href }));
+    base + (await getPathname({ locale: routing.defaultLocale, href }));
   return languages;
 }
 
@@ -39,6 +42,11 @@ async function alternatesFor(href: string): Promise<Record<string, string>> {
 // static copy. changeFrequency: weekly for entry points that aggregate
 // changing content, monthly for the rest.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Sitemap entries require absolute URLs. A missing site URL yields an
+  // empty sitemap rather than a fabricated example.com domain.
+  const base = getBaseUrl();
+  if (!base) return [];
+
   const now = new Date();
   const [categories, machines, maintenanceLines, maintenanceItems] =
     await Promise.all([
@@ -66,47 +74,47 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const locale of routing.locales as readonly Locale[]) {
     for (const path of STATIC_PATHS) {
       entries.push({
-        url: getBaseUrl() + (await getPathname({ locale, href: path })),
+        url: base + (await getPathname({ locale, href: path })),
         lastModified: now,
         changeFrequency: path === '/' ? 'weekly' : 'monthly',
-        alternates: { languages: await alternatesFor(path) },
+        alternates: { languages: await alternatesFor(path, base) },
       });
     }
     for (const category of categories) {
       const href = `/categories/${category.slug}`;
       entries.push({
-        url: getBaseUrl() + (await getPathname({ locale, href })),
+        url: base + (await getPathname({ locale, href })),
         lastModified: category.updatedAt,
         changeFrequency: 'weekly',
-        alternates: { languages: await alternatesFor(href) },
+        alternates: { languages: await alternatesFor(href, base) },
       });
     }
     for (const machine of machines) {
       const href = `/machines/${machine.slug}`;
       entries.push({
-        url: getBaseUrl() + (await getPathname({ locale, href })),
+        url: base + (await getPathname({ locale, href })),
         lastModified: machine.updatedAt,
         changeFrequency: 'monthly',
-        alternates: { languages: await alternatesFor(href) },
+        alternates: { languages: await alternatesFor(href, base) },
       });
     }
     for (const line of maintenanceLines) {
       const href = `/maintenance/${line.slug}`;
       entries.push({
-        url: getBaseUrl() + (await getPathname({ locale, href })),
+        url: base + (await getPathname({ locale, href })),
         lastModified: line.updatedAt,
         changeFrequency: 'weekly',
-        alternates: { languages: await alternatesFor(href) },
+        alternates: { languages: await alternatesFor(href, base) },
       });
     }
     for (const item of maintenanceItems) {
       if (!item.category) continue;
       const href = `/maintenance/${item.category.slug}/${item.id}`;
       entries.push({
-        url: getBaseUrl() + (await getPathname({ locale, href })),
+        url: base + (await getPathname({ locale, href })),
         lastModified: item.updatedAt,
         changeFrequency: 'monthly',
-        alternates: { languages: await alternatesFor(href) },
+        alternates: { languages: await alternatesFor(href, base) },
       });
     }
   }

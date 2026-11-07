@@ -4,18 +4,20 @@ import { Container } from '@colina/ui';
 import { Link } from '@/i18n/navigation';
 import { LOGO_SIZES } from '@/lib/intro';
 import { LanguageSwitcher } from './language-switcher';
+import { MobileMenu } from './mobile-menu';
 
 // Public-site header (app-specific — the admin header lives in apps/admin).
 export async function SiteHeader() {
   const site = await getTranslations('Site');
   const nav = await getTranslations('Nav');
+  const header = await getTranslations('Header');
   const items = [
-    { label: nav('home'), href: '/' as const },
-    { label: nav('machines'), href: '/machines' as const },
-    { label: nav('services'), href: '/services' as const },
-    { label: nav('agents'), href: '/agents' as const },
-    { label: nav('about'), href: '/about' as const },
-    { label: nav('contact'), href: '/contact' as const },
+    { label: nav('home'), href: '/' },
+    { label: nav('products'), href: '/categories' },
+    { label: nav('maintenance'), href: '/maintenance' },
+    { label: nav('agents'), href: '/agents' },
+    { label: nav('about'), href: '/about' },
+    { label: nav('contact'), href: '/contact' },
   ];
   // The lockup already draws the wordmark and the tagline, so the alt text
   // spells both out for assistive tech. `priority` because the logo is the
@@ -23,7 +25,7 @@ export async function SiteHeader() {
   const logoAlt = `${site('name')} — ${site('tagline')}`;
 
   return (
-    <header className="border-b border-stone-200 bg-white">
+    <header className="relative border-b border-stone-200 bg-white">
       <Container className="flex h-16 items-center gap-6">
         <Link
           href="/"
@@ -45,9 +47,9 @@ export async function SiteHeader() {
           />
         </Link>
         <nav aria-label={nav('main')} className="hidden sm:block">
-          <ul className="flex items-center gap-6">
+          <ul className="flex items-center gap-3 lg:gap-6">
             {items.map((item) => (
-              <li key={item.href + item.label}>
+              <li key={item.href}>
                 <Link
                   href={item.href}
                   className="rounded text-sm text-stone-600 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
@@ -58,8 +60,17 @@ export async function SiteHeader() {
             ))}
           </ul>
         </nav>
-        <div className="ms-auto">
-          <LanguageSwitcher />
+        <div className="ms-auto flex items-center gap-1">
+          <div className="hidden sm:block">
+            <LanguageSwitcher />
+          </div>
+          <MobileMenu
+            items={items}
+            openLabel={header('openMenu')}
+            closeLabel={header('closeMenu')}
+            menuLabel={header('menu')}
+            navLabel={nav('main')}
+          />
         </div>
       </Container>
     </header>

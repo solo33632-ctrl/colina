@@ -12,7 +12,15 @@ import { PageViewTracker } from '@/components/page-view-tracker';
 import { QuoteRequestPanel } from '@/components/quote-request-panel';
 import { RelatedMachines } from '@/components/related-machines';
 import { routing } from '@/i18n/routing';
-import { absoluteImageUrl, localeAlternates, serializeJsonLd } from '@/lib/seo';
+import {
+  absoluteImageUrl,
+  buildOpenGraph,
+  buildTwitter,
+  defaultShareImageUrl,
+  localeAlternates,
+  serializeJsonLd,
+  shareImageUrl,
+} from '@/lib/seo';
 
 // Interim freshness: revalidate DB-driven content hourly (see agent.md).
 export const revalidate = 3600;
@@ -35,15 +43,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const machine = await prisma.machine.findUnique({
     where: { slug },
+    include: { images: { orderBy: { position: 'asc' } } },
   });
   if (!machine) {
     return {};
   }
+  const name = locale === 'ar' ? machine.nameAr : machine.nameEn;
+  const description =
+    locale === 'ar' ? machine.shortDescriptionAr : machine.shortDescriptionEn;
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  const defaultImage = defaultShareImageUrl();
+  const image =
+    machine.images
+      .map((photo) => shareImageUrl(photo.url))
+      .find((url) => url !== undefined) ?? defaultImage;
+  const isDefaultImage = Boolean(image) && image === defaultImage;
   return {
-    title: locale === 'ar' ? machine.nameAr : machine.nameEn,
-    description:
-      locale === 'ar' ? machine.shortDescriptionAr : machine.shortDescriptionEn,
+    title: name,
+    description,
     alternates: await localeAlternates(`/machines/${slug}`, locale),
+    openGraph: buildOpenGraph({
+      locale,
+      siteName: site('name'),
+      imageUrl: image,
+      imageAlt: name,
+      imageWidth: isDefaultImage ? 1200 : undefined,
+      imageHeight: isDefaultImage ? 630 : undefined,
+    }),
+    twitter: buildTwitter(image),
   };
 }
 
@@ -125,7 +152,8 @@ export default async function MachineDetailPage({ params }: Props) {
   // sold by quote (no prices, no ratings). Google's product rich results
   // require valid Offer data — inventing prices would be spam, so the
   // markup stays offer-less (valid schema.org, no rich-result claim).
-  const { canonical } = await localeAlternates(`/machines/${slug}`, locale);
+  const alternates = await localeAlternates(`/machines/${slug}`, locale);
+  const canonical = alternates?.canonical;
   const firstImage = absoluteImageUrl(machine.images[0]?.url ?? null);
   const productJsonLd = serializeJsonLd({
     '@context': 'https://schema.org',
@@ -135,7 +163,7 @@ export default async function MachineDetailPage({ params }: Props) {
     ...(firstImage ? { image: firstImage } : {}),
     category: categoryName,
     brand: { '@type': 'Brand', name: 'Colina' },
-    url: canonical,
+    ...(canonical ? { url: canonical } : {}),
   });
 
   return (
@@ -143,7 +171,12 @@ export default async function MachineDetailPage({ params }: Props) {
     // globals.css can tell this page apart and reserve room for the mobile
     // quote bar's clearance under the footer, without that padding appearing on
     // every other page. See the note there.
-    <main data-quote-bar-page="">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      data-quote-bar-page=""
+      className="outline-none"
+    >
       <PageViewTracker path={`/machines/${slug}`} locale={locale} />
       <script
         type="application/ld+json"

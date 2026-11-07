@@ -10,7 +10,13 @@ import { MachineSummaryCard } from '@/components/machine-summary-card';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { Reveal } from '@/components/reveal';
 import { routing } from '@/i18n/routing';
-import { localeAlternates } from '@/lib/seo';
+import {
+  buildOpenGraph,
+  buildTwitter,
+  defaultShareImageUrl,
+  localeAlternates,
+  shareImageUrl,
+} from '@/lib/seo';
 
 // Interim freshness: revalidate DB-driven content hourly (see agent.md).
 export const revalidate = 3600;
@@ -33,15 +39,37 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const category = await prisma.machineCategory.findUnique({
     where: { slug },
+    select: {
+      nameAr: true,
+      nameEn: true,
+      descriptionAr: true,
+      descriptionEn: true,
+      image: true,
+    },
   });
   if (!category) {
     return {};
   }
+  const name = locale === 'ar' ? category.nameAr : category.nameEn;
+  const description =
+    locale === 'ar' ? category.descriptionAr : category.descriptionEn;
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  const defaultImage = defaultShareImageUrl();
+  const image = shareImageUrl(category.image) ?? defaultImage;
+  const isDefaultImage = Boolean(image) && image === defaultImage;
   return {
-    title: locale === 'ar' ? category.nameAr : category.nameEn,
-    description:
-      locale === 'ar' ? category.descriptionAr : category.descriptionEn,
+    title: name,
+    description,
     alternates: await localeAlternates(`/categories/${slug}`, locale),
+    openGraph: buildOpenGraph({
+      locale,
+      siteName: site('name'),
+      imageUrl: image,
+      imageAlt: name,
+      imageWidth: isDefaultImage ? 1200 : undefined,
+      imageHeight: isDefaultImage ? 630 : undefined,
+    }),
+    twitter: buildTwitter(image),
   };
 }
 
@@ -93,7 +121,7 @@ export default async function CategoryDetailPage({ params }: Props) {
   );
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path={`/categories/${slug}`} locale={locale} />
 
       {/* The category photo, shown whole, under a neutral scrim, with the

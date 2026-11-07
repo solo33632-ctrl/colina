@@ -44,7 +44,7 @@ export default async function CategoriesPage({ params }: Props) {
   });
 
   return (
-    <main>
+    <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path="/categories" locale={locale} />
       <Container className="py-16">
         <h1 className="text-center text-3xl font-bold text-stone-900 sm:text-4xl">

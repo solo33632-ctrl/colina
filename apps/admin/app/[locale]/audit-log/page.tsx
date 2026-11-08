@@ -17,11 +17,11 @@ import {
   AUDIT_ACTIONS,
   AUDIT_ACTION_SENTENCES,
   AUDIT_DELETED_ADMIN_FILTER,
-  AUDIT_ENTITY_MESSAGE_KEYS,
   AUDIT_ENTITY_TYPES,
-  AUDIT_NAMELESS_ACTIONS,
   AUDIT_PAGE_SIZE,
+  auditEntityLabelKey,
   auditEntityType,
+  auditEntrySentence,
   parseAuditDate,
   parseAuditDetails,
 } from '@/lib/audit-log-view';
@@ -193,11 +193,9 @@ export default async function AuditLogPage({ searchParams }: Props) {
     return search ? `/audit-log?${search}` : '/audit-log';
   };
 
-  const entityLabel = (entityType: string) => {
-    const key = AUDIT_ENTITY_MESSAGE_KEYS[entityType];
-    return key && t.has(`entities.${key}` as never)
-      ? t(`entities.${key}` as never)
-      : entityType;
+  const entityLabel = (entity: string) => {
+    const key = auditEntityLabelKey(entity);
+    return key && t.has(key as never) ? t(key as never) : auditEntityType(entity);
   };
 
   const actionOptionLabel = (action: string) => {
@@ -493,15 +491,11 @@ export default async function AuditLogPage({ searchParams }: Props) {
             <ul className="mt-6 grid gap-4">
               {entries.map((entry) => {
                 const details = parseAuditDetails(entry.details);
-                const sentenceKey = AUDIT_ACTION_SENTENCES[entry.action];
-                const label = details?.label
-                  ? locale === 'ar'
-                    ? (details.label.ar ?? details.label.en)
-                    : (details.label.en ?? details.label.ar)
-                  : null;
-                const hasSentence =
-                  sentenceKey !== undefined &&
-                  (label !== null || AUDIT_NAMELESS_ACTIONS.has(entry.action));
+                const sentence = auditEntrySentence(
+                  entry.action,
+                  entry.details,
+                  locale
+                );
                 const relative = relativeTime(entry.createdAt, locale);
                 const fullTime = entry.createdAt.toLocaleString(
                   intlLocale(locale)
@@ -513,16 +507,16 @@ export default async function AuditLogPage({ searchParams }: Props) {
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="break-words text-base font-semibold text-stone-900">
-                            {hasSentence ? (
-                              label ? (
+                            {sentence ? (
+                              sentence.name ? (
                                 t(
-                                  `actions.${sentenceKey}` as never,
+                                  `actions.${sentence.key}` as never,
                                   {
-                                    name: label,
+                                    name: sentence.name,
                                   } as never
                                 )
                               ) : (
-                                t(`actions.${sentenceKey}` as never)
+                                t(`actions.${sentence.key}` as never)
                               )
                             ) : (
                               <span className="font-mono text-sm">
@@ -553,7 +547,7 @@ export default async function AuditLogPage({ searchParams }: Props) {
                           </p>
                         </div>
                         <span className="inline-flex whitespace-nowrap rounded-full border border-stone-200 bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700">
-                          {entityLabel(auditEntityType(entry.entity))}
+                          {entityLabel(entry.entity)}
                         </span>
                       </div>
 

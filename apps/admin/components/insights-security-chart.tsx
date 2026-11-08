@@ -35,6 +35,16 @@ const TYPE_COLORS: Record<SecurityEventType, { fill: string; swatch: string }> =
     },
   };
 
+// Solid, diagonal hatch and dots: the three series stay distinguishable in
+// greyscale, for colour-blind operators and in a printed screenshot, not only
+// by hue. The legend repeats the same pattern beside each label, so the
+// mapping is readable without decoding colour.
+const TYPE_PATTERNS: Record<SecurityEventType, string | null> = {
+  RATE_LIMITED: null,
+  HONEYPOT_CAUGHT: 'security-honeypot-hatch',
+  LOGIN_FAILED: 'security-login-dots',
+};
+
 type Scale = { max: number; ticks: number[] };
 
 function niceScale(maxValue: number): Scale {
@@ -113,6 +123,37 @@ export async function InsightsSecurityChart({
       >
         <title>{summary}</title>
 
+        <defs>
+          <pattern
+            id="security-honeypot-hatch"
+            width="6"
+            height="6"
+            patternUnits="userSpaceOnUse"
+            patternTransform="rotate(45)"
+          >
+            <path d="M0 0h6v6H0z" className="fill-chart-security-honeypot" />
+            <path
+              d="M0 0v6"
+              strokeWidth="1.5"
+              className="stroke-chart-pattern-ink"
+            />
+          </pattern>
+          <pattern
+            id="security-login-dots"
+            width="6"
+            height="6"
+            patternUnits="userSpaceOnUse"
+          >
+            <path d="M0 0h6v6H0z" className="fill-chart-security-login" />
+            <circle
+              cx="1.5"
+              cy="1.5"
+              r="1"
+              className="fill-chart-pattern-ink"
+            />
+          </pattern>
+        </defs>
+
         {scale.ticks.map((tick) => {
           const y = baseline - (tick / scale.max) * plotHeight;
           return (
@@ -170,16 +211,20 @@ export async function InsightsSecurityChart({
               className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
             >
               <title>{label}</title>
-              {bars.map((bar) => (
-                <rect
-                  key={bar.type}
-                  x={x(index)}
-                  y={bar.y}
-                  width={barWidth}
-                  height={bar.height}
-                  className={TYPE_COLORS[bar.type].fill}
-                />
-              ))}
+              {bars.map((bar) => {
+                const pattern = TYPE_PATTERNS[bar.type];
+                return (
+                  <rect
+                    key={bar.type}
+                    x={x(index)}
+                    y={bar.y}
+                    width={barWidth}
+                    height={bar.height}
+                    className={pattern ? undefined : TYPE_COLORS[bar.type].fill}
+                    fill={pattern ? `url(#${pattern})` : undefined}
+                  />
+                );
+              })}
             </g>
           );
         })}
@@ -200,18 +245,31 @@ export async function InsightsSecurityChart({
       </svg>
 
       <ul className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-stone-600">
-        {report.types.map((row) => (
-          <li key={row.type} className="inline-flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-sm ${TYPE_COLORS[row.type].swatch}`}
-              aria-hidden="true"
-            />
-            <span>{t(`eventTypes.${row.type}`)}</span>
-            <span className="tabular-nums text-stone-500">
-              {number(row.total)}
-            </span>
-          </li>
-        ))}
+        {report.types.map((row) => {
+          const pattern = TYPE_PATTERNS[row.type];
+          return (
+            <li key={row.type} className="inline-flex items-center gap-2">
+              {pattern ? (
+                <svg
+                  viewBox="0 0 10 10"
+                  className="h-2.5 w-2.5 shrink-0"
+                  aria-hidden="true"
+                >
+                  <path d="M0 0h10v10H0z" fill={`url(#${pattern})`} />
+                </svg>
+              ) : (
+                <span
+                  className={`h-2.5 w-2.5 shrink-0 rounded-sm ${TYPE_COLORS[row.type].swatch}`}
+                  aria-hidden="true"
+                />
+              )}
+              <span>{t(`eventTypes.${row.type}`)}</span>
+              <span className="tabular-nums text-stone-500">
+                {number(row.total)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
 
       {/* A wrapper clips a wide data table to the 1px accessible box; putting

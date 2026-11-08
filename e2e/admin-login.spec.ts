@@ -47,11 +47,14 @@ test.describe('admin login', () => {
         test.skip(!ADMIN_PASSWORD, 'ADMIN_PASSWORD env is required');
         // Sign in once through the form and hand back the session, so the
         // login rate limit (10 per 15 min per IP) is not spent per test.
+        // `fresh` keeps this test exercising the real form even though the
+        // run-wide session cache already holds a session for this account.
         const state = await loginState(
           browser,
           locale,
           ADMIN_EMAIL,
-          ADMIN_PASSWORD
+          ADMIN_PASSWORD,
+          { fresh: true }
         );
         const context = await browser.newContext({ storageState: state });
         const page = await context.newPage();

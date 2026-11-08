@@ -82,6 +82,65 @@ export function percentChange(
 }
 
 /**
+ * Below this many views in the previous window, a percentage is noise: one
+ * extra visit on a two-visit day reads as "+50%", which sounds like a trend
+ * but is not. Small windows state the absolute difference instead.
+ */
+export const SMALL_PREVIOUS_VIEWS = 50;
+
+/** Percentages beyond this are shown as ">999%" rather than a noisy number. */
+export const MAX_CHANGE_PERCENT = 999;
+
+export type ChangeDirection = 'up' | 'down';
+
+export type TrafficChange =
+  | { kind: 'empty' }
+  | { kind: 'same' }
+  | { kind: 'absolute'; direction: ChangeDirection; count: number }
+  | {
+      kind: 'percent';
+      direction: ChangeDirection;
+      percent: number;
+      capped: boolean;
+    };
+
+/**
+ * Turns two window totals into the one comparison the traffic KPI shows.
+ *
+ * - no previous views -> "No previous data" (never a fake -100%);
+ * - equal totals -> "No change";
+ * - fewer than {@link SMALL_PREVIOUS_VIEWS} previous views -> absolute count;
+ * - otherwise a whole percentage, capped at {@link MAX_CHANGE_PERCENT}.
+ */
+export function trafficChange(
+  current: number,
+  previous: number
+): TrafficChange {
+  if (previous === 0) {
+    return { kind: 'empty' };
+  }
+
+  const difference = current - previous;
+  if (difference === 0) {
+    return { kind: 'same' };
+  }
+
+  const direction: ChangeDirection = difference > 0 ? 'up' : 'down';
+  if (previous < SMALL_PREVIOUS_VIEWS) {
+    return { kind: 'absolute', direction, count: Math.abs(difference) };
+  }
+
+  const rounded = Math.round((difference / previous) * 100);
+  const capped = Math.abs(rounded) > MAX_CHANGE_PERCENT;
+  return {
+    kind: 'percent',
+    direction,
+    percent: Math.min(Math.abs(rounded), MAX_CHANGE_PERCENT),
+    capped,
+  };
+}
+
+/**
  * The series with every day in the window present, ascending, zero-filled.
  * The database deliberately returns only days that have rows; a chart that
  * skipped a quiet day would draw a straight line across it and imply traffic

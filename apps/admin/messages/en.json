@@ -109,7 +109,8 @@
     "latestLeadsEmpty": "No leads yet.",
     "justNow": "Just now",
     "recentActivityHeading": "Recent activity",
-    "recentActivityEmpty": "No activity recorded yet."
+    "recentActivityEmpty": "No activity recorded yet.",
+    "recentActivityViewAll": "View audit log"
   },
   "Auth": {
     "login": {
@@ -555,6 +556,8 @@
     "noPrevious": "No previous data",
     "changeUp": "Up {percent} vs previous period",
     "changeDown": "Down {percent} vs previous period",
+    "changeUpViews": "Up {count} views vs previous period",
+    "changeDownViews": "Down {count} views vs previous period",
     "changeSame": "No change vs previous period",
     "busiestDayViews": "{count} views",
     "noVisits": "No visits",

@@ -4,6 +4,9 @@ import { useEffect, useRef } from 'react';
 import type { LeadDeleteTarget } from '@/lib/leads-delete';
 import { useLeadSelection } from './lead-selection';
 
+// `accent-brand-700` is the light-theme accent this list has always used; the
+// dark theme's native-control rule in globals.css outranks it with a darker
+// fill, so the white tick does not land on the light-mode brand scale.
 const checkboxClasses =
   'h-4 w-4 shrink-0 cursor-pointer rounded border-stone-400 accent-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600';
 

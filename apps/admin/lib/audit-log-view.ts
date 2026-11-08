@@ -195,6 +195,54 @@ export function parseAuditDetails(value: unknown): AuditViewDetails | null {
   return { changes, label };
 }
 
+export type AuditEntrySentence = {
+  /** `AuditLog.actions.*` key. */
+  key: string;
+  /** Localized record name, or `null` for the nameless actions. */
+  name: string | null;
+};
+
+/**
+ * Resolves an audit row to its human sentence, shared by the audit-log page
+ * and the dashboard's "Recent activity" panel.
+ *
+ * Returns `null` when the row has no safe sentence: an unknown action, or a
+ * named action whose stored details carry no label. Callers then keep the raw
+ * action/entity codes, exactly like the audit log page always has.
+ */
+export function auditEntrySentence(
+  action: string,
+  details: unknown,
+  locale: string
+): AuditEntrySentence | null {
+  const key = AUDIT_ACTION_SENTENCES[action];
+  if (!key) {
+    return null;
+  }
+
+  const label = parseAuditDetails(details)?.label ?? null;
+  const name = label
+    ? locale === 'ar'
+      ? (label.ar ?? label.en)
+      : (label.en ?? label.ar)
+    : null;
+
+  if (name === null && !AUDIT_NAMELESS_ACTIONS.has(action)) {
+    return null;
+  }
+
+  return { key, name };
+}
+
+/**
+ * Full `AuditLog.entities.*` message key for a stored entity, or `null` when
+ * the prefix is unknown. Callers fall back to the raw prefix.
+ */
+export function auditEntityLabelKey(entity: string): string | null {
+  const key = AUDIT_ENTITY_MESSAGE_KEYS[auditEntityType(entity)];
+  return key ? `entities.${key}` : null;
+}
+
 /**
  * The stored entity is `<Prefix>:<identifier>`; lead deletion is the lone
  * space-separated form (`Lead requested=…`).

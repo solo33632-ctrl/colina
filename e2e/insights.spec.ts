@@ -422,19 +422,45 @@ test.describe('insights dashboard', () => {
       await expect(kpiValue(page, 'insights-total-views')).toHaveText(
         locale.id === 'ar' ? '٥٠' : '50'
       );
+      // 40 previous views is below the 50-view threshold, so the change is
+      // stated as an absolute count rather than a noisy percentage.
       if (locale.id === 'ar') {
         await expect(kpiDetail(page, 'insights-total-views')).toContainText(
           'زيادة'
         );
         await expect(kpiDetail(page, 'insights-total-views')).toContainText(
-          '٢٥'
+          '١٠'
+        );
+        await expect(kpiDetail(page, 'insights-total-views')).toContainText(
+          'مشاهدة'
         );
       } else {
         await expect(kpiDetail(page, 'insights-total-views')).toHaveText(
-          '↑ Up 25% vs previous period'
+          '↑ Up 10 views vs previous period'
         );
       }
     }
+
+    await context.close();
+  });
+
+  test('a huge increase is capped at >999% instead of a noisy percentage', async ({
+    browser,
+  }) => {
+    resetPageViewDaily();
+    seedPageViews([
+      { dayOffset: -1, path: '/', locale: 'en', count: 1100 },
+      { dayOffset: -8, path: '/', locale: 'en', count: 100 },
+    ]);
+
+    const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
+    const context = await browser.newContext({ storageState: state });
+    const page = await context.newPage();
+
+    await page.goto(`${ADMIN_URL}/en/insights?range=7`);
+    await expect(kpiDetail(page, 'insights-total-views')).toHaveText(
+      '↑ Up >999% vs previous period'
+    );
 
     await context.close();
   });
@@ -498,7 +524,7 @@ test.describe('insights dashboard', () => {
     await context.close();
   });
 
-  test('the chart draws only finite geometry at 390px, in both locales', async ({
+  test('the chart fills its card with finite geometry at desktop and 390px, in both locales and colour schemes', async ({
     browser,
   }) => {
     resetPageViewDaily();
@@ -518,39 +544,84 @@ test.describe('insights dashboard', () => {
     const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
     const context = await browser.newContext({ storageState: state });
     const page = await context.newPage();
-    await page.setViewportSize({ width: 390, height: 844 });
 
-    for (const locale of LOCALES) {
-      await page.goto(`${ADMIN_URL}/${locale.id}/insights?range=7`);
+    // Stage 40b: the SVG must fill the card at both ends of the viewport
+    // range, in both locales and in both colour schemes. The viewBox scales,
+    // so the rendered width equals the figure's content width and the aspect
+    // ratio stays 720:260.
+    const viewports = [
+      { label: 'desktop', width: 1280, height: 900 },
+      { label: '390px', width: 390, height: 844 },
+    ] as const;
 
-      const figure = page.getByTestId('insights-traffic-chart');
-      await expect(figure).toBeVisible();
-      const svg = figure.locator('svg');
-      const svgHtml = await svg.evaluate((element) => element.outerHTML);
-      expect(svgHtml, `${locale.id}: chart has no NaN`).not.toContain('NaN');
+    for (const viewport of viewports) {
+      await page.setViewportSize({
+        width: viewport.width,
+        height: viewport.height,
+      });
 
-      const pathData = await figure
-        .locator('path')
-        .evaluateAll((elements) =>
-          elements.map((element) => element.getAttribute('d') ?? '')
-        );
-      expect(pathData.length).toBeGreaterThanOrEqual(3);
-      for (const data of pathData) {
-        expect(data, `${locale.id}: every path is finite`).not.toContain('NaN');
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme });
+
+        for (const locale of LOCALES) {
+          const scope = `${locale.id} ${viewport.label} ${colorScheme}`;
+          await page.goto(`${ADMIN_URL}/${locale.id}/insights?range=7`);
+
+          const figure = page.getByTestId('insights-traffic-chart');
+          await expect(figure).toBeVisible();
+          const svg = figure.locator('svg');
+          await expect(svg).toHaveAttribute(
+            'preserveAspectRatio',
+            'xMidYMid meet'
+          );
+          const svgHtml = await svg.evaluate((element) => element.outerHTML);
+          expect(svgHtml, `${scope}: chart has no NaN`).not.toContain('NaN');
+
+          const pathData = await figure
+            .locator('path')
+            .evaluateAll((elements) =>
+              elements.map((element) => element.getAttribute('d') ?? '')
+            );
+          expect(pathData.length).toBeGreaterThanOrEqual(3);
+          for (const data of pathData) {
+            expect(data, `${scope}: every path is finite`).not.toContain('NaN');
+          }
+
+          await expect(figure.locator('path[stroke-dasharray]')).toHaveCount(1);
+          await expect(figure.locator('svg g[tabindex="0"]')).toHaveCount(7);
+          await expect(figure.locator('tbody tr')).toHaveCount(7);
+
+          const [figureBox, svgBox] = await Promise.all([
+            figure.boundingBox(),
+            svg.boundingBox(),
+          ]);
+          expect(figureBox, `${scope}: figure is rendered`).not.toBeNull();
+          expect(svgBox, `${scope}: svg is rendered`).not.toBeNull();
+          expect(
+            Math.abs(svgBox!.width - figureBox!.width),
+            `${scope}: the chart fills the card`
+          ).toBeLessThanOrEqual(1);
+          expect(
+            svgBox!.height / svgBox!.width,
+            `${scope}: the viewBox keeps its aspect ratio`
+          ).toBeCloseTo(260 / 720, 2);
+          if (viewport.label === 'desktop') {
+            expect(
+              svgBox!.width,
+              `${scope}: no 720px cap on a wide card`
+            ).toBeGreaterThan(720);
+          }
+
+          const overflow = await page.evaluate(() => ({
+            scrollWidth: document.documentElement.scrollWidth,
+            clientWidth: document.documentElement.clientWidth,
+          }));
+          expect(
+            overflow.scrollWidth,
+            `${scope}: the page must not overflow the viewport`
+          ).toBeLessThanOrEqual(overflow.clientWidth);
+        }
       }
-
-      await expect(figure.locator('path[stroke-dasharray]')).toHaveCount(1);
-      await expect(figure.locator('svg g[tabindex="0"]')).toHaveCount(7);
-      await expect(figure.locator('tbody tr')).toHaveCount(7);
-
-      const overflow = await page.evaluate(() => ({
-        scrollWidth: document.documentElement.scrollWidth,
-        clientWidth: document.documentElement.clientWidth,
-      }));
-      expect(
-        overflow.scrollWidth,
-        `${locale.id}: the page must not overflow a 390px viewport`
-      ).toBeLessThanOrEqual(overflow.clientWidth);
     }
 
     await context.close();
@@ -952,7 +1023,9 @@ test.describe('insights dashboard', () => {
         const chart = page.getByTestId('insights-security-chart');
         await expect(chart).toBeVisible();
         await expect(chart).toHaveAttribute('dir', 'ltr');
-        const svg = chart.locator('svg');
+        // The legend swatches are small SVGs of their own; the chart itself is
+        // the role="img" SVG.
+        const svg = chart.locator('svg[role="img"]');
         await expect(svg).toHaveAttribute('aria-label', /.+/);
         const svgHtml = await svg.evaluate((element) => element.outerHTML);
         expect(
@@ -977,6 +1050,35 @@ test.describe('insights dashboard', () => {
           expect(bar.width).toBeGreaterThan(0);
           expect(bar.height).toBeGreaterThan(0);
         }
+
+        // Stage 40b: hue is not the only distinction. Two series are painted
+        // with SVG patterns and the legend repeats the same swatches, so the
+        // chart survives greyscale, colour blindness and a printed screenshot.
+        await expect(chart.locator('defs pattern')).toHaveCount(2);
+        const patternedFills = await chart
+          .locator('rect[fill^="url(#"]')
+          .evaluateAll((elements) => [
+            ...new Set(elements.map((element) => element.getAttribute('fill'))),
+          ]);
+        expect(
+          patternedFills.sort(),
+          `${locale.id}: hatched and dotted series`
+        ).toEqual([
+          'url(#security-honeypot-hatch)',
+          'url(#security-login-dots)',
+        ]);
+        const legendFills = await chart
+          .locator('ul svg path[fill^="url(#"]')
+          .evaluateAll((elements) => [
+            ...new Set(elements.map((element) => element.getAttribute('fill'))),
+          ]);
+        expect(
+          legendFills.sort(),
+          `${locale.id}: legend repeats both patterns`
+        ).toEqual(patternedFills);
+        await expect(
+          chart.locator('rect.fill-chart-security-rate')
+        ).not.toHaveCount(0);
 
         await expect(chart.locator('tbody tr')).toHaveCount(7);
         await expect(

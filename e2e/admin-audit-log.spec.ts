@@ -853,4 +853,125 @@ test.describe('admin audit log', () => {
 
     await context.close();
   });
+
+  // Stage 40b: the dashboard used to print the raw action/entity codes. It now
+  // reuses the audit log's sentence builder, so these rows must read exactly
+  // like their audit-log counterparts. Future timestamps keep the fixtures in
+  // the newest five regardless of what earlier specs wrote.
+  test('the dashboard recent activity reads as sentences and links to the log', async ({
+    browser,
+  }) => {
+    const { context, page } = await signedInPage(browser);
+    const partnerWhen = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    createAuditLogs([
+      {
+        action: 'PARTNER_UPDATE',
+        entity: `Partner:${TAG}-dashboard`,
+        createdAt: partnerWhen.toISOString(),
+        adminEmail: ADMIN_EMAIL,
+        details: fixtureDetails(`Partner ${TAG}`, `شريك ${TAG}`),
+      },
+      {
+        action: 'SETTINGS_UPDATE',
+        entity: 'SiteSettings:main',
+        createdAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        adminEmail: null,
+        details: { changes: [], search: TAG },
+      },
+      {
+        // A lead row never carries a label; the visitor's data in `changes`
+        // must stay off the dashboard just as it stays out of the log's
+        // sentence.
+        action: 'LEAD_STATUS_UPDATE',
+        entity: 'LeadStatus:lead-1',
+        createdAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        adminEmail: ADMIN_EMAIL,
+        details: {
+          changes: [
+            {
+              field: 'name',
+              labelKey: 'name',
+              type: 'text',
+              from: `Visitor PII ${TAG}`,
+              to: `Visitor PII ${TAG} 2`,
+            },
+          ],
+          search: TAG,
+        },
+      },
+    ]);
+
+    await page.goto(`${ADMIN_URL}/en`);
+    const panel = page.locator('section').filter({
+      has: page.getByRole('heading', { name: 'Recent activity' }),
+    });
+
+    await expect(
+      panel.getByText(`Updated partner Partner ${TAG}`)
+    ).toBeVisible();
+    await expect(panel.getByText('Updated site settings')).toBeVisible();
+    await expect(panel.getByText('Changed lead status')).toBeVisible();
+    // No raw codes and no visitor data.
+    await expect(panel.getByText('PARTNER_UPDATE')).toHaveCount(0);
+    await expect(panel.getByText(`Partner:${TAG}-dashboard`)).toHaveCount(0);
+    await expect(panel.getByText('SiteSettings:main')).toHaveCount(0);
+    await expect(panel.getByText(`Visitor PII ${TAG}`)).toHaveCount(0);
+
+    // Actor, relative time and the audit-log's own entity badge.
+    await expect(panel.getByText(ADMIN_EMAIL).first()).toBeVisible();
+    await expect(panel.getByText('(deleted admin)')).toBeVisible();
+    await expect(panel.getByText('Partner', { exact: true })).toBeVisible();
+    const newestTime = panel.locator('time').first();
+    await expect(newestTime).toHaveAttribute(
+      'dateTime',
+      partnerWhen.toISOString()
+    );
+    await expect(newestTime).toHaveText(/in 2 hours/);
+
+    // Every row links to its audit-log action filter, and the card links to
+    // the unfiltered log.
+    await expect(
+      panel.getByRole('link', { name: /Updated partner/ })
+    ).toHaveAttribute('href', '/en/audit-log?action=PARTNER_UPDATE');
+    await expect(
+      panel.getByRole('link', { name: 'View audit log' })
+    ).toHaveAttribute('href', '/en/audit-log');
+
+    await context.close();
+  });
+
+  test('the Arabic dashboard shows the localized sentence and link', async ({
+    browser,
+  }) => {
+    const { context, page } = await signedInPage(browser);
+    createAuditLogs([
+      {
+        action: 'PARTNER_UPDATE',
+        entity: `Partner:${TAG}-dashboard-ar`,
+        createdAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+        adminEmail: ADMIN_EMAIL,
+        details: fixtureDetails(`Partner ${TAG}`, `شريك ${TAG}`),
+      },
+    ]);
+
+    await page.goto(`${ADMIN_URL}/ar`);
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    const panel = page.locator('section').filter({
+      has: page.getByRole('heading', { name: 'أحدث النشاطات' }),
+    });
+
+    await expect(panel.getByText(`حُدّث شريك شريك ${TAG}`)).toBeVisible();
+    await expect(panel.getByText('PARTNER_UPDATE')).toHaveCount(0);
+    await expect(
+      panel.getByText(`Partner:${TAG}-dashboard-ar`)
+    ).toHaveCount(0);
+    await expect(
+      panel.getByRole('link', { name: /حُدّث شريك/ })
+    ).toHaveAttribute('href', '/ar/audit-log?action=PARTNER_UPDATE');
+    await expect(
+      panel.getByRole('link', { name: 'عرض سجل التدقيق' })
+    ).toHaveAttribute('href', '/ar/audit-log');
+
+    await context.close();
+  });
 });

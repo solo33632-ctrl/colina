@@ -152,8 +152,10 @@ async function openSettings(browser: Browser) {
   const context = await browser.newContext({ storageState: state });
   const page = await context.newPage();
   await page.goto(`${ADMIN_URL}/en`);
-  // Reachable from the sidebar, not only by typing the URL.
-  await page.getByRole('link', { name: COPY.heading }).click();
+  // Reachable from the sidebar, not only by typing the URL. `exact` matters:
+  // the dashboard's recent-activity rows also link here, and their sentences
+  // contain "Site settings".
+  await page.getByRole('link', { name: COPY.heading, exact: true }).click();
   await expect(page).toHaveURL(`${ADMIN_URL}/en/settings`);
   return { context, page };
 }

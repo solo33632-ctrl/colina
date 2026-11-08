@@ -20,6 +20,7 @@ const config: Config = {
       colors: {
         white: 'rgb(var(--surface-card) / <alpha-value>)',
         plate: 'rgb(var(--plate) / <alpha-value>)',
+        'plate-ink': 'rgb(var(--plate-ink) / <alpha-value>)',
         overlay: 'rgb(var(--overlay) / <alpha-value>)',
         stone: {
           50: 'rgb(var(--surface-page) / <alpha-value>)',
@@ -85,6 +86,7 @@ const config: Config = {
           'security-honeypot':
             'rgb(var(--chart-security-honeypot) / <alpha-value>)',
           'security-login': 'rgb(var(--chart-security-login) / <alpha-value>)',
+          'pattern-ink': 'rgb(var(--chart-pattern-ink) / <alpha-value>)',
         },
       },
       fontFamily: {

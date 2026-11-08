@@ -1,7 +1,7 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import type { TrafficReport } from '@/lib/insights-traffic';
 import { intlLocale } from '@/lib/format';
-import { InsightsChange } from '@/components/insights-change';
+import { TrafficChange } from '@/components/insights-change';
 import { MetricCard } from '@/components/metric-card';
 
 // The four numbers that answer "what happened in this window?".
@@ -39,7 +39,12 @@ export async function InsightsTrafficKpis({
         count={report.total}
         value={number(report.total)}
         testId="insights-total-views"
-        detail={<InsightsChange changePercent={report.changePercent} />}
+        detail={
+          <TrafficChange
+            current={report.total}
+            previous={report.previousTotal}
+          />
+        }
       />
       <MetricCard
         label={t('averagePerDay')}

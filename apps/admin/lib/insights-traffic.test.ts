@@ -3,11 +3,14 @@ import type { DailyViews } from '@colina/db';
 import {
   buildTrafficReport,
   DEFAULT_TRAFFIC_RANGE_DAYS,
+  MAX_CHANGE_PERCENT,
   pageLabel,
   padDailySeries,
   parseTrafficRange,
   percentChange,
   sectionForPath,
+  SMALL_PREVIOUS_VIEWS,
+  trafficChange,
   trafficWindows,
   TRAFFIC_RANGE_DAYS,
   TRAFFIC_SECTIONS,
@@ -86,6 +89,89 @@ describe('percentChange', () => {
   it('is null when there is no previous window to compare against', () => {
     expect(percentChange(0, 0)).toBeNull();
     expect(percentChange(42, 0)).toBeNull();
+  });
+});
+
+describe('trafficChange', () => {
+  it('keeps the empty-previous-period message', () => {
+    expect(trafficChange(12, 0)).toEqual({ kind: 'empty' });
+    expect(trafficChange(0, 0)).toEqual({ kind: 'empty' });
+  });
+
+  it('reports no change when both windows match', () => {
+    expect(trafficChange(40, 40)).toEqual({ kind: 'same' });
+    expect(trafficChange(0, 0)).toEqual({ kind: 'empty' });
+  });
+
+  it('uses an absolute count below the small-window threshold', () => {
+    expect(SMALL_PREVIOUS_VIEWS).toBe(50);
+    expect(trafficChange(50, 40)).toEqual({
+      kind: 'absolute',
+      direction: 'up',
+      count: 10,
+    });
+    expect(trafficChange(30, 40)).toEqual({
+      kind: 'absolute',
+      direction: 'down',
+      count: 10,
+    });
+    expect(trafficChange(0, 30)).toEqual({
+      kind: 'absolute',
+      direction: 'down',
+      count: 30,
+    });
+  });
+
+  it('uses a percentage once the previous window reaches the threshold', () => {
+    expect(trafficChange(75, 50)).toEqual({
+      kind: 'percent',
+      direction: 'up',
+      percent: 50,
+      capped: false,
+    });
+    expect(trafficChange(50, 100)).toEqual({
+      kind: 'percent',
+      direction: 'down',
+      percent: 50,
+      capped: false,
+    });
+  });
+
+  it('caps a huge increase at 999%', () => {
+    expect(MAX_CHANGE_PERCENT).toBe(999);
+    expect(trafficChange(1099, 100)).toEqual({
+      kind: 'percent',
+      direction: 'up',
+      percent: 999,
+      capped: false,
+    });
+    expect(trafficChange(1100, 100)).toEqual({
+      kind: 'percent',
+      direction: 'up',
+      percent: 999,
+      capped: true,
+    });
+    expect(trafficChange(100_000, 100)).toEqual({
+      kind: 'percent',
+      direction: 'up',
+      percent: 999,
+      capped: true,
+    });
+  });
+
+  it('handles a negative change with a large previous window', () => {
+    expect(trafficChange(25, 100)).toEqual({
+      kind: 'percent',
+      direction: 'down',
+      percent: 75,
+      capped: false,
+    });
+    expect(trafficChange(0, 100)).toEqual({
+      kind: 'percent',
+      direction: 'down',
+      percent: 100,
+      capped: false,
+    });
   });
 });
 

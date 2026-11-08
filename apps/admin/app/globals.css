@@ -54,6 +54,9 @@
 
     /* Things that must not flip: white artwork plates and modal scrims */
     --plate: 255 255 255;
+    /* Ink for text drawn on a constant white plate. It must stay dark in both
+       themes, unlike the brand scale, which flips for dark surfaces. */
+    --plate-ink: 143 30 22;
     --overlay: 0 0 0;
     /* Text and icons on a filled brand/danger control. In dark mode the
        filled scales are light, so the readable "white" is the dark surface. */
@@ -93,6 +96,10 @@
     --chart-security-rate: 245 158 11;
     --chart-security-honeypot: 235 105 63;
     --chart-security-login: 178 39 21;
+    /* Ink for the security chart's hatch/dot overlays. White reads on the
+       light theme's dark fills; the dark theme's fills are light, so the ink
+       flips with the rest of the palette. */
+    --chart-pattern-ink: 255 255 255;
 
     --selection-bg: 254 221 196;
     --selection-text: 76 15 10;
@@ -130,6 +137,8 @@
     --brand-900: 255 232 214;
     --brand-950: 255 242 231;
     --on-brand: 25 25 28;
+    --plate-ink: 143 30 22;
+    --control-accent: 205 63 23;
 
     --status-success-bg: 16 41 26;
     --status-success-border: 47 111 69;
@@ -163,6 +172,7 @@
     --chart-security-rate: 253 186 116;
     --chart-security-honeypot: 247 150 63;
     --chart-security-login: 255 217 191;
+    --chart-pattern-ink: 43 43 48;
 
     --selection-bg: 125 56 34;
     --selection-text: 255 242 231;
@@ -201,6 +211,8 @@
       --brand-900: 255 232 214;
       --brand-950: 255 242 231;
       --on-brand: 25 25 28;
+      --plate-ink: 143 30 22;
+      --control-accent: 205 63 23;
 
       --status-success-bg: 16 41 26;
       --status-success-border: 47 111 69;
@@ -234,6 +246,7 @@
       --chart-security-rate: 253 186 116;
       --chart-security-honeypot: 247 150 63;
       --chart-security-login: 255 217 191;
+      --chart-pattern-ink: 43 43 48;
 
       --selection-bg: 125 56 34;
       --selection-text: 255 242 231;
@@ -246,6 +259,24 @@
     background-color: rgb(var(--surface-page));
     scrollbar-color: rgb(var(--scrollbar-thumb)) rgb(var(--scrollbar-track));
     scrollbar-width: thin;
+  }
+
+  /* Native form controls are painted by the platform. The light theme keeps
+     the platform default (and the lead list's explicit brand accent), so
+     light-mode rendering is unchanged. In dark mode the text-oriented brand
+     scale turns light, which leaves a white tick on a pale fill; this
+     dedicated accent keeps every checkbox/radio legible, including the plain
+     ones in long forms. */
+  :root[data-theme='dark'] input[type='checkbox'],
+  :root[data-theme='dark'] input[type='radio'] {
+    accent-color: rgb(var(--control-accent));
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) input[type='checkbox'],
+    :root:not([data-theme]) input[type='radio'] {
+      accent-color: rgb(var(--control-accent));
+    }
   }
 
   ::selection {

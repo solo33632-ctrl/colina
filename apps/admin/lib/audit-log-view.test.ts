@@ -23,7 +23,9 @@ import {
   AUDIT_ENTITY_MESSAGE_KEYS,
   AUDIT_ENTITY_TYPES,
   AUDIT_NAMELESS_ACTIONS,
+  auditEntityLabelKey,
   auditEntityType,
+  auditEntrySentence,
   parseAuditDetails,
 } from './audit-log-view';
 
@@ -122,6 +124,58 @@ describe('audit page display metadata', () => {
       )
     ).toBe('Lead');
     expect(auditEntityType('NoSeparator')).toBe('NoSeparator');
+  });
+
+  it('resolves a sentence for named and nameless rows in both locales', () => {
+    const details = {
+      changes: [],
+      label: { en: 'Acme partner', ar: 'شريك أكمي' },
+    };
+
+    expect(auditEntrySentence('PARTNER_UPDATE', details, 'en')).toEqual({
+      key: 'partnerUpdate',
+      name: 'Acme partner',
+    });
+    expect(auditEntrySentence('PARTNER_UPDATE', details, 'ar')).toEqual({
+      key: 'partnerUpdate',
+      name: 'شريك أكمي',
+    });
+    // A label missing one language falls back to the other.
+    expect(
+      auditEntrySentence(
+        'PARTNER_UPDATE',
+        { changes: [], label: { en: 'English only', ar: null } },
+        'ar'
+      )
+    ).toEqual({ key: 'partnerUpdate', name: 'English only' });
+    // Settings and leads have no safe display name, so they never need one.
+    expect(auditEntrySentence('SETTINGS_UPDATE', null, 'en')).toEqual({
+      key: 'settingsUpdate',
+      name: null,
+    });
+    expect(auditEntrySentence('LEAD_STATUS_UPDATE', null, 'en')).toEqual({
+      key: 'leadStatusUpdate',
+      name: null,
+    });
+  });
+
+  it('falls back to raw codes when no safe sentence exists', () => {
+    expect(auditEntrySentence('PARTNER_UPDATE', null, 'en')).toBeNull();
+    expect(
+      auditEntrySentence('PARTNER_UPDATE', { changes: [] }, 'en')
+    ).toBeNull();
+    expect(auditEntrySentence('UNKNOWN_ACTION', null, 'en')).toBeNull();
+  });
+
+  it('maps a stored entity to its badge message key', () => {
+    expect(auditEntityLabelKey('Machine:machine-1')).toBe('entities.machine');
+    expect(auditEntityLabelKey('SiteSettings:main')).toBe('entities.settings');
+    expect(
+      auditEntityLabelKey(
+        'Lead requested=1 deleted=1 skipped=0 items=contact:lead-1@2026-01-01'
+      )
+    ).toBe('entities.lead');
+    expect(auditEntityLabelKey('Unknown:id')).toBeNull();
   });
 
   it('drops credential-looking fields even if a stored row contains them', () => {

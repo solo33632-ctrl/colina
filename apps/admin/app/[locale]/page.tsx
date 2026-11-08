@@ -104,6 +104,7 @@ export default async function AdminHomePage() {
     id: entry.id,
     action: entry.action,
     entity: entry.entity,
+    details: entry.details,
     createdAt: entry.createdAt,
     adminEmail: entry.adminUser?.email ?? null,
   }));

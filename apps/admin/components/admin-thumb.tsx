@@ -80,7 +80,15 @@ export function AdminThumb({
         // white plate; only the compact square becomes the brand letter tile.
         className={`${plateBase} ${plateSize} ${contain ? 'bg-plate' : 'bg-brand-100'}`}
       >
-        <span aria-hidden="true" className="text-lg font-bold text-brand-800">
+        <span
+          aria-hidden="true"
+          className={`text-lg font-bold ${
+            // The logo plate stays white in both themes, so its ink must stay
+            // dark; the compact square flips with the surface and uses the
+            // theme-aware brand scale.
+            contain ? 'text-plate-ink' : 'text-brand-800'
+          }`}
+        >
           {initial}
         </span>
       </div>

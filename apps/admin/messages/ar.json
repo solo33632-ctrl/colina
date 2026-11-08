@@ -109,7 +109,8 @@
     "latestLeadsEmpty": "لا توجد طلبات بعد.",
     "justNow": "الآن",
     "recentActivityHeading": "أحدث النشاطات",
-    "recentActivityEmpty": "لا توجد نشاطات مسجلة بعد."
+    "recentActivityEmpty": "لا توجد نشاطات مسجلة بعد.",
+    "recentActivityViewAll": "عرض سجل التدقيق"
   },
   "Auth": {
     "login": {
@@ -555,6 +556,8 @@
     "noPrevious": "لا توجد بيانات للفترة السابقة",
     "changeUp": "زيادة {percent} مقارنة بالفترة السابقة",
     "changeDown": "انخفاض {percent} مقارنة بالفترة السابقة",
+    "changeUpViews": "زيادة {count} مشاهدة مقارنة بالفترة السابقة",
+    "changeDownViews": "انخفاض {count} مشاهدة مقارنة بالفترة السابقة",
     "changeSame": "لا تغيير مقارنة بالفترة السابقة",
     "busiestDayViews": "{count} مشاهدة",
     "noVisits": "لا زيارات",

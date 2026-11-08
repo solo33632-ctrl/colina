@@ -225,6 +225,7 @@ export function MachineForm({
                     <input
                       type="checkbox"
                       value={machine.id}
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-stone-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                       {...register('relatedIds')}
                     />
                     {machine.nameEn}

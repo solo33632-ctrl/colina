@@ -118,9 +118,10 @@ export async function InsightsTrendChart({
     <figure className="min-w-0" dir="ltr" data-testid="insights-traffic-chart">
       <svg
         viewBox={`0 0 ${CHART.width} ${CHART.height}`}
+        preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label={summary}
-        className="h-auto w-full max-w-[720px]"
+        className="block h-auto w-full"
       >
         <title>{summary}</title>
 

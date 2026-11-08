@@ -213,6 +213,7 @@ const PAGE_SELECTORS = {
   badge: 'main .rounded-full.border',
   button: 'main button',
   input: 'main input:not([type="hidden"]):not([type="file"])',
+  select: 'main select',
 };
 
 test.describe('admin dark mode', () => {
@@ -319,8 +320,14 @@ test.describe('admin dark mode', () => {
 
     const pages = [
       ['dashboard', '/en'],
+      ['categories list', '/en/categories'],
       ['machines list', '/en/machines'],
       ['machine form', '/en/machines/new'],
+      ['partners list', '/en/partners'],
+      ['news list', '/en/news'],
+      ['services list', '/en/services'],
+      ['maintenance categories', '/en/maintenance-categories'],
+      ['maintenance showcase', '/en/maintenance-showcase'],
       ['leads list', '/en/leads'],
       ['agents list', '/en/agents'],
       ['audit log', '/en/audit-log'],
@@ -408,6 +415,200 @@ test.describe('admin dark mode', () => {
 
     const offenders = await page.evaluate(whiteBackgrounds);
     expect(offenders).toEqual([]);
+    await context.close();
+  });
+
+  // Stage 40b: the unauthenticated screens share the auth header and the same
+  // Card/Field/Button primitives, but they never render the admin shell — so
+  // they get their own dark check rather than relying on the signed-in loop.
+  test('forgot and reset password render dark and readable', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ colorScheme: 'dark' });
+    const page = await context.newPage();
+
+    const pages = [
+      ['forgot password', '/en/forgot-password'],
+      ['reset password', '/en/reset-password?token=stage-40b-test-token'],
+    ] as const;
+
+    for (const [label, path] of pages) {
+      await page.goto(`${ADMIN_URL}${path}`);
+      expect(await bodyBackground(page), label).toBe(DARK_PAGE);
+      await expect(page.getByTestId('theme-toggle')).toBeVisible();
+
+      const samples = await page.evaluate(collectContrastSamples, {
+        heading: 'main h2',
+        label: 'main label',
+        input: 'main input:not([type="hidden"])',
+        button: 'main button',
+      });
+      expect(samples.length, `${label}: samples`).toBeGreaterThanOrEqual(3);
+      for (const sample of samples) {
+        expect(
+          sample.ratio,
+          `${label} ${sample.name} "${sample.text}" ${sample.color} on ${sample.background}`
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+
+      const offenders = await page.evaluate(whiteBackgrounds);
+      expect(offenders, `${label}: white backgrounds`).toEqual([]);
+    }
+
+    await context.close();
+  });
+
+  // Stage 40b: the drawer is the whole navigation at 390px. It must open over
+  // the dark page, keep its links readable and never widen the document.
+  test('the mobile drawer opens readable at 390px in dark mode', async ({
+    browser,
+  }) => {
+    const context = await darkContext(browser, {
+      colorScheme: 'dark',
+      viewport: { width: 390, height: 844 },
+    });
+    const page = await context.newPage();
+    await page.goto(`${ADMIN_URL}/en`);
+
+    const trigger = page.getByRole('button', {
+      name: 'Open navigation menu',
+      exact: true,
+    });
+    const drawer = page.locator('#admin-sidebar-drawer');
+    await expect(drawer).toHaveJSProperty('inert', true);
+
+    await trigger.click();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(drawer).toHaveJSProperty('inert', false);
+    await expect(
+      drawer.getByRole('link', { name: 'Dashboard', exact: true })
+    ).toBeVisible();
+
+    const widths = await page.evaluate(() => ({
+      scroll: document.documentElement.scrollWidth,
+      client: document.documentElement.clientWidth,
+    }));
+    expect(
+      widths.scroll,
+      'open drawer horizontal overflow'
+    ).toBeLessThanOrEqual(widths.client + 1);
+
+    const samples = await page.evaluate(collectContrastSamples, {
+      active: '#admin-sidebar-drawer a[aria-current="page"]',
+      group: '#admin-sidebar-drawer p',
+      close: '#admin-sidebar-drawer button',
+    });
+    expect(samples.length, 'drawer samples').toBeGreaterThanOrEqual(3);
+    for (const sample of samples) {
+      expect(
+        sample.ratio,
+        `drawer ${sample.name} "${sample.text}" ${sample.color} on ${sample.background}`
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+
+    const offenders = await page.evaluate(whiteBackgrounds);
+    expect(offenders, 'drawer: white backgrounds').toEqual([]);
+
+    await page.keyboard.press('Escape');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(drawer).toHaveJSProperty('inert', true);
+    await context.close();
+  });
+
+  // Stage 40b: the remaining reviewed surfaces — the save banner, the delete
+  // confirmation, native checkboxes and the constant-white artwork plate.
+  test('save banner, confirm dialog and native controls stay readable in dark mode', async ({
+    browser,
+  }) => {
+    const context = await darkContext(browser, { colorScheme: 'dark' });
+    const page = await context.newPage();
+
+    // Native checkboxes: the lead list's light-mode accent is unchanged, but
+    // the dark theme swaps in the darker control accent.
+    await page.goto(`${ADMIN_URL}/en/leads`);
+    // The leads page renders a desktop table and a mobile card list; only one
+    // of the two select-all checkboxes is visible at this viewport.
+    const checkbox = page
+      .locator('main input[type="checkbox"]:visible')
+      .first();
+    await expect(checkbox).toBeVisible();
+    expect(
+      await checkbox.evaluate(
+        (element) => getComputedStyle(element).accentColor
+      )
+    ).toBe('rgb(205, 63, 23)');
+
+    // The artwork plate stays white in both themes, so its fallback letter
+    // must stay dark instead of following the light dark-mode brand scale.
+    const plate = await page.evaluate(() => {
+      const probe = document.createElement('span');
+      probe.className = 'bg-plate text-plate-ink';
+      probe.textContent = 'A';
+      document.body.appendChild(probe);
+      const style = getComputedStyle(probe);
+      const result = { color: style.color, background: style.backgroundColor };
+      probe.remove();
+      return result;
+    });
+    expect(plate).toEqual({
+      color: 'rgb(143, 30, 22)',
+      background: 'rgb(255, 255, 255)',
+    });
+
+    // The ?saved=1 banner is a status surface with its own tinted palette.
+    await page.goto(`${ADMIN_URL}/en/partners?saved=1`);
+    const banner = page.getByRole('status');
+    await expect(banner).toBeVisible();
+    const bannerSamples = await page.evaluate(collectContrastSamples, {
+      message: '[role="status"] p',
+      dismiss: '[role="status"] button',
+    });
+    expect(bannerSamples.length, 'banner samples').toBeGreaterThanOrEqual(2);
+    for (const sample of bannerSamples) {
+      expect(
+        sample.ratio,
+        `banner ${sample.name} "${sample.text}" ${sample.color} on ${sample.background}`
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(await page.evaluate(whiteBackgrounds), 'banner: white').toEqual([]);
+
+    // Opening the delete dialog must not paint a white box or unreadable text.
+    await page.locator('main button[aria-label^="Delete"]').first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    const dialogSamples = await page.evaluate(collectContrastSamples, {
+      heading: 'dialog h2',
+      message: 'dialog p',
+      cancel: 'dialog button',
+    });
+    expect(dialogSamples.length, 'dialog samples').toBeGreaterThanOrEqual(3);
+    for (const sample of dialogSamples) {
+      expect(
+        sample.ratio,
+        `dialog ${sample.name} "${sample.text}" ${sample.color} on ${sample.background}`
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(await page.evaluate(whiteBackgrounds), 'dialog: white').toEqual([]);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+
+    await context.close();
+  });
+
+  test('light mode keeps the original checkbox accent', async ({ browser }) => {
+    const context = await signedIn(browser, { colorScheme: 'light' });
+    const page = await context.newPage();
+    await page.goto(`${ADMIN_URL}/en/leads`);
+
+    const checkbox = page
+      .locator('main input[type="checkbox"]:visible')
+      .first();
+    await expect(checkbox).toBeVisible();
+    expect(
+      await checkbox.evaluate(
+        (element) => getComputedStyle(element).accentColor
+      )
+    ).toBe('rgb(178, 39, 21)');
     await context.close();
   });
 });

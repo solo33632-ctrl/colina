@@ -151,7 +151,14 @@ export const authOptions: NextAuthOptions = {
         // requests, and a success would just be noise an admin has to
         // filter past (the AuditLog side already records deliberate admin
         // activity).
-        return { id: user.id, email: user.email, role: user.role };
+        return {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          // Stage 2b: the version this token is valid for. Bumping the row
+          // (password reset) revokes every token still carrying the old one.
+          sessionVersion: user.sessionVersion,
+        };
       },
     }),
   ],
@@ -183,10 +190,17 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
-      // `user` is present only at sign-in: copy the DB role onto the
-      // token once, then it rides along on every request.
-      if (user && 'role' in user) {
-        token.role = user.role as typeof token.role;
+      // `user` is present only at sign-in: copy the DB role and session
+      // version onto the token once, then they ride along on every request.
+      // Tokens issued before Stage 2b have no `sessionVersion` claim and are
+      // rejected by the verified-session helper (forcing one re-login).
+      if (user) {
+        if ('role' in user) {
+          token.role = user.role as typeof token.role;
+        }
+        if ('sessionVersion' in user) {
+          token.sessionVersion = user.sessionVersion as number;
+        }
       }
       return token;
     },
@@ -195,7 +209,12 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub;
       }
       if (session.user && token.role) {
-        session.user.role = token.role;
+        session.user.role = token.role as typeof session.user.role;
+      }
+      // Server-side only in practice: the admin UI has no `useSession`;
+      // the verified helper needs it to compare against the DB row.
+      if (session.user && typeof token.sessionVersion === 'number') {
+        session.user.sessionVersion = token.sessionVersion;
       }
       return session;
     },

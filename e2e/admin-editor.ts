@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { runInDb } from './db-fixture';
+import { assertTestDatabase, runInDb, runInDbValue } from './db-fixture';
 
 // Re-exported so the specs that gate on a database staying reachable keep
 // importing it from where they always have.
@@ -55,4 +55,50 @@ export function removeEditor() {
   } catch {
     // Intentionally ignored.
   }
+}
+
+/**
+ * Stage 2b: revoke the editor's current JWTs by bumping the row's
+ * `sessionVersion`. Returns the value before the bump so the caller can
+ * restore it in a `finally` — the editor session is shared across specs,
+ * and leaving the bump in place would silently invalidate their cached
+ * storage state.
+ *
+ * Destructive (a write), so it is guarded like every other fixture.
+ */
+export function bumpEditorSessionVersion(): {
+  previous: number;
+  next: number;
+} {
+  assertTestDatabase();
+  const result = runInDbValue<{ previous: number; next: number }>(`
+    const before = await prisma.adminUser.findUnique({
+      where: { id: ${JSON.stringify(EDITOR.id)} },
+      select: { sessionVersion: true },
+    });
+    if (!before) {
+      throw new Error('editor fixture is missing');
+    }
+    const after = await prisma.adminUser.update({
+      where: { id: ${JSON.stringify(EDITOR.id)} },
+      data: { sessionVersion: { increment: 1 } },
+      select: { sessionVersion: true },
+    });
+    return { previous: before.sessionVersion, next: after.sessionVersion };
+  `);
+  if (!result) {
+    throw new Error('bumpEditorSessionVersion: no result');
+  }
+  return result;
+}
+
+/** Restores the exact version a test found, keeping shared sessions valid. */
+export function restoreEditorSessionVersion(version: number) {
+  assertTestDatabase();
+  runInDb(`
+    await prisma.adminUser.update({
+      where: { id: ${JSON.stringify(EDITOR.id)} },
+      data: { sessionVersion: ${JSON.stringify(version)} },
+    });
+  `);
 }

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod';
 import { normalizeWhatsappNumber } from './whatsapp';
 
 // Admin form validation. Same factory pattern as apps/web/lib/schemas.ts:

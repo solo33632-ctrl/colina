@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { Card, Container } from '@colina/ui';
 import { Link, redirect } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
-import { getAdminSession } from '@/lib/auth';
+import { getVerifiedAdminSession } from '@/lib/admin-action';
 import { LoginForm } from '@/components/login-form';
 
 export async function generateMetadata({
@@ -32,7 +32,7 @@ export default async function LoginPage({
   }
 
   const t = await getTranslations('Auth');
-  const session = await getAdminSession();
+  const session = await getVerifiedAdminSession();
   if (session) {
     redirect({ href: '/', locale });
   }

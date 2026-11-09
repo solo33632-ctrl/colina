@@ -2,9 +2,7 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 // Same policy as apps/web except `frame-src 'none'`: the admin panel
 // embeds no iframes at all, so nothing needs framing permission. See
-// apps/web/next.config.mjs for the CSP rationale (unsafe-inline scripts,
-// dev-only unsafe-eval for React dev-mode debugging, no
-// upgrade-insecure-requests). Production builds never ship 'unsafe-eval'.
+// apps/web/next.config.mjs for the CSP rationale.
 //
 // Stage 2a changes:
 // - `img-src` is pinned to the one remote host the upload path can produce
@@ -12,13 +10,17 @@ import createNextIntlPlugin from 'next-intl/plugin';
 //   https host.
 // - `Permissions-Policy`, `X-Robots-Tag` and a production-only HSTS header
 //   are added below.
+//
+// Stage 2b: this static policy is development-only. Production needs a
+// per-request nonce (Next's inline bootstrap cannot run under
+// `script-src 'self'`), and a nonce cannot be emitted from `headers()`.
+// `proxy.ts` builds and attaches the production policy instead; emitting
+// one here too would either shadow the nonced header or reintroduce
+// `script-src 'unsafe-inline'`, which production must not have.
 const isProduction = process.env.NODE_ENV === 'production';
-const scriptSrc = isProduction
-  ? "'self' 'unsafe-inline'"
-  : "'self' 'unsafe-inline' 'unsafe-eval'";
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src ${scriptSrc}`,
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://res.cloudinary.com",
   "font-src 'self' data:",
@@ -37,7 +39,15 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: [
-          { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+          // Development only; production CSP comes from proxy.ts (nonce).
+          ...(isProduction
+            ? []
+            : [
+                {
+                  key: 'Content-Security-Policy',
+                  value: contentSecurityPolicy,
+                },
+              ]),
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

@@ -93,6 +93,7 @@ describe('credentials authorize: no account enumeration', () => {
       email: 'admin@example.com',
       passwordHash: '$argon2id$stored-hash',
       role: 'SUPER_ADMIN',
+      sessionVersion: 3,
     };
     vi.mocked(prisma.adminUser.findUnique).mockResolvedValue(user as never);
     vi.mocked(argon2.verify).mockResolvedValue(true);
@@ -107,6 +108,7 @@ describe('credentials authorize: no account enumeration', () => {
       id: 'admin-1',
       email: 'admin@example.com',
       role: 'SUPER_ADMIN',
+      sessionVersion: 3,
     });
     expect(argon2.verify).toHaveBeenCalledWith(
       user.passwordHash,

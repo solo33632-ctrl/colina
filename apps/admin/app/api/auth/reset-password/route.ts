@@ -65,14 +65,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Rotate the credential and burn the token in one write: the old
-    // password stops working here, and the link cannot be reused.
+    // Rotate the credential, burn the token and revoke every already-issued
+    // JWT in one write: the old password stops working here, the link cannot
+    // be reused, and sessionVersion no longer matches the claim carried by
+    // any session issued before this reset.
     await prisma.adminUser.update({
       where: { id: user.id },
       data: {
         passwordHash: await argon2.hash(parsed.data.password),
         passwordResetTokenHash: null,
         passwordResetTokenExpiresAt: null,
+        sessionVersion: { increment: 1 },
       },
     });
 

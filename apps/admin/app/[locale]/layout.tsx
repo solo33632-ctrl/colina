@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from 'next/font/google';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import {
@@ -8,9 +8,11 @@ import {
   getTranslations,
   setRequestLocale,
 } from 'next-intl/server';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { AdminAppShell } from '@/components/app-shell';
 import { routing } from '@/i18n/routing';
+import { getVerifiedAdminSession } from '@/lib/admin-action';
+import { isPublicAuthPath } from '@/lib/public-routes';
 import { parseTheme, themeAttribute, THEME_COOKIE } from '@/lib/theme';
 import '../globals.css';
 
@@ -70,6 +72,22 @@ export default async function AdminLocaleLayout({
   // Distribute the locale to next-intl so Server Components render statically
   // and Server Actions can resolve the admin's current language.
   setRequestLocale(locale);
+
+  // Stage 2b: a JWT that still verifies is not enough to render an admin
+  // page — the token's sessionVersion and role must match the AdminUser row
+  // (checked once per request; `getVerifiedAdminSession` is cached). The
+  // proxy carries the pathname so the public auth screens are exempt.
+  // A revoked/expired-account token lands on that locale's login exactly
+  // like a session-less request.
+  const pathname = (await headers()).get('x-admin-pathname');
+  if (pathname && !isPublicAuthPath(pathname)) {
+    const session = await getVerifiedAdminSession();
+    if (!session) {
+      redirect(
+        `/${locale}/login?callbackUrl=${encodeURIComponent(pathname)}`
+      );
+    }
+  }
 
   const messages = await getMessages();
   // Direction is driven by the active locale — never hardcoded.

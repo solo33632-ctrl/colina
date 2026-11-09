@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { z } from '@/lib/zod';
 import { useTranslations } from 'next-intl';
 import { Button } from '@colina/ui';
 import { Field, inputClasses } from './form-fields';

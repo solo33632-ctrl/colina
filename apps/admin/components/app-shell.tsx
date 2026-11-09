@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
-import { getAdminSession } from '@/lib/auth';
+import { getVerifiedAdminSession } from '@/lib/admin-action';
 import { sidebarGroups } from '@/lib/sidebar';
 import type { AdminTheme } from '@/lib/theme';
 import { AdminFooter } from './footer';
@@ -19,7 +19,7 @@ export async function AdminAppShell({
   children: ReactNode;
   theme: AdminTheme;
 }) {
-  const session = await getAdminSession();
+  const session = await getVerifiedAdminSession();
 
   // No session means login / forgot-password / reset-password: proxy.ts
   // redirects every other route to the login page, and those three redirect

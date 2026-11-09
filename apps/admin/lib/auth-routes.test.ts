@@ -182,6 +182,8 @@ describe('reset-password: generic failures', () => {
         passwordHash: 'hashed-password',
         passwordResetTokenHash: null,
         passwordResetTokenExpiresAt: null,
+        // Stage 2b: the reset revokes every JWT issued before it.
+        sessionVersion: { increment: 1 },
       },
     });
   });

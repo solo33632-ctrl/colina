@@ -258,6 +258,10 @@ model AdminUser {
   // Argon2id hash (see Phase 9). Never plaintext, never logged.
   passwordHash                String
   role                        AdminRole  @default(EDITOR)
+  // Revocation counter (Stage 2b): every issued JWT carries the value it
+  // was signed with; a mismatch with this row invalidates the session.
+  // Bumped whenever the credential or role changes (password reset).
+  sessionVersion              Int        @default(0)
   // Password reset (Phase 9): SHA-256 hash of the single-use raw token —
   // the raw token itself is never stored. Null = no reset in flight.
   passwordResetTokenHash      String?

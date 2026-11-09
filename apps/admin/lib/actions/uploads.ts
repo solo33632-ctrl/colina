@@ -1,5 +1,6 @@
 'use server';
 
+import { prisma } from '@colina/db';
 import { requireAdmin, type ActionResult } from '../admin-action';
 import {
   cloudinaryCredentials,
@@ -23,6 +24,10 @@ import {
 //     Cloudinary (agent.md: restrict by MIME type, extension and size,
 //     never trust a client-supplied filename — only the extension is read
 //     from it, and only to cross-check the declared MIME type),
+//   - writes an AuditLog row for every asset it creates, immediately after
+//     Cloudinary accepts it (the asset lives outside Postgres, so the two
+//     writes cannot share a transaction; a failed audit row fails the
+//     action and the URL is never handed to the form),
 //   - returns the delivered `secure_url`, which the form stores verbatim
 //     into the existing absolute-URL columns (schema unchanged).
 //
@@ -37,6 +42,9 @@ import {
 //   invalid_type  — MIME type / extension not allowed for this kind
 //   too_large     — file exceeds the kind's max size
 //   upload_failed — Cloudinary rejected the upload (or returned no URL)
+//   server_error  — the asset was stored but its audit row could not be
+//                   written; the URL is withheld so no unlogged asset can be
+//                   persisted (the orphaned asset is left for media cleanup)
 export async function uploadImage(
   formData: FormData
 ): Promise<ActionResult<{ url: string }>> {
@@ -93,10 +101,27 @@ async function uploadFile(
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { secureUrl } = await uploadBuffer(buffer, {
+    const { secureUrl, publicId } = await uploadBuffer(buffer, {
       resourceType,
       folder,
     });
+
+    // Fail closed: the form only receives a URL after the audit row lands,
+    // so every asset that can be persisted from the UI is accounted for.
+    try {
+      await prisma.auditLog.create({
+        data: {
+          adminUserId: session.user.id,
+          action: 'UPLOAD_CREATE',
+          entity: `Cloudinary:${resourceType}:${publicId}`,
+          details: { kind, mimeType: file.type, bytes: file.size },
+        },
+      });
+    } catch (error) {
+      console.error('[admin] upload audit failed:', error);
+      return { ok: false, error: 'server_error' };
+    }
+
     return { ok: true, url: secureUrl };
   } catch (error) {
     console.error('[admin] Cloudinary upload failed:', error);

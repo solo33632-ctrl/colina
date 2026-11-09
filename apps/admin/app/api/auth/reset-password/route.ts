@@ -44,34 +44,44 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Match on the stored hash, never the raw token — and only while the
-  // token is still inside its 1-hour window.
-  const tokenHash = createHash('sha256')
-    .update(parsed.data.token)
-    .digest('hex');
-  const user = await prisma.adminUser.findFirst({
-    where: {
-      passwordResetTokenHash: tokenHash,
-      passwordResetTokenExpiresAt: { gt: new Date() },
-    },
-  });
-  if (!user) {
+  // Unexpected failures answer with the same opaque code as every other
+  // server error: no stack trace or database text may reach the browser.
+  try {
+    // Match on the stored hash, never the raw token — and only while the
+    // token is still inside its 1-hour window.
+    const tokenHash = createHash('sha256')
+      .update(parsed.data.token)
+      .digest('hex');
+    const user = await prisma.adminUser.findFirst({
+      where: {
+        passwordResetTokenHash: tokenHash,
+        passwordResetTokenExpiresAt: { gt: new Date() },
+      },
+    });
+    if (!user) {
+      return NextResponse.json(
+        { ok: false, error: 'invalid_token' },
+        { status: 400 }
+      );
+    }
+
+    // Rotate the credential and burn the token in one write: the old
+    // password stops working here, and the link cannot be reused.
+    await prisma.adminUser.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: await argon2.hash(parsed.data.password),
+        passwordResetTokenHash: null,
+        passwordResetTokenExpiresAt: null,
+      },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('[admin] reset-password failed:', error);
     return NextResponse.json(
-      { ok: false, error: 'invalid_token' },
-      { status: 400 }
+      { ok: false, error: 'server_error' },
+      { status: 500 }
     );
   }
-
-  // Rotate the credential and burn the token in one write: the old
-  // password stops working here, and the link cannot be reused.
-  await prisma.adminUser.update({
-    where: { id: user.id },
-    data: {
-      passwordHash: await argon2.hash(parsed.data.password),
-      passwordResetTokenHash: null,
-      passwordResetTokenExpiresAt: null,
-    },
-  });
-
-  return NextResponse.json({ ok: true });
 }

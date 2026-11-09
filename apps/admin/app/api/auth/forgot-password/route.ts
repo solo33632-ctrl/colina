@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '@colina/db';
 import { sendAdminEmail } from '@/lib/mail';
@@ -10,7 +10,10 @@ import {
 import { forgotPasswordInputSchema } from '@/lib/schemas';
 
 // Always answers success, whether or not the email belongs to an admin:
-// distinguishing would leak account existence (agent.md).
+// distinguishing would leak account existence (agent.md). The account
+// lookup, token write and email run AFTER the response (`after`), so the
+// SMTP/database cost is not observable either — the search and the send
+// must not become a timing oracle.
 export async function POST(req: NextRequest) {
   let body: unknown;
   try {
@@ -45,39 +48,47 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await prisma.adminUser.findUnique({
-    where: { email: parsed.data.email },
+  const email = parsed.data.email;
+
+  // Runs after the 200 is sent. Any failure here is server-log only: the
+  // caller already has the same generic answer as a missing account.
+  after(async () => {
+    try {
+      const user = await prisma.adminUser.findUnique({ where: { email } });
+      if (!user) {
+        return;
+      }
+
+      // 256-bit single-use token. Only its SHA-256 hash is stored — the raw
+      // token travels solely inside the emailed link, expiring in 1 hour.
+      const rawToken = randomBytes(32).toString('hex');
+      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+      await prisma.adminUser.update({
+        where: { id: user.id },
+        data: {
+          passwordResetTokenHash: tokenHash,
+          passwordResetTokenExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        },
+      });
+
+      const base = process.env.NEXTAUTH_URL ?? 'http://localhost:3001';
+      const link = `${base}/reset-password?token=${rawToken}`;
+      await sendAdminEmail({
+        to: user.email,
+        subject: 'Reset your Colina admin password',
+        text: [
+          'A password reset was requested for your Colina admin account.',
+          'If this was you, set a new password within the next hour:',
+          '',
+          link,
+          '',
+          'If you did not request this, ignore this email — your password is unchanged.',
+        ].join('\n'),
+      });
+    } catch (error) {
+      console.error('[admin] forgot-password side effect failed:', error);
+    }
   });
-
-  if (user) {
-    // 256-bit single-use token. Only its SHA-256 hash is stored — the raw
-    // token travels solely inside the emailed link, expiring in 1 hour.
-    const rawToken = randomBytes(32).toString('hex');
-    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-    await prisma.adminUser.update({
-      where: { id: user.id },
-      data: {
-        passwordResetTokenHash: tokenHash,
-        passwordResetTokenExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
-      },
-    });
-
-    const base = process.env.NEXTAUTH_URL ?? 'http://localhost:3001';
-    const link = `${base}/reset-password?token=${rawToken}`;
-    // Failure only logs: the response stays identical either way.
-    await sendAdminEmail({
-      to: user.email,
-      subject: 'Reset your Colina admin password',
-      text: [
-        'A password reset was requested for your Colina admin account.',
-        'If this was you, set a new password within the next hour:',
-        '',
-        link,
-        '',
-        'If you did not request this, ignore this email — your password is unchanged.',
-      ].join('\n'),
-    });
-  }
 
   return NextResponse.json({ ok: true });
 }

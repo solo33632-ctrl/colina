@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { prisma } from '@colina/db';
 import { requireAdmin } from '../admin-action';
 import { uploadBuffer } from '../cloudinary';
 import { uploadDatasheet, uploadImage } from './uploads';
@@ -9,6 +10,12 @@ import { uploadDatasheet, uploadImage } from './uploads';
 // error mapping — runs for real. The point is to prove every failure
 // path returns a structured error (never a silent crash) and that a
 // successful upload surfaces the delivered secure URL.
+vi.mock('@colina/db', () => ({
+  prisma: {
+    auditLog: { create: vi.fn() },
+  },
+}));
+
 vi.mock('../admin-action', () => ({
   requireAdmin: vi.fn(),
 }));
@@ -144,6 +151,54 @@ describe('upload actions: successful upload', () => {
       resourceType: 'image',
       folder: 'colina',
     });
+    // Stage 2a: every stored asset has an audit row.
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: {
+        adminUserId: 'admin-1',
+        action: 'UPLOAD_CREATE',
+        entity: 'Cloudinary:image:abc',
+        details: { kind: 'image', mimeType: 'image/webp', bytes: 1024 },
+      },
+    });
+  });
+
+  it('audits a datasheet upload with the raw resource type', async () => {
+    setPlaceholderCloudinaryEnv();
+    vi.mocked(uploadBuffer).mockResolvedValue({
+      secureUrl: 'https://res.cloudinary.com/test-cloud/raw/upload/sheet.pdf',
+      publicId: 'colina/datasheets/sheet',
+    });
+    const result = await uploadDatasheet(
+      fileFormData('sheet.pdf', 'application/pdf', 2048)
+    );
+    expect(result).toEqual({
+      ok: true,
+      url: 'https://res.cloudinary.com/test-cloud/raw/upload/sheet.pdf',
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: {
+        adminUserId: 'admin-1',
+        action: 'UPLOAD_CREATE',
+        entity: 'Cloudinary:raw:colina/datasheets/sheet',
+        details: { kind: 'datasheet', mimeType: 'application/pdf', bytes: 2048 },
+      },
+    });
+  });
+
+  it('fails closed when the audit row cannot be written', async () => {
+    setPlaceholderCloudinaryEnv();
+    vi.mocked(uploadBuffer).mockResolvedValue({
+      secureUrl: 'https://res.cloudinary.com/test-cloud/image/upload/abc.png',
+      publicId: 'abc',
+    });
+    vi.mocked(prisma.auditLog.create).mockRejectedValue(
+      new Error('database unavailable')
+    );
+    const result = await uploadImage(
+      fileFormData('photo.png', 'image/png', 1024)
+    );
+    // The URL is withheld: an unaudited asset can never reach the form.
+    expect(result).toEqual({ ok: false, error: 'server_error' });
   });
 
   it('maps Cloudinary rejection to upload_failed (no crash)', async () => {

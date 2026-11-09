@@ -5,15 +5,22 @@ import createNextIntlPlugin from 'next-intl/plugin';
 // apps/web/next.config.mjs for the CSP rationale (unsafe-inline scripts,
 // dev-only unsafe-eval for React dev-mode debugging, no
 // upgrade-insecure-requests). Production builds never ship 'unsafe-eval'.
-const scriptSrc =
-  process.env.NODE_ENV === 'production'
-    ? "'self' 'unsafe-inline'"
-    : "'self' 'unsafe-inline' 'unsafe-eval'";
+//
+// Stage 2a changes:
+// - `img-src` is pinned to the one remote host the upload path can produce
+//   (`res.cloudinary.com`) plus local/data/blob previews, instead of any
+//   https host.
+// - `Permissions-Policy`, `X-Robots-Tag` and a production-only HSTS header
+//   are added below.
+const isProduction = process.env.NODE_ENV === 'production';
+const scriptSrc = isProduction
+  ? "'self' 'unsafe-inline'"
+  : "'self' 'unsafe-inline' 'unsafe-eval'";
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src ${scriptSrc}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https:",
+  "img-src 'self' data: blob: https://res.cloudinary.com",
   "font-src 'self' data:",
   "connect-src 'self'",
   "frame-src 'none'",
@@ -35,9 +42,22 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains',
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
           },
+          // Internal tool: noindex on every response, including API routes
+          // and redirects whose body has no localized <meta> tag.
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+          // HSTS only where HTTPS is actually served. Sending it from the
+          // http dev server is meaningless and can poison localhost.
+          ...(isProduction
+            ? [
+                {
+                  key: 'Strict-Transport-Security',
+                  value: 'max-age=63072000; includeSubDomains',
+                },
+              ]
+            : []),
         ],
       },
     ];

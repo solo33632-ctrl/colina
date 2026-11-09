@@ -11,9 +11,41 @@ import { loginInputSchema } from './schemas';
 // no account-enumeration via error messages).
 const GENERIC_FAILURE = 'Invalid email or password.';
 
+// A syntactically valid argon2id hash of a value nobody holds, used only to
+// spend exactly the same verification cost when the email does not exist.
+// Without it, an unknown email returns before argon2 runs and response time
+// becomes an account-enumeration oracle. The plaintext is deliberately not
+// recorded anywhere.
+const DUMMY_PASSWORD_HASH =
+  '$argon2id$v=19$m=65536,p=4,t=3$XN+qGJQbxWMKy7RWZ/2/5g$OUAsm6BrCloW9ypbjAsfEJuTjThMg7/Rkcq8sHAQtb0';
+
+// A malformed stored hash must behave like a wrong password (and must never
+// surface as a distinct error); the caller already answers generically.
+async function verifyPassword(
+  hash: string,
+  password: string
+): Promise<boolean> {
+  try {
+    return await argon2.verify(hash, password);
+  } catch {
+    return false;
+  }
+}
+
 // How this sign-in attempt is named in the `source` column of a
 // SecurityEvent row, matching the rate limiter's `login:` bucket prefix.
 const SECURITY_EVENT_SOURCE = 'admin-login';
+
+// Session/cookie policy (Stage 2a), explicit rather than inferred:
+// - 8 hours covers a working day and bounds a stolen JWT (and any role
+//   copied into it at sign-in) to the current shift.
+// - httpOnly + SameSite=Lax are Auth.js defaults; spelled out here so the
+//   policy is auditable in one place.
+// - Secure (and the `__Secure-` name prefix) is mandatory in production.
+//   Local dev is plain http, so the dev server keeps the unprefixed cookie;
+//   this is also what the e2e login helper stores.
+const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
+const useSecureCookies = process.env.NODE_ENV === 'production';
 
 // The email a rejected attempt used, as a short string for the SecurityEvent
 // row — and nothing else. next-auth hands `authorize()` the whole credential
@@ -98,13 +130,18 @@ export const authOptions: NextAuthOptions = {
           where: { email: parsed.data.email },
         });
         if (!user) {
+          // Pay the same argon2 cost as a real verification so the response
+          // time cannot be used to enumerate admin emails. The result is
+          // deliberately ignored.
+          await verifyPassword(DUMMY_PASSWORD_HASH, parsed.data.password);
           await logFailure();
           return null;
         }
 
-        // argon2.verify resolves boolean (true = match). No timing
-        // games beyond this: misses cost one hash either way.
-        const ok = await argon2.verify(user.passwordHash, parsed.data.password);
+        const ok = await verifyPassword(
+          user.passwordHash,
+          parsed.data.password
+        );
         if (!ok) {
           await logFailure();
           return null;
@@ -121,6 +158,19 @@ export const authOptions: NextAuthOptions = {
   session: {
     // JWT sessions: standard for the Credentials provider (no DB adapter).
     strategy: 'jwt',
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  },
+  useSecureCookies,
+  cookies: {
+    sessionToken: {
+      name: `${useSecureCookies ? '__Secure-' : ''}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: useSecureCookies,
+      },
+    },
   },
   pages: {
     // NextAuth's own sign-in redirect. This is a single static string, so it

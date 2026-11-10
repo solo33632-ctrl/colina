@@ -9,6 +9,15 @@ vi.mock('@colina/db', () => ({
   logSecurityEvent: vi.fn(),
 }));
 
+// The DB-backed limiter is covered by lib/rate-limit.test.ts; here only the
+// authorize contract matters, so its decision is injected.
+const { rateLimitCheck } = vi.hoisted(() => ({ rateLimitCheck: vi.fn() }));
+vi.mock('./rate-limit', () => ({
+  LOGIN_RATE_LIMIT: { maxAttempts: 10, windowMs: 15 * 60 * 1000 },
+  getClientIp: vi.fn(() => '198.51.100.1'),
+  rateLimitCheck,
+}));
+
 vi.mock('argon2', () => ({
   default: { verify: vi.fn(), hash: vi.fn() },
 }));
@@ -41,6 +50,7 @@ function attempt(email: string, password: string, ip: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  rateLimitCheck.mockResolvedValue(0);
 });
 
 describe('admin session policy', () => {
@@ -135,5 +145,21 @@ describe('credentials authorize: no account enumeration', () => {
     expect(logSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'LOGIN_FAILED' })
     );
+  });
+
+  it('logs RATE_LIMITED and throws the generic failure when over the limit', async () => {
+    rateLimitCheck.mockResolvedValue(30);
+
+    await expect(
+      attempt('admin@example.com', 'wrong-password', '198.51.100.4')
+    ).rejects.toThrow('Invalid email or password.');
+
+    expect(prisma.adminUser.findUnique).not.toHaveBeenCalled();
+    expect(logSecurityEvent).toHaveBeenCalledWith({
+      type: 'RATE_LIMITED',
+      source: 'admin-login',
+      ip: '198.51.100.1',
+      detail: 'retry-after: 30s',
+    });
   });
 });

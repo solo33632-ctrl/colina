@@ -317,6 +317,20 @@ model SecurityEvent {
   @@index([type])
 }
 
+// Durable rate-limit buckets (Stage 2c). Fixed windows: one row per
+// (hashed key, window start). The check is a single atomic upsert whose
+// RETURNING count is this window's hit count, so it is safe across server
+// instances and restarts. `key` is a SHA-256 hash of the namespaced limiter
+// key (never a raw IP or email). Rows older than the current window are
+// deleted opportunistically by the limiter, not by a scheduler.
+model RateLimitBucket {
+  key         String
+  windowStart DateTime
+  count       Int
+
+  @@id([key, windowStart])
+}
+
 // Privacy-respecting traffic counting (Phase 21b): one row per page per day
 // per language, holding nothing that identifies a visitor.
 //

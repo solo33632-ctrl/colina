@@ -3,6 +3,7 @@ import type { StorageState } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DATABASE_URL, resetRateLimitBuckets } from './db-fixture';
 
 export const ADMIN_URL = process.env.ADMIN_URL ?? 'http://localhost:3001';
 export const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@example.com';
@@ -60,6 +61,27 @@ export function copyFor(locale: string): AdminLocaleCopy {
 const sessions = new Map<string, StorageState>();
 const SESSION_DIR = join(tmpdir(), `colina-admin-sessions-${process.ppid}`);
 
+// The limiter is durable now (Stage 2c), so a previous run could leave the
+// login bucket exhausted before this run signs anyone in. Clear it from the
+// first loginState() call of the run; the marker file is shared by every
+// spec worker (SESSION_DIR is keyed by the Playwright runner pid), so this
+// costs one reset per run rather than one per spec file.
+let bucketsResetThisProcess = false;
+function resetBucketsOncePerRun() {
+  if (bucketsResetThisProcess) return;
+  bucketsResetThisProcess = true;
+  if (!DATABASE_URL) {
+    return;
+  }
+  const marker = join(SESSION_DIR, 'rate-limit-buckets-reset');
+  if (existsSync(marker)) {
+    return;
+  }
+  resetRateLimitBuckets();
+  mkdirSync(SESSION_DIR, { recursive: true });
+  writeFileSync(marker, new Date().toISOString());
+}
+
 function sessionFile(localeId: string, email: string) {
   const safeEmail = email.replace(/[^a-zA-Z0-9@._-]/g, '_');
   return join(SESSION_DIR, `${localeId}-${safeEmail}.json`);
@@ -73,6 +95,7 @@ export async function loginState(
   password: string,
   options: { fresh?: boolean } = {}
 ) {
+  resetBucketsOncePerRun();
   const key = `${locale.id}:${email}`;
   const file = sessionFile(locale.id, email);
   if (!options.fresh) {

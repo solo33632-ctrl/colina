@@ -318,6 +318,23 @@ export function runInDbValue<T>(body: string): T | null {
 }
 
 /**
+ * Clears the durable admin rate-limit buckets (Stage 2c).
+ *
+ * Limiter state now survives server restarts, so a previous e2e run (or an
+ * aborted one) could leave a bucket exhausted and make the next run fail
+ * for a reason unrelated to the code under test. Callers reset at the start
+ * of a run and after a spec that deliberately exhausts a bucket. Destructive
+ * (a delete), so it goes through the test-database guard like every other
+ * fixture.
+ */
+export function resetRateLimitBuckets() {
+  assertTestDatabase();
+  runInDb(`
+    await prisma.rateLimitBucket.deleteMany({});
+  `);
+}
+
+/**
  * Creates a maintenance showcase row: one comparison, one before/after pair.
  *
  * The photos are two real PNGs the WEB app serves (see SHOWCASE_PHOTOS), not

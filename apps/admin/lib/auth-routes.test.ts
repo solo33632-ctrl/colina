@@ -33,6 +33,15 @@ vi.mock('@colina/db', () => ({
   },
 }));
 
+// Route behavior is what this file tests; the durable limiter's own logic
+// (including fail-closed) lives in lib/rate-limit.test.ts.
+const { rateLimitCheck } = vi.hoisted(() => ({ rateLimitCheck: vi.fn() }));
+vi.mock('@/lib/rate-limit', () => ({
+  PASSWORD_RESET_RATE_LIMIT: { maxAttempts: 5, windowMs: 15 * 60 * 1000 },
+  getClientIp: vi.fn(() => '10.0.0.1'),
+  rateLimitCheck,
+}));
+
 vi.mock('@/lib/mail', () => ({
   sendAdminEmail: vi.fn(async () => true),
 }));
@@ -46,29 +55,36 @@ import { sendAdminEmail } from '@/lib/mail';
 import { POST as forgotPassword } from '@/app/api/auth/forgot-password/route';
 import { POST as resetPassword } from '@/app/api/auth/reset-password/route';
 
-function jsonRequest(path: string, body: unknown, ip: string) {
+function jsonRequest(
+  path: string,
+  body: unknown,
+  ip: string,
+  origin: string | null = 'http://localhost:3001'
+) {
   return new NextRequest(`http://localhost:3001${path}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'x-forwarded-for': ip,
+      ...(origin ? { origin } : {}),
     },
     body: JSON.stringify(body),
   });
 }
 
-function forgot(email: string, ip: string) {
+function forgot(email: string, ip: string, origin?: string | null) {
   return forgotPassword(
-    jsonRequest('/api/auth/forgot-password', { email }, ip)
+    jsonRequest('/api/auth/forgot-password', { email }, ip, origin)
   );
 }
 
-function reset(token: string, ip: string) {
+function reset(token: string, ip: string, origin?: string | null) {
   return resetPassword(
     jsonRequest(
       '/api/auth/reset-password',
       { token, password: 'correct horse battery staple' },
-      ip
+      ip,
+      origin
     )
   );
 }
@@ -82,10 +98,20 @@ async function runScheduled() {
 beforeEach(() => {
   scheduled.length = 0;
   vi.clearAllMocks();
+  rateLimitCheck.mockResolvedValue(0);
   process.env.NEXTAUTH_URL = 'http://localhost:3001';
 });
 
 describe('forgot-password: no account or timing oracle', () => {
+  it('answers the generic rate_limited response when the limiter blocks', async () => {
+    rateLimitCheck.mockResolvedValue(60);
+    const res = await forgot('admin@example.com', '10.10.0.5');
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ ok: false, error: 'rate_limited' });
+    expect(res.headers.get('Retry-After')).toBe('60');
+    expect(scheduled).toHaveLength(0);
+  });
+
   it('returns the same 200 response for an unknown and an existing email', async () => {
     vi.mocked(prisma.adminUser.findUnique).mockResolvedValue(null);
     const missing = await forgot('missing@example.com', '10.10.0.1');
@@ -186,5 +212,36 @@ describe('reset-password: generic failures', () => {
         sessionVersion: { increment: 1 },
       },
     });
+  });
+});
+
+describe('origin check on public auth POSTs', () => {
+  it('rejects a foreign origin with a generic empty 403 before the limiter', async () => {
+    const res = await forgot(
+      'admin@example.com',
+      '10.10.0.30',
+      'https://evil.test'
+    );
+    expect(res.status).toBe(403);
+    expect(await res.text()).toBe('');
+    expect(rateLimitCheck).not.toHaveBeenCalled();
+    expect(scheduled).toHaveLength(0);
+  });
+
+  it('rejects a missing origin on reset-password', async () => {
+    const res = await reset('any-token', '10.10.0.31', null);
+    expect(res.status).toBe(403);
+    expect(await res.text()).toBe('');
+    expect(rateLimitCheck).not.toHaveBeenCalled();
+  });
+
+  it('accepts the request origin on both endpoints', async () => {
+    vi.mocked(prisma.adminUser.findFirst).mockResolvedValue(null);
+    const resetRes = await reset('any-token', '10.10.0.32');
+    expect(resetRes.status).toBe(400);
+
+    vi.mocked(prisma.adminUser.findUnique).mockResolvedValue(null);
+    const forgotRes = await forgot('nobody@example.com', '10.10.0.33');
+    expect(forgotRes.status).toBe(200);
   });
 });

@@ -7,6 +7,7 @@ import {
   PASSWORD_RESET_RATE_LIMIT,
   rateLimitCheck,
 } from '@/lib/rate-limit';
+import { isSameOrigin } from '@/lib/request-origin';
 import { forgotPasswordInputSchema } from '@/lib/schemas';
 
 // Always answers success, whether or not the email belongs to an admin:
@@ -15,6 +16,14 @@ import { forgotPasswordInputSchema } from '@/lib/schemas';
 // SMTP/database cost is not observable either — the search and the send
 // must not become a timing oracle.
 export async function POST(req: NextRequest) {
+  // CSRF perimeter for a cookie-less public endpoint: a present-but-foreign
+  // Origin (or no Origin at all, matching apps/web) is refused before any
+  // body parsing, rate-limit accounting or account work. Generic empty 403:
+  // no detail about why, no echo of the supplied origin.
+  if (!isSameOrigin(req)) {
+    return new NextResponse(null, { status: 403 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -37,7 +46,7 @@ export async function POST(req: NextRequest) {
 
   // Reset emails are abuse-sensitive (inbox-bombing), so this bucket is
   // tighter than login. Still generic on limit: existence stays hidden.
-  const retryAfter = rateLimitCheck(
+  const retryAfter = await rateLimitCheck(
     `forgot:${getClientIp(req.headers)}`,
     PASSWORD_RESET_RATE_LIMIT
   );

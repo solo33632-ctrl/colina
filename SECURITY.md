@@ -97,16 +97,38 @@ platform-specific binary — the standard napi-rs/esbuild pattern):
 
 - **In-memory rate limiter** (`apps/web/lib/rate-limit.ts`): resets on
   restart, single-instance only. Move to a shared store (Redis/Upstash)
-  in Phase 16. Fix scheduled: Phase 16 (hosting decision).
-- **`X-Forwarded-For` trust** (`getClientIp` in the same module): only
-  meaningful behind a reverse proxy that overwrites it (e.g. Vercel). On
-  unprotected hosting the header is attacker-controlled and the limiter is
-  fully bypassable by rotating it. Fix scheduled: Phase 16 — trust only
-  the platform's guaranteed client-IP header.
+  in Phase 16. The admin limiter is no longer in-memory: see
+  `RateLimitBucket` in `packages/db/prisma/schema.prisma` (Stage 2c).
+- **`X-Forwarded-For` trust** (`apps/web/lib/rate-limit.ts`): web reads
+  the leftmost entry; fix scheduled for Phase 16. The admin resolver was
+  fixed in Stage 2c — see "Client IP resolution" below.
 - **Origin check without `NEXT_PUBLIC_WEB_URL`**: fail-closed in
   production (refuse), fail-open with a warning only in non-production
   (`apps/web/lib/request-origin.ts`). No fix needed — just ensure the var
   is always set in production (Phase 16 checklist).
+
+## Client IP resolution (apps/admin, Stage 2c)
+
+`getClientIp` in `apps/admin/lib/rate-limit.ts` never trusts a
+client-supplied leftmost `X-Forwarded-For` value.
+
+- Set `CLIENT_IP_HEADER` to the single header your platform proxy
+  overwrites with the real client IP (for example `cf-connecting-ip` on
+  Cloudflare, `x-real-ip` on nginx). Only that header is read, and only
+  its first value.
+- If unset, the resolver reads `x-real-ip`, then the RIGHTMOST
+  `x-forwarded-for` entry (the one appended by the nearest proxy), then
+  falls back to `unknown`.
+- Any chosen value that is not a valid IPv4/IPv6 address becomes
+  `unknown`.
+
+Set `CLIENT_IP_HEADER` in production whenever clients can reach the app
+directly or send arbitrary IP headers. The fallback is safe only behind a
+proxy that appends/overwrites the headers it relies on.
+
+The admin limiter fails closed on a database error: login keeps its
+generic credential error, forgot/reset answer the existing generic
+`rate_limited` response, and the error is logged server-side only.
 
 ## Backup / export strategy (planned — needs real hosting, Phase 16)
 

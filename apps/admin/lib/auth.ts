@@ -80,7 +80,10 @@ export const authOptions: NextAuthOptions = {
         // here is a plain record (RequestInternal), not Fetch Headers —
         // getClientIp handles both shapes.
         const ip = getClientIp(req?.headers);
-        const retryAfter = rateLimitCheck(`login:${ip}`, LOGIN_RATE_LIMIT);
+        const retryAfter = await rateLimitCheck(
+          `login:${ip}`,
+          LOGIN_RATE_LIMIT
+        );
         if (retryAfter > 0) {
           // Same generic failure: a throttled attacker must not be able
           // to distinguish "wrong password" from "rate limited". The warn

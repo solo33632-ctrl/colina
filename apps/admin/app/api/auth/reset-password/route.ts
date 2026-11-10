@@ -7,9 +7,16 @@ import {
   PASSWORD_RESET_RATE_LIMIT,
   rateLimitCheck,
 } from '@/lib/rate-limit';
+import { isSameOrigin } from '@/lib/request-origin';
 import { resetPasswordInputSchema } from '@/lib/schemas';
 
 export async function POST(req: NextRequest) {
+  // Same CSRF perimeter as forgot-password: refuse a foreign or absent
+  // Origin with a generic empty 403 before reading the body.
+  if (!isSameOrigin(req)) {
+    return new NextResponse(null, { status: 403 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -22,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   // Same tight bucket as forgot-password: tokens are unguessable (256-bit)
   // so this is volumetric-abuse protection, not brute-force defense.
-  const retryAfter = rateLimitCheck(
+  const retryAfter = await rateLimitCheck(
     `reset:${getClientIp(req.headers)}`,
     PASSWORD_RESET_RATE_LIMIT
   );

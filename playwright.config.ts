@@ -21,11 +21,13 @@ import { defineConfig } from '@playwright/test';
 //      inlined at build time, so changing it means rebuilding.
 //   3. ADMIN_PASSWORD set (the seeded admin's password for this run).
 //   4. Both servers freshly started. The public contact endpoint allows 5
-//      POSTs per 10 minutes per IP and the admin login endpoint 10 per 15
-//      minutes; both limiters are in-memory, so a restart is what resets
-//      them. The admin specs share one sign-in per (locale, account) via
-//      e2e/admin-session.ts, which keeps a full run to about five logins —
-//      enough for two consecutive runs against the same server.
+//      POSTs per 10 minutes per IP; that limiter is in-memory, so a web
+//      restart resets it. The admin limiter is durable (RateLimitBucket,
+//      Stage 2c): the e2e helpers clear its buckets at the start of a run
+//      and after the spec that deliberately spends the login budget, so
+//      consecutive runs are fine. The admin specs share one sign-in per
+//      (locale, account) via e2e/admin-session.ts, keeping a full run well
+//      under the 10-per-15-minute login limit.
 export default defineConfig({
   testDir: './e2e',
   workers: 1,

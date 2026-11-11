@@ -168,11 +168,19 @@ export default async function CategoryDetailPage({ params }: Props) {
               fetchPriority="high"
               sizes="100vw"
               renderFallback={false}
+              protectedImage
               className="absolute inset-0 h-full w-full py-4 sm:py-6"
             />
             {/* One flat scrim over everything, so the title reads the same over
-                a bright studio shot and a dark night shot alike. */}
-            <div aria-hidden="true" className="absolute inset-0 bg-black/60" />
+                a bright studio shot and a dark night shot alike. It carries the
+                protection marker too: it is the topmost element over the photo,
+                so right-clicks over the picture land here, while the title and
+                breadcrumb layers above it keep their normal text menu. */}
+            <div
+              aria-hidden="true"
+              data-protected-image=""
+              className="absolute inset-0 bg-black/60"
+            />
           </>
         ) : (
           // No photo: the same band in a solid dark field, same height, same

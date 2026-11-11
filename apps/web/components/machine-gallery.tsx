@@ -88,6 +88,7 @@ export function MachineGallery({ images, alt }: MachineGalleryProps) {
                     alt=""
                     fit="contain"
                     loading="lazy"
+                    protectedImage
                     className="h-full w-full p-1"
                   />
                 </button>

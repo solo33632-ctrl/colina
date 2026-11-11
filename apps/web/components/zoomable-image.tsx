@@ -275,6 +275,7 @@ export function ZoomableImage({
       sizes="(min-width: 1024px) 46rem, 100vw"
       imgRef={imgRef}
       onLoad={handleLoaded}
+      protectedImage
       className={PHOTO_CLASSES}
     />
   );

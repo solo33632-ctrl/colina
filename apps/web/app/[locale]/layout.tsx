@@ -8,6 +8,7 @@ import {
   setRequestLocale,
 } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { ImageProtection } from '@/components/image-protection';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { WhatsappButton } from '@/components/whatsapp-button';
@@ -135,6 +136,8 @@ export default async function LocaleLayout({ children, params }: LocaleParams) {
           {header('skipToContent')}
         </a>
         <NextIntlClientProvider messages={messages}>
+          {/* Renders nothing; installs the shared photo copy deterrent once. */}
+          <ImageProtection />
           <SiteHeader />
           {children}
           <SiteFooter hasWhatsapp={whatsappHref !== null} />

@@ -103,6 +103,7 @@ export function MachineSummaryCard({
             alt=""
             fit="contain"
             renderFallback={false}
+            protectedImage
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">

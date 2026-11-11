@@ -171,6 +171,9 @@ export function BeforeAfterSlider({
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       data-testid="before-after-slider"
+      // The two photos are pointer-events-none so the drag works anywhere on
+      // them, which makes this container the real target over the picture.
+      data-protected-image=""
       // `touch-pan-y`: the browser keeps vertical panning (so a swipe up the
       // page still scrolls it) and hands horizontal movement to us. The cursor
       // is a resize handle rather than a grab, because the handle is already
@@ -186,6 +189,7 @@ export function BeforeAfterSlider({
         sizes={sizes}
         loading="lazy"
         draggable={false}
+        data-protected-image=""
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
       />
       {/* AFTER: the same box, clipped to the right of the divider. Identical
@@ -198,6 +202,7 @@ export function BeforeAfterSlider({
         sizes={sizes}
         loading="lazy"
         draggable={false}
+        data-protected-image=""
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
         style={{ clipPath: 'inset(0 0 0 var(--pos))' }}
       />

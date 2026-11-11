@@ -71,6 +71,12 @@ type ImageWithFallbackProps = {
    * would only double it.
    */
   renderFallback?: boolean;
+  /**
+   * Marks a content photo for the shared copy deterrent (Stage 28b):
+   * `data-protected-image` plus `draggable={false}` on the real `<img>`.
+   * UI artwork (partner/agent/brand logos) leaves this off.
+   */
+  protectedImage?: boolean;
 };
 
 // Renders `src` when it loads, otherwise a styled initial-letter tile.
@@ -90,6 +96,7 @@ export function ImageWithFallback({
   sizes,
   fetchPriority,
   renderFallback = true,
+  protectedImage = false,
 }: ImageWithFallbackProps) {
   // Tracks *which* src failed rather than a bare flag, so pointing the
   // component at a different image (the gallery swaps its hero when a
@@ -136,6 +143,8 @@ export function ImageWithFallback({
       loading={loading}
       sizes={sizes}
       fetchPriority={fetchPriority}
+      data-protected-image={protectedImage ? '' : undefined}
+      draggable={protectedImage ? false : undefined}
       onLoad={(event) => onLoad?.(event.currentTarget)}
       onError={() => setFailedSrc(src)}
       className={`${boxClasses} ${fitClass} ${className ?? ''}`}

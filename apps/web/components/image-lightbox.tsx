@@ -62,6 +62,8 @@ export function ImageLightbox({ src, alt, open, onClose }: ImageLightboxProps) {
         <img
           src={src}
           alt={alt}
+          draggable={false}
+          data-protected-image=""
           className="max-h-full max-w-full object-contain"
         />
         <button

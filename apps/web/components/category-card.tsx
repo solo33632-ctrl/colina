@@ -116,6 +116,7 @@ export function CategoryCard({
               src={category.image}
               alt=""
               fit="contain"
+              protectedImage
               className="motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-105"
               renderFallback={false}
             />
@@ -128,6 +129,7 @@ export function CategoryCard({
           <div
             aria-hidden="true"
             data-testid="category-card-overlay"
+            data-protected-image=""
             className="absolute inset-0 bg-black/60 transition-colors duration-300 [@media(hover:hover)]:group-hover:bg-black/70 group-focus-visible:bg-black/70"
           />
         </>

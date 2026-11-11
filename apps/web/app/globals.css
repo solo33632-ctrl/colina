@@ -293,3 +293,22 @@
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Public content-photo copy deterrent (Stage 28b).
+
+   Marked by the shared mechanism in lib/image-protection.ts +
+   components/image-protection.tsx. This stops the native image drag, text
+   selection across the photo and the iOS long-press save menu. It is a
+   deterrent only: screenshots, DevTools, the network tab and direct image
+   URLs still work.
+
+   The attribute is used on content photos (and the scrims that sit over
+   them), never on logos, icons or text, so text selection, copy and the
+   context menu on text and links are untouched.
+   ------------------------------------------------------------------------- */
+[data-protected-image] {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

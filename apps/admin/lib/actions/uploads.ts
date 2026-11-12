@@ -34,6 +34,13 @@ import {
 // Size/type rules mirror the client-side pre-checks in upload-field.tsx;
 // the server is the source of truth.
 
+// Images are stored at most 2400 px on the longest side with automatic
+// quality, so a modern camera upload cannot sit in Cloudinary at full
+// resolution. `c_limit` scales down only and never upscales; giving BOTH
+// axes the same bound is what caps the LONGEST side rather than just the
+// width. Datasheets (raw PDFs) are never transformed.
+const IMAGE_INCOMING_TRANSFORMATION = 'c_limit,w_2400,h_2400,q_auto';
+
 // Error codes the UI maps to messages, documented here as the contract:
 //   unauthorized  — no valid admin session
 //   unconfigured  — CLOUDINARY_* env vars missing (rendered as a clear
@@ -104,6 +111,9 @@ async function uploadFile(
     const { secureUrl, publicId } = await uploadBuffer(buffer, {
       resourceType,
       folder,
+      ...(kind === 'image'
+        ? { incomingTransformation: IMAGE_INCOMING_TRANSFORMATION }
+        : {}),
     });
 
     // Fail closed: the form only receives a URL after the audit row lands,

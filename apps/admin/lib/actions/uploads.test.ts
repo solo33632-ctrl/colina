@@ -147,9 +147,12 @@ describe('upload actions: successful upload', () => {
       ok: true,
       url: 'https://res.cloudinary.com/test-cloud/image/upload/abc.png',
     });
+    // Stage 28c: images are capped at 2400 px on the longest side with
+    // automatic quality by Cloudinary's incoming transformation.
     expect(uploadBuffer).toHaveBeenCalledWith(expect.any(Buffer), {
       resourceType: 'image',
       folder: 'colina',
+      incomingTransformation: 'c_limit,w_2400,h_2400,q_auto',
     });
     // Stage 2a: every stored asset has an audit row.
     expect(prisma.auditLog.create).toHaveBeenCalledWith({
@@ -174,6 +177,11 @@ describe('upload actions: successful upload', () => {
     expect(result).toEqual({
       ok: true,
       url: 'https://res.cloudinary.com/test-cloud/raw/upload/sheet.pdf',
+    });
+    // Datasheets are raw resources: no incoming transformation, ever.
+    expect(uploadBuffer).toHaveBeenCalledWith(expect.any(Buffer), {
+      resourceType: 'raw',
+      folder: 'colina/datasheets',
     });
     expect(prisma.auditLog.create).toHaveBeenCalledWith({
       data: {

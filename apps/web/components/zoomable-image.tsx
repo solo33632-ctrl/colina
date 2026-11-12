@@ -11,6 +11,10 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { ImageWithFallback } from './image-with-fallback';
 import {
+  CLOUDINARY_MAX_WIDTH,
+  transformCloudinaryImageUrl,
+} from '@/lib/cloudinary-delivery';
+import {
   contentBox,
   lensStyle,
   MIN_LENS_SIZE,
@@ -134,7 +138,14 @@ export function ZoomableImage({
   useEffect(() => {
     const lens = lensRef.current;
     if (lens) {
-      lens.style.backgroundImage = `url("${src}")`;
+      // Magnify the largest derivative rather than whichever srcset entry the
+      // hero happened to pick: at 2.5x a 400w candidate would be visibly soft.
+      // `c_limit` preserves the aspect ratio, so the geometry above — which is
+      // derived from the hero's natural size — still describes this image.
+      lens.style.backgroundImage = `url("${transformCloudinaryImageUrl(
+        src,
+        CLOUDINARY_MAX_WIDTH
+      )}")`;
     }
   }, [src, canHover]);
 

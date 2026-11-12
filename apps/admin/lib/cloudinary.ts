@@ -44,6 +44,12 @@ export function cloudinaryCredentials(): CloudinaryCredentials | null {
 export type UploadBufferOptions = {
   resourceType: CloudinaryResourceType;
   folder: string;
+  /**
+   * Cloudinary transformation applied to the asset AT UPLOAD TIME, before it
+   * is stored. Images use this to bound their stored dimensions; raw
+   * resources (PDF datasheets) must not be transformed.
+   */
+  incomingTransformation?: string;
 };
 
 export type UploadBufferResult = {
@@ -62,6 +68,9 @@ export function uploadBuffer(
       {
         resource_type: options.resourceType,
         folder: options.folder,
+        ...(options.incomingTransformation
+          ? { incoming_transformation: options.incomingTransformation }
+          : {}),
       },
       (error, result) => {
         if (error) {

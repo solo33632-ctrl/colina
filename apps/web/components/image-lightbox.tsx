@@ -2,6 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import {
+  CLOUDINARY_MAX_WIDTH,
+  transformCloudinaryImageUrl,
+} from '@/lib/cloudinary-delivery';
 
 type ImageLightboxProps = {
   src: string;
@@ -60,7 +64,9 @@ export function ImageLightbox({ src, alt, open, onClose }: ImageLightboxProps) {
       <div className="relative flex h-full w-full items-center justify-center p-4 sm:p-8">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={src}
+          // The largest derivative: the overlay exists to inspect detail, so
+          // this is the one place that must never trade sharpness for bytes.
+          src={transformCloudinaryImageUrl(src, CLOUDINARY_MAX_WIDTH)}
           alt={alt}
           draggable={false}
           data-protected-image=""

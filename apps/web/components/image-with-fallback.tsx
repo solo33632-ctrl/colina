@@ -2,6 +2,11 @@
 
 import { useState } from 'react';
 import type { RefObject } from 'react';
+import {
+  buildCloudinarySrcset,
+  CLOUDINARY_DEFAULT_WIDTH,
+  transformCloudinaryImageUrl,
+} from '@/lib/cloudinary-delivery';
 
 type ImageWithFallbackProps = {
   src: string | null;
@@ -47,12 +52,9 @@ type ImageWithFallbackProps = {
    */
   imgRef?: RefObject<HTMLImageElement | null>;
   /**
-   * `srcset` sizes hint, forwarded to the `<img>`.
-   *
-   * Only meaningful alongside a `srcSet`, which this component does not build;
-   * it exists so a caller that DOES hand over a responsive source elsewhere can
-   * keep the hint on the element. Omitted entirely when not supplied, so every
-   * other call site renders exactly as before.
+   * `sizes` hint for the responsive Cloudinary `srcset` this component builds.
+   * Forwarded to the `<img>` verbatim and omitted entirely when not supplied.
+   * Non-Cloudinary sources get no srcset, so the hint is inert for them.
    */
   sizes?: string;
   /**
@@ -130,6 +132,17 @@ export function ImageWithFallback({
     );
   }
 
+  // Cloudinary photos are delivered responsively at render time; the stored
+  // URL is never modified. A small default keeps non-srcset-aware browsers
+  // and the preload scanner on a sensible derivative, and the srcset lets
+  // every other browser pick by rendered width and DPR. Non-Cloudinary
+  // sources (data URIs, picsum, local placeholders) pass through untouched
+  // and get no srcset at all, so their markup is exactly as before.
+  const deliveredSrc = src
+    ? transformCloudinaryImageUrl(src, CLOUDINARY_DEFAULT_WIDTH)
+    : src;
+  const srcSet = src ? buildCloudinarySrcset(src) ?? undefined : undefined;
+
   // Plain <img> on purpose: real media + next/image optimization arrive
   // with Phase 0/14. next/image would need remotePatterns for future
   // storage URLs and gives nothing for local 404 placeholders.
@@ -138,7 +151,8 @@ export function ImageWithFallback({
     <img
       id={id}
       ref={imgRef}
-      src={src}
+      src={deliveredSrc}
+      srcSet={srcSet}
       alt={alt}
       loading={loading}
       sizes={sizes}

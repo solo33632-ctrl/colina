@@ -26,11 +26,20 @@ import '../globals.css';
 
 // Arabic UI face: full Arabic coverage, 100–700 weights, engineered for
 // UI legibility; pairs metrically with IBM Plex Sans (Latin) below.
+//
+// Both faces live in this shared layout, so `next/font` would preload every
+// generated file for BOTH languages on every page: measured at nine files /
+// ~238 KB, of which an English page uses one (IBM Plex Sans is a variable
+// font) and an Arabic page uses the eight IBM Plex Sans Arabic files. The
+// preload hints cannot vary by locale here, so they are off; the generated
+// @font-face rules are unchanged and the browser fetches exactly the faces
+// the current locale renders. `display: 'swap'` still applies.
 const arabic = IBM_Plex_Sans_Arabic({
   subsets: ['arabic', 'latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-arabic',
   display: 'swap',
+  preload: false,
 });
 
 const latin = IBM_Plex_Sans({
@@ -38,6 +47,7 @@ const latin = IBM_Plex_Sans({
   weight: ['400', '500', '600', '700'],
   variable: '--font-latin',
   display: 'swap',
+  preload: false,
 });
 
 type LocaleParams = {

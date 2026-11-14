@@ -126,6 +126,8 @@ export default async function MaintenanceMachinePage({ params }: Props) {
               valueTextTemplate={t.raw('valueText')}
               // The frame is at most 56rem wide and full width below that.
               sizes="(max-width: 896px) 100vw, 896px"
+              // The comparison is the page's subject and its LCP image.
+              priority
             />
           </div>
 

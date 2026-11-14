@@ -8,8 +8,8 @@ import {
   HOME_CATEGORY_LIMIT,
 } from '@/components/categories-grid';
 import { ContactCtaBand } from '@/components/contact-cta-band';
+import { DeferredIntroOverlay } from '@/components/deferred-intro-overlay';
 import { HeroSection } from '@/components/hero-section';
-import { IntroOverlay } from '@/components/intro-overlay';
 import { IntroProvider } from '@/components/intro-provider';
 import {
   HOME_MAINTENANCE_LIMIT,
@@ -89,7 +89,7 @@ export default async function HomePage({ params }: Props) {
           only: a deep link never mounts this, so a visitor arriving on a
           machine page from a search never sees a splash. */}
       <IntroProvider>
-        <IntroOverlay />
+        <DeferredIntroOverlay />
         <HeroSection locale={locale} />
         <CategoriesGrid categories={categories} locale={locale} />
         <MaintenanceCategories lines={maintenanceLines} locale={locale} />

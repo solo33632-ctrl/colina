@@ -35,6 +35,12 @@ export type BeforeAfterSliderProps = {
   valueTextTemplate: string;
   /** `sizes` hint for the two images; the grid knows the width, this does not. */
   sizes?: string;
+  /**
+   * Marks the comparison that is this page's LCP image: both layers are
+   * fetched eagerly at high priority. Every other comparison stays lazy and
+   * decodes off the main thread.
+   */
+  priority?: boolean;
 };
 
 /**
@@ -81,6 +87,7 @@ export function BeforeAfterSlider({
   sliderLabel,
   valueTextTemplate,
   sizes,
+  priority = false,
 }: BeforeAfterSliderProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // The committed position: everything the ARIA attributes read, so a screen
@@ -187,7 +194,9 @@ export function BeforeAfterSlider({
         src={beforeSrc}
         alt={beforeAlt}
         sizes={sizes}
-        loading="lazy"
+        loading={priority ? 'eager' : 'lazy'}
+        fetchPriority={priority ? 'high' : undefined}
+        decoding="async"
         draggable={false}
         data-protected-image=""
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
@@ -200,7 +209,9 @@ export function BeforeAfterSlider({
         src={afterSrc}
         alt={afterAlt}
         sizes={sizes}
-        loading="lazy"
+        loading={priority ? 'eager' : 'lazy'}
+        fetchPriority={priority ? 'high' : undefined}
+        decoding="async"
         draggable={false}
         data-protected-image=""
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"

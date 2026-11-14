@@ -117,7 +117,7 @@ export default async function MaintenanceLinePage({ params }: Props) {
           </p>
         ) : (
           <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {line.items.map((item) => (
+            {line.items.map((item, index) => (
               <li key={item.id} className="h-full">
                 <MaintenanceMachineCard
                   item={item}
@@ -126,6 +126,8 @@ export default async function MaintenanceLinePage({ params }: Props) {
                   // One image in a third of the content container: at most
                   // ~23rem wide, rendered at 1x or 2x.
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                  // The first comparison is the line page's LCP image.
+                  priority={index === 0}
                 />
               </li>
             ))}

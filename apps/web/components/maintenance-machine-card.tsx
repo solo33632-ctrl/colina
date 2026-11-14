@@ -18,6 +18,11 @@ type MaintenanceMachineCardProps = {
   locale: 'ar' | 'en';
   /** `sizes` hint for the two slider images; the grid knows its own width. */
   sizes: string;
+  /**
+   * Marks the first comparison when it is the page's LCP image. Every other
+   * card stays lazy.
+   */
+  priority?: boolean;
 };
 
 /**
@@ -40,6 +45,7 @@ export async function MaintenanceMachineCard({
   lineSlug,
   locale,
   sizes,
+  priority = false,
 }: MaintenanceMachineCardProps) {
   const t = await getTranslations('MaintenanceShowcase');
   const name = locale === 'ar' ? item.nameAr : item.nameEn;
@@ -60,6 +66,7 @@ export async function MaintenanceMachineCard({
           // has rendered.
           valueTextTemplate={t.raw('valueText')}
           sizes={sizes}
+          priority={priority}
         />
       </div>
       <h3 className="px-4 py-3 text-center text-base font-medium leading-snug">

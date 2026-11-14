@@ -69,6 +69,7 @@ export function ImageLightbox({ src, alt, open, onClose }: ImageLightboxProps) {
           src={transformCloudinaryImageUrl(src, CLOUDINARY_MAX_WIDTH)}
           alt={alt}
           draggable={false}
+          decoding="async"
           data-protected-image=""
           className="max-h-full max-w-full object-contain"
         />

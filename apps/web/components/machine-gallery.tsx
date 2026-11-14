@@ -1,10 +1,18 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ImageWithFallback } from './image-with-fallback';
-import { ImageLightbox } from './image-lightbox';
 import { ZoomableImage } from './zoomable-image';
+
+// Opening the full-screen viewer is a deliberate action, so its dialog code is
+// fetched when that action happens rather than with the page. The touch path
+// is the only one that opens it, and the image it shows has already loaded.
+const ImageLightbox = dynamic(
+  () => import('./image-lightbox').then((module) => module.ImageLightbox),
+  { ssr: false }
+);
 
 export type GalleryImage = { id: string; url: string };
 
@@ -26,6 +34,10 @@ export function MachineGallery({ images, alt }: MachineGalleryProps) {
   const t = useTranslations('MachinePage');
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  // Mount the viewer on the first open and leave its shell in place after
+  // that, so closing and reopening never refetches the chunk. Before the
+  // first open the chunk is not requested at all.
+  const [lightboxMounted, setLightboxMounted] = useState(false);
   // Only a hero that actually loaded is worth enlarging: before real media
   // arrives the slot shows a letter tile, and there is nothing to open.
   const [heroLoaded, setHeroLoaded] = useState(false);
@@ -42,7 +54,14 @@ export function MachineGallery({ images, alt }: MachineGalleryProps) {
         src={active.url}
         alt={alt}
         onImageLoad={() => setHeroLoaded(true)}
-        onOpen={heroLoaded ? () => setLightboxOpen(true) : undefined}
+        onOpen={
+          heroLoaded
+            ? () => {
+                setLightboxMounted(true);
+                setLightboxOpen(true);
+              }
+            : undefined
+        }
       />
 
       {/* One horizontal row of thumbnails BELOW the frame.
@@ -105,7 +124,7 @@ export function MachineGallery({ images, alt }: MachineGalleryProps) {
         })}
       </p>
 
-      {heroLoaded ? (
+      {heroLoaded && lightboxMounted ? (
         <ImageLightbox
           src={active.url}
           alt={alt}

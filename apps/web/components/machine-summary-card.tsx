@@ -39,6 +39,11 @@ export type MachineSummaryCardProps = {
   machine: MachineSummary;
   locale: 'ar' | 'en';
   labels: MachineCardLabels;
+  /**
+   * Marks the one card whose photo is the page's LCP image. Everything else
+   * stays lazy; pages whose largest paint is text leave this off.
+   */
+  priority?: boolean;
 };
 
 /**
@@ -73,6 +78,7 @@ export function MachineSummaryCard({
   machine,
   locale,
   labels,
+  priority = false,
 }: MachineSummaryCardProps) {
   const name = locale === 'ar' ? machine.nameAr : machine.nameEn;
   const shortDescription = (
@@ -102,6 +108,8 @@ export function MachineSummaryCard({
             src={machine.images[0].url}
             alt=""
             fit="contain"
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : undefined}
             renderFallback={false}
             protectedImage
           />

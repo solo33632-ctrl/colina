@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import type { RefObject } from 'react';
+import { preconnect } from 'react-dom';
 import {
   buildCloudinarySrcset,
   CLOUDINARY_DEFAULT_WIDTH,
+  isCloudinaryDeliveryUrl,
   transformCloudinaryImageUrl,
 } from '@/lib/cloudinary-delivery';
 
@@ -64,6 +66,15 @@ type ImageWithFallbackProps = {
    */
   fetchPriority?: 'high' | 'low' | 'auto';
   /**
+   * Decode hint for the real `<img>`.
+   *
+   * `async` is the default for the whole site: decoding a photo off the main
+   * thread keeps a large image from blocking text paint. Callers can override
+   * it for an image whose pixels must be ready synchronously, but no public
+   * page needs that today.
+   */
+  decoding?: 'async' | 'sync' | 'auto';
+  /**
    * Whether a failed image is replaced by the initial-letter tile.
    *
    * Defaults to true. Set false for a decorative *second* rendering of an
@@ -97,6 +108,7 @@ export function ImageWithFallback({
   imgRef,
   sizes,
   fetchPriority,
+  decoding = 'async',
   renderFallback = true,
   protectedImage = false,
 }: ImageWithFallbackProps) {
@@ -106,6 +118,15 @@ export function ImageWithFallback({
   // fallback tile on screen.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const failed = !src || failedSrc === src;
+
+  // An eligible Cloudinary photo gets one warm connection before the first
+  // photo is requested. React hoists the hint into the document head and
+  // deduplicates repeated calls, so a grid of Cloudinary photos adds one
+  // preconnect, not one per card. Pages that render no Cloudinary photo emit
+  // nothing, which is why this cannot live unconditionally in the layout.
+  if (src && isCloudinaryDeliveryUrl(src)) {
+    preconnect('https://res.cloudinary.com');
+  }
 
   // The two modes differ only in the box and the fit, so the initial-letter
   // fallback has to fill the same box as the artwork it stands in for.
@@ -155,6 +176,7 @@ export function ImageWithFallback({
       srcSet={srcSet}
       alt={alt}
       loading={loading}
+      decoding={decoding}
       sizes={sizes}
       fetchPriority={fetchPriority}
       data-protected-image={protectedImage ? '' : undefined}

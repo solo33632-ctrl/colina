@@ -33,10 +33,33 @@ const contentSecurityPolicy = [
   "object-src 'none'",
 ].join('; ');
 
+// Public media is replaced only by a deploy, so a day of freshness plus a week
+// of background revalidation is safe and stops every visit from revalidating
+// the same logo. This rule is listed BEFORE the hashed-asset rule because a
+// later matching header route wins: `/_next/static` files that happen to end in
+// an image extension must keep their one-year immutable policy.
+const publicImageCache = 'public, max-age=86400, stale-while-revalidate=604800';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async headers() {
     return [
+      {
+        source: '/:path*.(png|jpg|jpeg|gif|webp|avif|svg|ico)',
+        headers: [{ key: 'Cache-Control', value: publicImageCache }],
+      },
+      {
+        // Content-addressed build output: the filename changes with the bytes,
+        // so the longest safe freshness applies. Stated explicitly rather than
+        // inherited, so the policy survives a future change to Next's defaults.
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
       {
         source: '/:path*',
         headers: [

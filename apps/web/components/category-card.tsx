@@ -30,6 +30,12 @@ export type CategoryCardProps = {
   hoverText: string;
   /** The outlined pill's label, "View" / "عرض". */
   viewLabel: string;
+  /**
+   * Marks the one tile whose photo is this page's LCP image. It is fetched
+   * eagerly at high priority; every other tile stays lazy. Omitted on pages
+   * whose largest paint is text, where eager loading would only add bytes.
+   */
+  priority?: boolean;
 };
 
 /**
@@ -93,6 +99,7 @@ export function CategoryCard({
   href,
   hoverText,
   viewLabel,
+  priority = false,
 }: CategoryCardProps) {
   const name = locale === 'ar' ? category.nameAr : category.nameEn;
 
@@ -116,6 +123,8 @@ export function CategoryCard({
               src={category.image}
               alt=""
               fit="contain"
+              loading={priority ? 'eager' : 'lazy'}
+              fetchPriority={priority ? 'high' : undefined}
               protectedImage
               className="motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-105"
               renderFallback={false}

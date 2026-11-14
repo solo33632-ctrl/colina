@@ -30,6 +30,9 @@ import { defineConfig } from '@playwright/test';
 //      under the 10-per-15-minute login limit.
 export default defineConfig({
   testDir: './e2e',
+  // Refuses the run unless the runner and both servers prove they use
+  // 127.0.0.1:5433/colina_test; also resets the durable rate-limit buckets.
+  globalSetup: './e2e/global-setup.ts',
   workers: 1,
   timeout: 120_000,
   expect: { timeout: 15_000 },

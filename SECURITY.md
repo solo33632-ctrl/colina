@@ -130,6 +130,17 @@ The admin limiter fails closed on a database error: login keeps its
 generic credential error, forgot/reset answer the existing generic
 `rate_limited` response, and the error is logged server-side only.
 
+## E2E database identity header (`x-e2e-db`)
+
+Both proxies emit `x-e2e-db` only when `E2E_EXPOSE_DB === '1'` and
+`NODE_ENV !== 'production'`; its value is `host:port/database` parsed from
+`DATABASE_URL`, never a username or password. Never set `E2E_EXPOSE_DB` in a
+deployed environment. The code itself ignores the variable when
+`NODE_ENV === 'production'`, so a leaked value cannot expose production's
+database identity. The header exists only so Playwright can refuse a run
+unless the test runner and both servers prove they use
+`127.0.0.1:5433/colina_test` (see `scripts/e2e-servers.sh`).
+
 ## Backup / export strategy (planned — needs real hosting, Phase 16)
 
 No real database exists yet (only throwaway local clusters), so this is

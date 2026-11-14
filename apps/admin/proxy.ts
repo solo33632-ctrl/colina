@@ -2,6 +2,7 @@ import { hasLocale } from 'next-intl';
 import createMiddleware from 'next-intl/middleware';
 import { getToken } from 'next-auth/jwt';
 import { NextResponse, type NextRequest } from 'next/server';
+import { e2eDatabaseHeader } from '@colina/db/database-identity';
 import { routing } from './i18n/routing';
 import { PUBLIC_AUTH_ROUTES, routeWithoutLocale } from './lib/public-routes';
 
@@ -54,6 +55,14 @@ function withProductionCsp<T extends NextResponse>(
   response: T,
   nonce: string | undefined
 ): T {
+  // Every admin response path returns through this function, so this is the
+  // single place for the gated test-only database identity header. It returns
+  // null unless E2E_EXPOSE_DB === '1' outside production, and the value never
+  // contains credentials.
+  const databaseHeader = e2eDatabaseHeader(process.env);
+  if (databaseHeader) {
+    response.headers.set(databaseHeader.name, databaseHeader.value);
+  }
   if (nonce) {
     response.headers.set(
       'content-security-policy',

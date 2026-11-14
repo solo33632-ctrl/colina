@@ -111,23 +111,46 @@ npm run format:check
 
 ```bash
 npm test              # unit tests (vitest, all workspaces)
-npm run test:e2e      # Playwright suite in ./e2e (needs both apps serving)
+npm run test:e2e      # Playwright suite in ./e2e
 ```
 
 Unit tests live next to the code (`lib/*.test.ts`, pure logic only —
-no DB, no network). The e2e suite needs a live environment first:
+no DB, no network).
+
+### Running e2e safely
+
+E2E only ever runs against the throwaway database
+`127.0.0.1:5433/colina_test`; the real database (`localhost:5432/colina`)
+is never used.
 
 ```bash
 # 1. Postgres up, migrated + seeded (see Database above)
-# 2. Both apps built and serving, e.g.:
-#      web on :3000, admin on :3001 — the project's local port
-#      convention, and the default these scripts and
-#      `npm run dev:web` / `dev:admin` all use, so no URL
-#      overrides are needed on a default setup
-# 3. ADMIN_EMAIL / ADMIN_PASSWORD set to a seeded admin login
+# 2. Start both test servers with the validated test database:
+scripts/e2e-servers.sh start
+
+# 3. Run the suite with the same test database exported:
+source ~/.colina/dburl.sh
 ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='<seed password>' \
   npm run test:e2e
+
+# Inspect or stop the servers the script started:
+scripts/e2e-servers.sh status
+scripts/e2e-servers.sh stop
 ```
+
+`start` refuses unless both `DATABASE_URL` and `DIRECT_URL` name
+`127.0.0.1:5433/colina_test` (or the same host spelled `localhost`),
+refuses busy ports, starts web on :3000 and admin on :3001 with
+`E2E_EXPOSE_DB=1`, then verifies both `x-e2e-db` response headers. `status`
+prints those headers and fails unless both prove the test database.
+
+Before every run — including a single-spec run — Playwright checks the
+runner's `DATABASE_URL` and both `x-e2e-db` headers. If anything is not the
+test database it aborts with `E2E SAFETY CHECK FAILED` **before any test
+body executes**. A dev server started by hand (`npm run dev:web` /
+`dev:admin`) does not set `E2E_EXPOSE_DB`, so it is refused even if it
+happens to point at the test database; restart it with
+`scripts/e2e-servers.sh start`.
 
 Ports are overridable via `WEB_URL` / `ADMIN_URL` if you serve the apps
 elsewhere — but if you move apps/web off :3000, change

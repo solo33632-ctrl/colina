@@ -15,6 +15,7 @@ import { SaveBanner } from '@/components/save-banner';
 import { intlLocale, relativeTime } from '@/lib/format';
 import { deleteAgent } from '@/lib/actions/agents';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -44,6 +45,7 @@ type Props = {
 };
 
 export default async function AgentsPage({ searchParams }: Props) {
+  await guardPage('agents:write');
   const locale = await getLocale();
   const t = await getTranslations('Agents');
   const common = await getTranslations('Common');

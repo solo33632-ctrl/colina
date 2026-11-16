@@ -7,6 +7,8 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { CategoryForm } from '@/components/category-form';
 import { DeleteCategoryButton } from '@/components/delete-category-button';
 import { sectionMetadata } from '@/lib/metadata';
+import { canModifyEntity } from '@/lib/permissions';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -22,6 +24,7 @@ type Props = {
 };
 
 export default async function EditCategoryPage({ params }: Props) {
+  const session = await guardPage('categories:write');
   const { id } = await params;
   const locale = await getLocale();
   const nav = await getTranslations('Nav');
@@ -31,6 +34,10 @@ export default async function EditCategoryPage({ params }: Props) {
     include: { _count: { select: { machines: true } } },
   });
   if (!category) {
+    notFound();
+  }
+  // Another owner's category is indistinguishable from a missing row.
+  if (!canModifyEntity(session, category)) {
     notFound();
   }
 

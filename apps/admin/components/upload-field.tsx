@@ -6,7 +6,11 @@ import type { UseFormRegisterReturn } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 import { Button } from '@colina/ui';
 import { inputClasses } from './form-fields';
-import { ACCEPT_BY_KIND, type UploadKind } from '@/lib/upload-rules';
+import {
+  ACCEPT_BY_KIND,
+  type UploadKind,
+  type UploadTarget,
+} from '@/lib/upload-rules';
 import {
   clientRejection,
   uploadErrorMessage,
@@ -28,6 +32,8 @@ import {
 type UploadFieldProps = {
   id: string;
   kind: UploadKind;
+  /** The form/row this asset belongs to; the server checks ownership. */
+  target: UploadTarget;
   value: string;
   onUploaded: (url: string) => void;
   /** Clears the field back to empty. It does not delete anything remotely:
@@ -49,6 +55,7 @@ type UploadFieldProps = {
 export function UploadField({
   id,
   kind,
+  target,
   value,
   onUploaded,
   onClear,
@@ -82,7 +89,7 @@ export function UploadField({
 
     setUploading(true);
     try {
-      const result = await uploadFile(file, kind);
+      const result = await uploadFile(file, kind, target);
       if (result.ok) {
         onUploaded(result.url);
         setShowUrlInput(false);

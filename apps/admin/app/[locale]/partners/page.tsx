@@ -11,6 +11,7 @@ import { ListFilters } from '@/components/list-filters';
 import { SaveBanner } from '@/components/save-banner';
 import { deletePartner } from '@/lib/actions/partners';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export default async function PartnersPage({ searchParams }: Props) {
+  await guardPage('partners:write');
   const locale = await getLocale();
   const t = await getTranslations('Partners');
   const common = await getTranslations('Common');

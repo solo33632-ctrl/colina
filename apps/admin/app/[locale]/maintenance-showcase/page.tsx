@@ -11,6 +11,7 @@ import { ListFilters } from '@/components/list-filters';
 import { SaveBanner } from '@/components/save-banner';
 import { deleteShowcase } from '@/lib/actions/showcase';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export default async function MaintenanceShowcasePage({ searchParams }: Props) {
+  await guardPage('maintenance-showcase:write');
   const locale = await getLocale();
   const t = await getTranslations('MaintenanceShowcase');
   const common = await getTranslations('Common');

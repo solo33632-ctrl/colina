@@ -165,6 +165,8 @@
     "failed": "تعذّر الرفع. حاول مرة أخرى.",
     "errors": {
       "unauthorized": "انتهت جلستك. يُرجى تسجيل الدخول مرة أخرى.",
+      "forbidden": "لا يملك حسابك صلاحية رفع ملفات لهذا العنصر.",
+      "invalid_target": "هدف الرفع غير صالح.",
       "unconfigured": "لم يتم إعداد الرفع بعد. أضف CLOUDINARY_CLOUD_NAME وCLOUDINARY_API_KEY وCLOUDINARY_API_SECRET إلى متغيرات البيئة.",
       "no_file": "اختر ملفاً لرفعه.",
       "invalidTypeImage": "يُسمح بصور JPG أو PNG أو WEBP فقط.",

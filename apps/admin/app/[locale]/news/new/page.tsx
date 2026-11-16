@@ -4,6 +4,7 @@ import { Container } from '@colina/ui';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { NewsForm } from '@/components/news-form';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -15,6 +16,7 @@ export async function generateMetadata({
 }
 
 export default async function NewNewsPage() {
+  await guardPage('news:write');
   const [nav, t] = await Promise.all([
     getTranslations('Nav'),
     getTranslations('News'),

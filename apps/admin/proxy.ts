@@ -73,8 +73,8 @@ function withProductionCsp<T extends NextResponse>(
 }
 
 // Reachable without a session. Everything else under a locale prefix needs
-// one. Note the app's own `requireAdmin()`/`requireSuperAdmin()` still gate
-// every page and action — this is the outer perimeter, not the only one.
+// one. Note the app's own `requirePermission()` still gates every page and
+// action — this is the outer perimeter, not the only one.
 // The set lives in `lib/public-routes.ts` so the layout's verified-session
 // gate uses exactly the same definition.
 

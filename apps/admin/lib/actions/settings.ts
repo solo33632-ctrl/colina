@@ -3,6 +3,7 @@
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
 import { requireAdmin, type ActionResult } from '../admin-action';
+import { requirePermission } from '../permissions';
 import { revalidateWebPaths } from '../revalidate-web';
 import { siteSettingsMessages } from './validation-messages';
 import { siteSettingsInputSchema } from '../schemas';
@@ -44,7 +45,7 @@ export async function saveSiteSettings(input: unknown): Promise<ActionResult> {
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
-  if (session.user.role !== 'SUPER_ADMIN') {
+  if (!(await requirePermission('settings:write'))) {
     return { ok: false, error: 'forbidden' };
   }
 

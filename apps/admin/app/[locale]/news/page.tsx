@@ -13,6 +13,7 @@ import { SaveBanner } from '@/components/save-banner';
 import { deleteNews } from '@/lib/actions/news';
 import { intlLocale } from '@/lib/format';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -32,6 +33,7 @@ type Props = {
 };
 
 export default async function NewsPage({ searchParams }: Props) {
+  await guardPage('news:write');
   const locale = await getLocale();
   const t = await getTranslations('News');
   const common = await getTranslations('Common');

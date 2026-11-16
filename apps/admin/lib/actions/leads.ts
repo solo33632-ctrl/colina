@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { z } from '../zod';
 import { prisma } from '@colina/db';
 import { routing } from '@/i18n/routing';
-import { requireAdmin, type ActionResult } from '../admin-action';
+import type { ActionResult } from '../admin-action';
+import { requirePermission } from '../permissions';
 import {
   LEAD_DELETE_AUDIT_SPEC,
   LEAD_STATUS_AUDIT_SPEC,
@@ -17,8 +18,8 @@ import {
   type LeadDeleteTarget,
 } from '../leads-delete';
 
-// Both roles may triage leads; only the audit-log *page* is
-// SUPER_ADMIN-gated (see app/audit-log/page.tsx).
+// Stage 4a: the leads inbox belongs to the full admin. An editor never sees
+// it in the sidebar and every action here refuses it via `leads:write`.
 const updateLeadStatusInput = z.object({
   kind: z.enum(['contact', 'maintenance']),
   id: z.string().min(1),
@@ -151,7 +152,7 @@ async function performDelete(
 export async function deleteLead(
   input: unknown
 ): Promise<ActionResult<DeleteCounts>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('leads:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -167,7 +168,7 @@ export async function deleteLead(
 export async function deleteLeads(
   input: unknown
 ): Promise<ActionResult<DeleteCounts>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('leads:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -181,7 +182,7 @@ export async function deleteLeads(
 }
 
 export async function updateLeadStatus(input: unknown) {
-  const session = await requireAdmin();
+  const session = await requirePermission('leads:write');
   if (!session) {
     return { ok: false as const, error: 'unauthorized' };
   }

@@ -5,6 +5,7 @@ import { Container } from '@colina/ui';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { MachineForm } from '@/components/machine-form';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -16,13 +17,21 @@ export async function generateMetadata({
 }
 
 export default async function NewMachinePage() {
+  const session = await guardPage('machines:write');
   // The form needs the category to pick from and the machines a new one can be
-  // related to.
+  // related to. Categories are read-only names for an editor (it may file a
+  // machine under any of them); related machines are limited to its own.
   const [nav, t, categories, machines] = await Promise.all([
     getTranslations('Nav'),
     getTranslations('Machines'),
     prisma.machineCategory.findMany({ orderBy: { nameEn: 'asc' } }),
-    prisma.machine.findMany({ orderBy: { nameEn: 'asc' } }),
+    prisma.machine.findMany({
+      where:
+        session.user.role === 'EDITOR'
+          ? { createdById: session.user.id }
+          : undefined,
+      orderBy: { nameEn: 'asc' },
+    }),
   ]);
 
   return (

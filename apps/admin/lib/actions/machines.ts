@@ -2,7 +2,8 @@
 
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
-import { requireAdmin, type ActionResult } from '../admin-action';
+import type { ActionResult } from '../admin-action';
+import { canModifyEntity, requirePermission } from '../permissions';
 import {
   buildChanges,
   buildSnapshot,
@@ -28,10 +29,31 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+// The related-machines picker is filtered to the editor's own machines, but a
+// crafted call can still submit someone else's id. Linking a machine into a
+// relation edits the join table around that row, so the same ownership rule
+// applies before the write.
+async function relatedMachinesAllowed(
+  session: Awaited<ReturnType<typeof requirePermission>>,
+  relatedIds: string[]
+): Promise<boolean> {
+  if (
+    !session ||
+    session.user.role === 'SUPER_ADMIN' ||
+    relatedIds.length === 0
+  ) {
+    return true;
+  }
+  const owned = await prisma.machine.count({
+    where: { id: { in: relatedIds }, createdById: session.user.id },
+  });
+  return owned === relatedIds.length;
+}
+
 export async function createMachine(
   input: unknown
 ): Promise<ActionResult<{ slug: string; categorySlug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('machines:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -50,6 +72,9 @@ export async function createMachine(
 
   // Self-links are impossible on create (no id yet); dedupe defensively.
   const relatedIds = [...new Set(parsed.data.relatedIds)];
+  if (!(await relatedMachinesAllowed(session, relatedIds))) {
+    return { ok: false, error: 'not_found' };
+  }
 
   try {
     const created = await prisma.$transaction(async (tx) => {
@@ -59,6 +84,7 @@ export async function createMachine(
           nameEn: parsed.data.nameEn,
           slug: parsed.data.slug,
           categoryId: parsed.data.categoryId,
+          createdById: session.user.id,
           shortDescriptionAr: parsed.data.shortDescriptionAr,
           shortDescriptionEn: parsed.data.shortDescriptionEn,
           descriptionAr: parsed.data.descriptionAr ?? '',
@@ -124,7 +150,7 @@ export async function updateMachine(
   id: string,
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('machines:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -146,6 +172,9 @@ export async function updateMachine(
   const relatedIds = [...new Set(parsed.data.relatedIds)].filter(
     (relatedId) => relatedId !== id
   );
+  if (!(await relatedMachinesAllowed(session, relatedIds))) {
+    return { ok: false, error: 'not_found' };
+  }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -154,6 +183,7 @@ export async function updateMachine(
       const existing = await tx.machine.findUnique({
         where: { id },
         select: {
+          createdById: true,
           nameAr: true,
           nameEn: true,
           slug: true,
@@ -170,6 +200,11 @@ export async function updateMachine(
         },
       });
       if (!existing) {
+        return null;
+      }
+      // Same generic not_found as a missing row: an editor guessing another
+      // owner's id learns nothing from the response.
+      if (!canModifyEntity(session, existing)) {
         return null;
       }
 
@@ -275,7 +310,7 @@ export async function updateMachine(
 }
 
 export async function deleteMachine(id: string): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('machines:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -287,6 +322,7 @@ export async function deleteMachine(id: string): Promise<ActionResult> {
       const existing = await tx.machine.findUnique({
         where: { id },
         select: {
+          createdById: true,
           nameAr: true,
           nameEn: true,
           slug: true,
@@ -294,6 +330,11 @@ export async function deleteMachine(id: string): Promise<ActionResult> {
         },
       });
       if (!existing) {
+        return null;
+      }
+      // A guessed id must behave exactly like a missing row. EDITOR only
+      // modifies machines it created; null creator means full-admin only.
+      if (!canModifyEntity(session, existing)) {
         return null;
       }
 

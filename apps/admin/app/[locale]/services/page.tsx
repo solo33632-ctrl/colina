@@ -10,6 +10,7 @@ import { ListFilters } from '@/components/list-filters';
 import { SaveBanner } from '@/components/save-banner';
 import { deleteService } from '@/lib/actions/services';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export default async function ServicesPage({ searchParams }: Props) {
+  await guardPage('services:write');
   const locale = await getLocale();
   const t = await getTranslations('Services');
   const common = await getTranslations('Common');

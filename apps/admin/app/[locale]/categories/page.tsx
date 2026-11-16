@@ -10,6 +10,7 @@ import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
 import { SaveBanner } from '@/components/save-banner';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export default async function CategoriesPage({ searchParams }: Props) {
+  const session = await guardPage('categories:write');
   const locale = await getLocale();
   const t = await getTranslations('Categories');
   const common = await getTranslations('Common');
@@ -33,14 +35,21 @@ export default async function CategoriesPage({ searchParams }: Props) {
   const isFiltered = query.length > 0;
 
   const categories = await prisma.machineCategory.findMany({
-    where: isFiltered
-      ? {
-          OR: [
-            { nameEn: { contains: query, mode: 'insensitive' } },
-            { nameAr: { contains: query, mode: 'insensitive' } },
-          ],
-        }
-      : undefined,
+    where: {
+      // Stage 4a: editors see only the categories they created, filtered in
+      // the database query (never after loading the full list).
+      ...(session.user.role === 'EDITOR'
+        ? { createdById: session.user.id }
+        : {}),
+      ...(isFiltered
+        ? {
+            OR: [
+              { nameEn: { contains: query, mode: 'insensitive' as const } },
+              { nameAr: { contains: query, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: 'asc' },
     include: { _count: { select: { machines: true } } },
   });

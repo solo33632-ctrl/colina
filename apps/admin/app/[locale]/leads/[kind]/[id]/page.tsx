@@ -5,13 +5,18 @@ import { prisma } from '@colina/db';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Button, Card, Container } from '@colina/ui';
 import { Link } from '@/i18n/navigation';
-import { LeadBadge, leadKindTone, leadStatusTone } from '@/components/lead-badges';
+import {
+  LeadBadge,
+  leadKindTone,
+  leadStatusTone,
+} from '@/components/lead-badges';
 import { LeadDeleteButton } from '@/components/lead-delete-button';
 import { LeadStatusForm } from '@/components/lead-status-form';
 import { intlLocale, relativeTime } from '@/lib/format';
 import { isLeadStatus, type LeadStatus } from '@/lib/lead-status';
 import { quoteMachineSlug, type LeadKind } from '@/lib/leads-query';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 import { normalizeWhatsappNumber } from '@/lib/whatsapp';
 
 export async function generateMetadata({
@@ -50,6 +55,7 @@ function DetailField({ label, value }: { label: string; value: ReactNode }) {
 }
 
 export default async function LeadDetailPage({ params }: Props) {
+  await guardPage('leads:write');
   const { kind, id } = await params;
   if (kind !== 'contact' && kind !== 'maintenance') {
     notFound();

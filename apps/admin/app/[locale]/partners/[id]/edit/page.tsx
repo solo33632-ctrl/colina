@@ -8,6 +8,7 @@ import { DeleteButton } from '@/components/delete-button';
 import { PartnerForm } from '@/components/partner-form';
 import { deletePartner } from '@/lib/actions/partners';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -23,6 +24,7 @@ type Props = {
 };
 
 export default async function EditPartnerPage({ params }: Props) {
+  await guardPage('partners:write');
   const { id } = await params;
   const locale = await getLocale();
   const nav = await getTranslations('Nav');

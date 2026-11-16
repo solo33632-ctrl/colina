@@ -2,7 +2,8 @@
 
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
-import { requireAdmin, type ActionResult } from '../admin-action';
+import type { ActionResult } from '../admin-action';
+import { requirePermission } from '../permissions';
 import { revalidateWebPaths } from '../revalidate-web';
 import { showcaseMessages } from './validation-messages';
 import { showcaseInputSchema } from '../schemas';
@@ -56,7 +57,7 @@ function emptyToNull(value: string | undefined): string | null | undefined {
 export async function createShowcase(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('maintenance-showcase:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -113,7 +114,7 @@ export async function updateShowcase(
   id: string,
   input: unknown
 ): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('maintenance-showcase:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -179,7 +180,7 @@ export async function updateShowcase(
 }
 
 export async function deleteShowcase(id: string): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('maintenance-showcase:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }

@@ -11,6 +11,7 @@ import { ListFilters } from '@/components/list-filters';
 import { ListPagination } from '@/components/list-pagination';
 import { SaveBanner } from '@/components/save-banner';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -35,6 +36,7 @@ type Props = {
 };
 
 export default async function MachinesPage({ searchParams }: Props) {
+  const session = await guardPage('machines:write');
   const locale = await getLocale();
   const t = await getTranslations('Machines');
   const common = await getTranslations('Common');
@@ -49,7 +51,10 @@ export default async function MachinesPage({ searchParams }: Props) {
   const isFiltered = query.length > 0 || Boolean(categoryFilter);
 
   // Search and the category filter combine: both narrow the same `where`.
+  // Stage 4a: an editor's list is narrowed in the database to rows it created,
+  // not filtered after loading. A null creator never matches an editor id.
   const where = {
+    ...(session.user.role === 'EDITOR' ? { createdById: session.user.id } : {}),
     ...(categoryFilter ? { categoryId: categoryFilter } : {}),
     ...(query
       ? {
@@ -62,7 +67,16 @@ export default async function MachinesPage({ searchParams }: Props) {
   };
 
   const [categories, total] = await Promise.all([
-    prisma.machineCategory.findMany({ orderBy: { nameEn: 'asc' } }),
+    // The filter lists categories, so it obeys the same "own rows only" rule
+    // as the lists themselves. The machine form is the one place an editor may
+    // see every category name (to file a machine under any of them).
+    prisma.machineCategory.findMany({
+      where:
+        session.user.role === 'EDITOR'
+          ? { createdById: session.user.id }
+          : undefined,
+      orderBy: { nameEn: 'asc' },
+    }),
     prisma.machine.count({ where }),
   ]);
 

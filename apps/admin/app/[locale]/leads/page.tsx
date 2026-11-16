@@ -31,6 +31,7 @@ import {
   type LeadType,
 } from '@/lib/leads-query';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -55,6 +56,7 @@ type Props = {
 };
 
 export default async function LeadsPage({ searchParams }: Props) {
+  await guardPage('leads:write');
   const params = await searchParams;
   const locale = await getLocale();
   const t = await getTranslations('Leads');
@@ -232,9 +234,7 @@ export default async function LeadsPage({ searchParams }: Props) {
 
   return (
     <main>
-      <Container
-        className={result.rows.length > 0 ? 'pt-10 pb-28' : 'py-10'}
-      >
+      <Container className={result.rows.length > 0 ? 'pt-10 pb-28' : 'py-10'}>
         {deletedMessage ? (
           <SaveBanner param="deleted" message={deletedMessage} />
         ) : null}

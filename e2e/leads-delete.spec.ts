@@ -142,14 +142,17 @@ function rememberLeadAction(request: Request) {
   captured = {
     url: request.url(),
     id,
-    contentType: request.headers()['content-type'] ?? 'text/plain;charset=UTF-8',
+    contentType:
+      request.headers()['content-type'] ?? 'text/plain;charset=UTF-8',
     body: request.postData() ?? '',
   };
 }
 
 let captured: CapturedAction | null = null;
 
-function deleteLeadActionIdFromManifest(): string | null {
+function deleteLeadActionIdFromManifest(
+  exportedName: 'deleteLead' | 'deleteLeads' = 'deleteLead'
+): string | null {
   for (const relative of [
     '../apps/admin/.next/dev/server/server-reference-manifest.json',
     '../apps/admin/.next/server/server-reference-manifest.json',
@@ -163,13 +166,13 @@ function deleteLeadActionIdFromManifest(): string | null {
       const match = Object.entries(manifest.node ?? {}).find(
         ([, value]) =>
           value.filename === 'apps/admin/lib/actions/leads.ts' &&
-          value.exportedName === 'deleteLead'
+          value.exportedName === exportedName
       );
       if (match) {
         return match[0];
       }
     } catch {
-      // No manifest (or no deleteLead in it): try the next location.
+      // No manifest (or no matching action in it): try the next location.
     }
   }
   return null;
@@ -296,7 +299,9 @@ test.describe('admin lead deletion', () => {
 
     await trigger.click();
     await dialog.getByRole('button', { name: 'Delete request' }).click();
-    await expect(page).toHaveURL((url) => url.searchParams.get('deleted') === '1');
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get('deleted') === '1'
+    );
     await expect(page.getByText('Deleted requests: 1.')).toBeVisible();
 
     // It is gone from the list too.
@@ -316,13 +321,15 @@ test.describe('admin lead deletion', () => {
       new RegExp(`items=contact:${singleId}@[0-9T:.-]+Z,?$`)
     );
 
-    expect(runInDbValue<{ count: number }>(`
+    expect(
+      runInDbValue<{ count: number }>(`
       return {
         count: await prisma.contactMessage.count({
           where: { id: ${JSON.stringify(singleId)} },
         }),
       };
-    `)?.count).toBe(0);
+    `)?.count
+    ).toBe(0);
 
     await context.close();
   });
@@ -340,7 +347,9 @@ test.describe('admin lead deletion', () => {
     const page = await context.newPage();
     page.on('request', rememberLeadAction);
 
-    await page.goto(`${ADMIN_URL}/en/leads?q=${encodeURIComponent(BULK_SEARCH)}`);
+    await page.goto(
+      `${ADMIN_URL}/en/leads?q=${encodeURIComponent(BULK_SEARCH)}`
+    );
     const bodyRows = page.locator('main table tbody').getByRole('row');
     await expect(bodyRows).toHaveCount(3);
 
@@ -420,7 +429,10 @@ test.describe('admin lead deletion', () => {
     await context.close();
   });
 
-  test('an EDITOR can delete a lead (en)', async ({ browser }) => {
+  // Stage 4a: the leads inbox belongs to the full admin. The page guard sends
+  // an editor to the machines list, and the action itself refuses the call even
+  // when the page is bypassed and its id is guessed.
+  test('an EDITOR cannot reach or delete a lead (en)', async ({ browser }) => {
     const state = await loginState(
       browser,
       copyFor('en'),
@@ -429,23 +441,47 @@ test.describe('admin lead deletion', () => {
     );
     const context = await browser.newContext({ storageState: state });
     const page = await context.newPage();
-    page.on('request', rememberLeadAction);
 
     await page.goto(`${ADMIN_URL}/en/leads/maintenance/${editorId}`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);
     await expect(
-      page.getByRole('heading', { name: EDITOR_LEAD.name, level: 1 })
+      page.getByRole('heading', { level: 1, name: 'Machines' })
     ).toBeVisible();
 
-    await page
-      .getByRole('button', { name: `Delete request from ${EDITOR_LEAD.name}` })
-      .click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete request' }).click();
-    await expect(page).toHaveURL(
-      (url) => url.searchParams.get('deleted') === '1'
+    // The list route's manifest exposes the bulk action; the single-row
+    // delete lives on the detail route. Either is a valid probe of the same
+    // `leads:write` gate, so use the one this URL serves.
+    const actionId = deleteLeadActionIdFromManifest('deleteLeads');
+    expect(actionId, 'deleteLeads action id in the dev manifest').toBeTruthy();
+    const response = await page.evaluate(
+      async (request: { url: string; id: string; body: string }) => {
+        const reply = await fetch(request.url, {
+          method: 'POST',
+          headers: {
+            'Next-Action': request.id,
+            'Content-Type': 'application/json',
+          },
+          body: request.body,
+          signal: AbortSignal.timeout(20_000),
+        });
+        return {
+          status: reply.status,
+          url: reply.url,
+          text: (await reply.text()).slice(0, 40_000),
+        };
+      },
+      {
+        url: `${ADMIN_URL}/en/leads`,
+        id: actionId as string,
+        body: JSON.stringify([
+          { items: [{ kind: 'maintenance', id: editorId }] },
+        ]),
+      }
     );
-    await expect(page.getByText('Deleted requests: 1.')).toBeVisible();
 
-    await expect(
+    expect(response.text).not.toContain('"ok":true');
+    expect(response.text).toContain('unauthorized');
+    expect(
       runInDbValue<{ count: number }>(`
         return {
           count: await prisma.maintenanceRequest.count({
@@ -453,14 +489,8 @@ test.describe('admin lead deletion', () => {
           }),
         };
       `)?.count
-    ).toBe(0);
-
-    const audits = auditsForLead(editorId);
-    expect(audits).toHaveLength(1);
-    expect(audits[0].action).toBe('DELETE');
-    expect(audits[0].adminUserId).toBe(EDITOR.id);
-    expectAuditHoldsNoPii(audits[0].entity, EDITOR_LEAD);
-    expect(audits[0].entity).toContain(`maintenance:${editorId}`);
+    ).toBe(1);
+    expect(deleteAuditCount(editorId)).toBe(0);
 
     await context.close();
   });
@@ -485,11 +515,9 @@ test.describe('admin lead deletion', () => {
     const headerBox = page
       .locator('main table thead')
       .getByRole('checkbox', { name: 'تحديد كل الطلبات في هذه الصفحة' });
-    const rowBox = page
-      .locator('main table tbody')
-      .getByRole('checkbox', {
-        name: `تحديد طلب من ${AR_LEAD.name}`,
-      });
+    const rowBox = page.locator('main table tbody').getByRole('checkbox', {
+      name: `تحديد طلب من ${AR_LEAD.name}`,
+    });
     await rowBox.click();
     await expect(headerBox).toBeChecked();
     await expect(page.getByRole('status')).toHaveText('المحدد: 1');
@@ -551,15 +579,18 @@ test.describe('admin lead deletion', () => {
       }));
     }
 
-    await page.goto(`${ADMIN_URL}/en/leads?q=${encodeURIComponent(UNAUTH_SEARCH)}`);
+    await page.goto(
+      `${ADMIN_URL}/en/leads?q=${encodeURIComponent(UNAUTH_SEARCH)}`
+    );
     const cards = page
       .locator('main ul[aria-label="Leads"]')
       .getByRole('listitem');
     await expect(cards).toHaveCount(1);
     await expect(page.locator('main table')).toBeHidden();
 
-    const cardBox = cards
-      .getByRole('checkbox', { name: `Select request from ${UNAUTH_LEAD.name}` });
+    const cardBox = cards.getByRole('checkbox', {
+      name: `Select request from ${UNAUTH_LEAD.name}`,
+    });
     await cardBox.click();
     await expect(page.getByRole('status')).toHaveText('Selected: 1');
     const enWidths = await assertNoHorizontalOverflow();
@@ -587,7 +618,9 @@ test.describe('admin lead deletion', () => {
 
     // The same shapes in Arabic, with RTL reasserted. The card list is
     // labelled with the Arabic heading.
-    await page.goto(`${ADMIN_URL}/ar/leads?q=${encodeURIComponent(UNAUTH_SEARCH)}`);
+    await page.goto(
+      `${ADMIN_URL}/ar/leads?q=${encodeURIComponent(UNAUTH_SEARCH)}`
+    );
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     const arabicCards = page
       .locator('main ul[aria-label="الطلبات"]')
@@ -638,8 +671,7 @@ test.describe('admin lead deletion', () => {
   test('an unauthenticated direct call to the action is rejected', async ({
     browser,
   }) => {
-    let payload: CapturedAction | null =
-      captured ?? null;
+    let payload: CapturedAction | null = captured ?? null;
     if (!payload) {
       const id = deleteLeadActionIdFromManifest();
       if (!id) {
@@ -659,26 +691,23 @@ test.describe('admin lead deletion', () => {
     const page = await context.newPage();
     await page.goto(`${ADMIN_URL}/en/login`);
 
-    const response = await page.evaluate(
-      async (request: CapturedAction) => {
-        const reply = await fetch(request.url, {
-          method: 'POST',
-          headers: {
-            'Next-Action': request.id,
-            'Content-Type': request.contentType,
-          },
-          body: request.body,
-          credentials: 'omit',
-          signal: AbortSignal.timeout(20_000),
-        });
-        return {
-          status: reply.status,
-          url: reply.url,
-          text: (await reply.text()).slice(0, 40_000),
-        };
-      },
-      payload
-    );
+    const response = await page.evaluate(async (request: CapturedAction) => {
+      const reply = await fetch(request.url, {
+        method: 'POST',
+        headers: {
+          'Next-Action': request.id,
+          'Content-Type': request.contentType,
+        },
+        body: request.body,
+        credentials: 'omit',
+        signal: AbortSignal.timeout(20_000),
+      });
+      return {
+        status: reply.status,
+        url: reply.url,
+        text: (await reply.text()).slice(0, 40_000),
+      };
+    }, payload);
 
     // No session, no delete: the action must not have run (or must have
     // answered "unauthorized"), the row survives, and no audit entry exists.

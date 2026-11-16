@@ -5,7 +5,7 @@ import type { ChangeEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@colina/ui';
 import { Icon } from './icons';
-import { ACCEPT_BY_KIND } from '@/lib/upload-rules';
+import { ACCEPT_BY_KIND, type UploadTarget } from '@/lib/upload-rules';
 import {
   MAX_MB,
   clientRejection,
@@ -25,11 +25,13 @@ import {
 // error is reported here and the gallery is left exactly as it was.
 
 type GalleryAddTileProps = {
+  /** The machine this gallery belongs to (no id on the create form). */
+  target: UploadTarget;
   /** Receives the uploaded URL. The caller appends the row. */
   onAdded: (url: string) => void;
 };
 
-export function GalleryAddTile({ onAdded }: GalleryAddTileProps) {
+export function GalleryAddTile({ target, onAdded }: GalleryAddTileProps) {
   const t = useTranslations('Uploads');
   const g = useTranslations('Machines.form');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,7 +55,7 @@ export function GalleryAddTile({ onAdded }: GalleryAddTileProps) {
 
     setUploading(true);
     try {
-      const result = await uploadFile(file, 'image');
+      const result = await uploadFile(file, 'image', target);
       if (result.ok) {
         onAdded(result.url);
       } else {

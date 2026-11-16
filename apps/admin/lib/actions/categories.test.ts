@@ -292,3 +292,91 @@ describe('deleteCategory', () => {
     expect(doubles().auditLog.create).not.toHaveBeenCalled();
   });
 });
+
+// Stage 4a ownership: categories use the same helper as machines, so an
+// editor can only rename/delete the rows it created.
+describe('editor ownership', () => {
+  const EDITOR_SESSION = {
+    user: { id: 'editor-1', email: 'editor@example.com', role: 'EDITOR' },
+  };
+
+  beforeEach(() => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+  });
+
+  it('stamps createdById and the audit actor on create', async () => {
+    await createCategory(VALID_INPUT);
+
+    const createData = doubles().category.create.mock.calls[0][0].data;
+    expect(createData.createdById).toBe('editor-1');
+    const auditData = doubles().auditLog.create.mock.calls[0][0].data;
+    expect(auditData.adminUserId).toBe('editor-1');
+  });
+
+  it('updates and deletes a category it created, auditing the editor', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
+      createdById: 'editor-1',
+    });
+
+    await expect(updateCategory('cat-1', VALID_INPUT)).resolves.toEqual({
+      ok: true,
+      slug: 'machine-category',
+    });
+    expect(doubles().auditLog.create.mock.calls[0][0].data.adminUserId).toBe(
+      'editor-1'
+    );
+
+    outerFindUnique.mockResolvedValue({
+      id: 'cat-1',
+      slug: STORED_CATEGORY.slug,
+      createdById: 'editor-1',
+      _count: { machines: 0 },
+    });
+    await expect(deleteCategory('cat-1')).resolves.toEqual({ ok: true });
+    expect(doubles().auditLog.create.mock.calls[1][0].data.adminUserId).toBe(
+      'editor-1'
+    );
+  });
+
+  it("refuses another editor's category or a null-creator category", async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
+      createdById: 'editor-2',
+    });
+    await expect(updateCategory('cat-1', VALID_INPUT)).resolves.toEqual({
+      ok: false,
+      error: 'not_found',
+    });
+    expect(doubles().category.update).not.toHaveBeenCalled();
+
+    outerFindUnique.mockResolvedValue({
+      id: 'cat-1',
+      slug: STORED_CATEGORY.slug,
+      createdById: null,
+      _count: { machines: 0 },
+    });
+    await expect(deleteCategory('cat-1')).resolves.toEqual({
+      ok: false,
+      error: 'not_found',
+    });
+    expect(doubles().category.delete).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('still applies the existing delete rule when its own category holds a machine', async () => {
+    outerFindUnique.mockResolvedValue({
+      id: 'cat-1',
+      slug: STORED_CATEGORY.slug,
+      createdById: 'editor-1',
+      _count: { machines: 1 },
+    });
+
+    await expect(deleteCategory('cat-1')).resolves.toEqual({
+      ok: false,
+      error: 'has_machines',
+      machineCount: 1,
+    });
+    expect(doubles().category.delete).not.toHaveBeenCalled();
+  });
+});

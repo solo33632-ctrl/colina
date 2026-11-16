@@ -165,6 +165,8 @@
     "failed": "Upload failed. Try again.",
     "errors": {
       "unauthorized": "Your session expired. Log in again.",
+      "forbidden": "Your account cannot upload files for this item.",
+      "invalid_target": "This upload target is not valid.",
       "unconfigured": "Uploads are not configured yet. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to the environment.",
       "no_file": "Choose a file to upload.",
       "invalidTypeImage": "Only JPG, PNG or WEBP images are allowed.",

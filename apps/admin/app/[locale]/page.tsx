@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { prisma } from '@colina/db';
 import { hasLocale } from 'next-intl';
-import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { notFound, redirect } from 'next/navigation';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Container } from '@colina/ui';
 import { routing } from '@/i18n/routing';
-import { requireSuperAdmin } from '@/lib/admin-action';
+import { requirePermission } from '@/lib/permissions';
 import type { IconName } from '@/components/icons';
 import {
   LatestLeadsPanel,
@@ -35,9 +35,17 @@ const RECENT_LIMIT = 5;
 export default async function AdminHomePage() {
   const t = await getTranslations('Dashboard');
 
-  // Same gate as the audit-log page: only a super admin may see audit data, so
-  // the panel is not rendered at all for an editor (and the query never runs).
-  const isSuperAdmin = (await requireSuperAdmin()) !== null;
+  // Stage 4a: the dashboard is not an editor screen. An editor is sent to the
+  // machines list before any count or lead query runs.
+  const session = await requirePermission('dashboard:read');
+  if (!session) {
+    const locale = await getLocale();
+    redirect(`/${locale}/machines`);
+  }
+
+  // Only SUPER_ADMIN holds dashboard:read, so the audit panel below is
+  // always allowed here; keeping the variable makes that explicit.
+  const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
 
   const [
     categoryCount,

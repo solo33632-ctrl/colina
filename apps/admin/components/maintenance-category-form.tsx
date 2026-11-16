@@ -159,6 +159,7 @@ export function MaintenanceCategoryForm({
               <UploadField
                 id="maintenance-category-image"
                 kind="image"
+                target={{ kind: 'other' }}
                 value={imageValue ?? ''}
                 onUploaded={(url) => {
                   setValue('imageUrl', url, {

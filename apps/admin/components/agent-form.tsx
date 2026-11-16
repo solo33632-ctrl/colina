@@ -135,6 +135,7 @@ export function AgentForm({ mode, agentId, defaultValues }: AgentFormProps) {
             <UploadField
               id="agent-logo"
               kind="image"
+              target={{ kind: 'other' }}
               value={logoValue ?? ''}
               onUploaded={(url) => {
                 setValue('logoUrl', url, {

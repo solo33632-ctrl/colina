@@ -2,7 +2,8 @@
 
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
-import { requireAdmin, type ActionResult } from '../admin-action';
+import type { ActionResult } from '../admin-action';
+import { requirePermission } from '../permissions';
 import { maintenanceCategoryMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { maintenanceCategoryInputSchema } from '../schemas';
@@ -45,7 +46,7 @@ function emptyToNull(value: string | undefined): string | null | undefined {
 export async function createMaintenanceCategory(
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('maintenance-categories:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -109,7 +110,7 @@ export async function updateMaintenanceCategory(
   id: string,
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('maintenance-categories:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -187,7 +188,7 @@ export async function updateMaintenanceCategory(
 export async function deleteMaintenanceCategory(
   id: string
 ): Promise<ActionResult<{ itemCount?: number }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('maintenance-categories:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }

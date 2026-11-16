@@ -2,8 +2,13 @@
 
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
-import { requireAdmin, type ActionResult } from '../admin-action';
-import { buildChanges, buildSnapshot, PARTNER_AUDIT_SPEC } from '../audit-changes';
+import type { ActionResult } from '../admin-action';
+import { requirePermission } from '../permissions';
+import {
+  buildChanges,
+  buildSnapshot,
+  PARTNER_AUDIT_SPEC,
+} from '../audit-changes';
 import { revalidateWebPaths } from '../revalidate-web';
 import { partnerMessages } from './validation-messages';
 import { partnerInputSchema } from '../schemas';
@@ -18,7 +23,7 @@ async function parse(input: unknown) {
 export async function createPartner(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('partners:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -68,7 +73,7 @@ export async function updatePartner(
   id: string,
   input: unknown
 ): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('partners:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -129,7 +134,7 @@ export async function updatePartner(
 }
 
 export async function deletePartner(id: string): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('partners:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }

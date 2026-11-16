@@ -18,6 +18,17 @@ export const PDF_EXTENSION = 'pdf';
 
 export type UploadKind = 'image' | 'datasheet';
 
+/**
+ * Where an uploaded asset is going to be attached. Machine/category media is
+ * the editor's area; every other form is admin-only. An existing target id is
+ * present only when editing (create forms have no row yet), so the server can
+ * tell "new media for my own area" from "media for one specific row".
+ */
+export type UploadTarget =
+  | { kind: 'machine'; id?: string }
+  | { kind: 'category'; id?: string }
+  | { kind: 'other' };
+
 export const ACCEPT_BY_KIND: Record<UploadKind, string> = {
   image: 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp',
   datasheet: 'application/pdf,.pdf',

@@ -7,7 +7,7 @@ import { inputClasses } from '@/components/form-fields';
 import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
 import { ListPagination } from '@/components/list-pagination';
-import { requireSuperAdmin } from '@/lib/admin-action';
+import { requirePermission } from '@/lib/permissions';
 import type {
   AuditChange,
   AuditFieldType,
@@ -81,7 +81,7 @@ export default async function AuditLogPage({ searchParams }: Props) {
 
   // First role gate in the project: editors get an explanatory page,
   // not a bare 403 (proxy.ts only checks for a session, not the role).
-  const session = await requireSuperAdmin();
+  const session = await requirePermission('audit:read');
   if (!session) {
     return (
       <main>
@@ -195,7 +195,9 @@ export default async function AuditLogPage({ searchParams }: Props) {
 
   const entityLabel = (entity: string) => {
     const key = auditEntityLabelKey(entity);
-    return key && t.has(key as never) ? t(key as never) : auditEntityType(entity);
+    return key && t.has(key as never)
+      ? t(key as never)
+      : auditEntityType(entity);
   };
 
   const actionOptionLabel = (action: string) => {

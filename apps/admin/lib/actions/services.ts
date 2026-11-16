@@ -2,7 +2,8 @@
 
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
-import { requireAdmin, type ActionResult } from '../admin-action';
+import type { ActionResult } from '../admin-action';
+import { requirePermission } from '../permissions';
 import { revalidateWebPaths } from '../revalidate-web';
 import { serviceMessages } from './validation-messages';
 import { serviceInputSchema } from '../schemas';
@@ -42,7 +43,7 @@ function isUniqueViolation(error: unknown): boolean {
 export async function createService(
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('services:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -91,7 +92,7 @@ export async function updateService(
   id: string,
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('services:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -148,7 +149,7 @@ export async function updateService(
 }
 
 export async function deleteService(id: string): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('services:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }

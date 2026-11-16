@@ -206,6 +206,7 @@ export function ShowcaseForm({
               <UploadField
                 id="showcase-before"
                 kind="image"
+                target={{ kind: 'other' }}
                 value={beforeValue ?? ''}
                 onUploaded={(url) => {
                   setValue('beforeImageUrl', url, {
@@ -234,6 +235,7 @@ export function ShowcaseForm({
               <UploadField
                 id="showcase-after"
                 kind="image"
+                target={{ kind: 'other' }}
                 value={afterValue ?? ''}
                 onUploaded={(url) => {
                   setValue('afterImageUrl', url, {

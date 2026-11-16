@@ -2,7 +2,8 @@
 
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
-import { requireAdmin, type ActionResult } from '../admin-action';
+import type { ActionResult } from '../admin-action';
+import { requirePermission } from '../permissions';
 import {
   AGENT_AUDIT_SPEC,
   buildChanges,
@@ -49,7 +50,7 @@ const AGENT_AUDIT_SELECT = {
 export async function createAgent(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('agents:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -114,7 +115,7 @@ export async function updateAgent(
   id: string,
   input: unknown
 ): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('agents:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -193,7 +194,7 @@ export async function setAgentPublished(
   id: string,
   published: boolean
 ): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('agents:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -245,7 +246,7 @@ export async function setAgentPublished(
 }
 
 export async function deleteAgent(id: string): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('agents:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }

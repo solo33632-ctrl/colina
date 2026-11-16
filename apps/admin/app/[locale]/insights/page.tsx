@@ -13,7 +13,7 @@ import { InsightsTrafficKpis } from '@/components/insights-traffic-kpis';
 import { InsightsTrendChart } from '@/components/insights-trend-chart';
 import { ListPagination } from '@/components/list-pagination';
 import { Link } from '@/i18n/navigation';
-import { requireSuperAdmin } from '@/lib/admin-action';
+import { requirePermission } from '@/lib/permissions';
 import {
   loadSecurityReport,
   parseEventType,
@@ -51,7 +51,7 @@ export default async function InsightsPage({ searchParams }: Props) {
   // It shows masked addresses and the shape of an attack, so an editor is
   // refused with the same explanatory card rather than a bare 403 — and, as
   // on the audit log, none of the queries below run for them.
-  const session = await requireSuperAdmin();
+  const session = await requirePermission('insights:read');
   if (!session) {
     return (
       <main>

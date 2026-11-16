@@ -8,6 +8,7 @@ import { DeleteButton } from '@/components/delete-button';
 import { NewsForm } from '@/components/news-form';
 import { deleteNews } from '@/lib/actions/news';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -23,6 +24,7 @@ type Props = {
 };
 
 export default async function EditNewsPage({ params }: Props) {
+  await guardPage('news:write');
   const { id } = await params;
   const locale = await getLocale();
   const nav = await getTranslations('Nav');

@@ -5,6 +5,7 @@ import { Container } from '@colina/ui';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { ShowcaseForm } from '@/components/showcase-form';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -16,6 +17,7 @@ export async function generateMetadata({
 }
 
 export default async function NewMaintenanceShowcasePage() {
+  await guardPage('maintenance-showcase:write');
   const [nav, t, categories] = await Promise.all([
     getTranslations('Nav'),
     getTranslations('MaintenanceShowcase'),

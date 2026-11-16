@@ -1,7 +1,13 @@
 'use server';
 
 import { prisma } from '@colina/db';
-import { requireAdmin, type ActionResult } from '../admin-action';
+import type { AdminSession } from '../admin-action';
+import type { ActionResult } from '../admin-action';
+import {
+  canModifyEntity,
+  requirePermission,
+  type Capability,
+} from '../permissions';
 import {
   cloudinaryCredentials,
   uploadBuffer,
@@ -14,10 +20,15 @@ import {
   MAX_PDF_BYTES,
   PDF_EXTENSION,
   PDF_MIME_TYPE,
+  type UploadTarget,
 } from '../upload-rules';
 
 // Cloudinary upload Server Actions for the admin panel. Each action:
-//   - requires an authenticated admin session (defense in depth),
+//   - parses the target context the form sent (machine, category or other),
+//   - requires the matching capability: `uploads:machine-media` for the two
+//     entity kinds an editor owns, `uploads:other` for every other form,
+//   - for an existing machine/category target, loads the row and applies the
+//     same ownership rule as edit/delete (a guessed id is refused),
 //   - rejects missing Cloudinary configuration with a distinct error the
 //     UI renders as "uploads are not configured" (never a silent crash),
 //   - validates MIME type, extension and size BEFORE anything is sent to
@@ -42,37 +53,121 @@ import {
 const IMAGE_INCOMING_TRANSFORMATION = 'c_limit,w_2400,h_2400,q_auto';
 
 // Error codes the UI maps to messages, documented here as the contract:
-//   unauthorized  — no valid admin session
-//   unconfigured  — CLOUDINARY_* env vars missing (rendered as a clear
-//                   "uploads are not configured" message, never a crash)
-//   no_file       — FormData carried no File under the `file` key
-//   invalid_type  — MIME type / extension not allowed for this kind
-//   too_large     — file exceeds the kind's max size
-//   upload_failed — Cloudinary rejected the upload (or returned no URL)
-//   server_error  — the asset was stored but its audit row could not be
-//                   written; the URL is withheld so no unlogged asset can be
-//                   persisted (the orphaned asset is left for media cleanup)
+//   unauthorized   — no valid admin session, or no upload capability
+//   forbidden      — the target exists but belongs to another owner
+//   invalid_target — the form did not send a recognised target context
+//   unconfigured   — CLOUDINARY_* env vars missing (rendered as a clear
+//                    "uploads are not configured" message, never a crash)
+//   no_file        — FormData carried no File under the `file` key
+//   invalid_type   — MIME type / extension not allowed for this kind
+//   too_large      — file exceeds the kind's max size
+//   upload_failed  — Cloudinary rejected the upload (or returned no URL)
+//   server_error   — the asset was stored but its audit row could not be
+//                    written; the URL is withheld so no unlogged asset can be
+//                    persisted (the orphaned asset is left for media cleanup)
+
+const TARGET_KINDS = ['machine', 'category', 'other'] as const;
+type TargetKind = (typeof TARGET_KINDS)[number];
+
+function parseTarget(formData: FormData): UploadTarget | null {
+  const kindValue = formData.get('target');
+  if (typeof kindValue !== 'string') {
+    return null;
+  }
+  const kind = TARGET_KINDS.includes(kindValue as TargetKind)
+    ? (kindValue as TargetKind)
+    : null;
+  if (!kind) {
+    return null;
+  }
+  if (kind === 'other') {
+    return { kind };
+  }
+
+  const idValue = formData.get('targetId');
+  if (idValue === null || idValue === '') {
+    return { kind };
+  }
+  if (typeof idValue !== 'string' || idValue.length > 64) {
+    return null;
+  }
+  return { kind, id: idValue };
+}
+
+function capabilityFor(target: UploadTarget): Capability {
+  return target.kind === 'other' ? 'uploads:other' : 'uploads:machine-media';
+}
+
+/** The ownership half of the upload guard. Capability is checked before this. */
+async function targetBelongsToSession(
+  session: AdminSession,
+  target: UploadTarget
+): Promise<boolean> {
+  if (session.user.role === 'SUPER_ADMIN') {
+    return true;
+  }
+  // The editor's capability is only machine/category media, and a create form
+  // has no row to own yet.
+  if (target.kind === 'other') {
+    return false;
+  }
+  if (!target.id) {
+    return true;
+  }
+
+  const row =
+    target.kind === 'machine'
+      ? await prisma.machine.findUnique({
+          where: { id: target.id },
+          select: { createdById: true },
+        })
+      : await prisma.machineCategory.findUnique({
+          where: { id: target.id },
+          select: { createdById: true },
+        });
+
+  return row !== null && canModifyEntity(session, row);
+}
+
 export async function uploadImage(
   formData: FormData
 ): Promise<ActionResult<{ url: string }>> {
-  return uploadFile(formData, 'image');
+  const target = parseTarget(formData);
+  if (!target) {
+    return { ok: false, error: 'invalid_target' };
+  }
+  const session = await requirePermission(capabilityFor(target));
+  if (!session) {
+    return { ok: false, error: 'unauthorized' };
+  }
+  if (!(await targetBelongsToSession(session, target))) {
+    return { ok: false, error: 'forbidden' };
+  }
+  return uploadFile(formData, 'image', session);
 }
 
 export async function uploadDatasheet(
   formData: FormData
 ): Promise<ActionResult<{ url: string }>> {
-  return uploadFile(formData, 'datasheet');
+  const target = parseTarget(formData);
+  if (!target) {
+    return { ok: false, error: 'invalid_target' };
+  }
+  const session = await requirePermission(capabilityFor(target));
+  if (!session) {
+    return { ok: false, error: 'unauthorized' };
+  }
+  if (!(await targetBelongsToSession(session, target))) {
+    return { ok: false, error: 'forbidden' };
+  }
+  return uploadFile(formData, 'datasheet', session);
 }
 
 async function uploadFile(
   formData: FormData,
-  kind: 'image' | 'datasheet'
+  kind: 'image' | 'datasheet',
+  session: AdminSession
 ): Promise<ActionResult<{ url: string }>> {
-  const session = await requireAdmin();
-  if (!session) {
-    return { ok: false, error: 'unauthorized' };
-  }
-
   if (!cloudinaryCredentials()) {
     return { ok: false, error: 'unconfigured' };
   }

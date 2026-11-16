@@ -8,6 +8,7 @@ import { DeleteButton } from '@/components/delete-button';
 import { ShowcaseForm } from '@/components/showcase-form';
 import { deleteShowcase } from '@/lib/actions/showcase';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -23,6 +24,7 @@ type Props = {
 };
 
 export default async function EditMaintenanceShowcasePage({ params }: Props) {
+  await guardPage('maintenance-showcase:write');
   const { id } = await params;
   const locale = await getLocale();
   const nav = await getTranslations('Nav');

@@ -52,10 +52,11 @@ export const getVerifiedAdminSession = cache(async () => {
   };
 });
 
-// Defense in depth (agent.md): every Server Action calls requireAdmin()
-// itself — proxy.ts alone is not sufficient, since actions can be invoked
-// directly. Both roles may manage content in this phase; finer-grained
-// permissions (if ever needed) belong to Phase 12+.
+// Defense in depth (agent.md): every Server Action calls
+// requirePermission(capability) itself — proxy.ts alone is not sufficient,
+// since actions can be invoked directly. This helper remains the verified
+// session lookup underneath it (and the settings action uses it to tell an
+// expired session from a role denial).
 export async function requireAdmin() {
   return getVerifiedAdminSession();
 }

@@ -2,7 +2,8 @@
 
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
-import { requireAdmin, type ActionResult } from '../admin-action';
+import type { ActionResult } from '../admin-action';
+import { requirePermission } from '../permissions';
 import { revalidateWebPaths } from '../revalidate-web';
 import { newsMessages } from './validation-messages';
 import { newsInputSchema } from '../schemas';
@@ -48,7 +49,7 @@ function toDate(value: string | undefined): Date | undefined {
 export async function createNews(
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('news:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -108,7 +109,7 @@ export async function updateNews(
   id: string,
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('news:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -176,7 +177,7 @@ export async function updateNews(
 }
 
 export async function deleteNews(id: string): Promise<ActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission('news:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }

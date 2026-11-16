@@ -2,7 +2,8 @@
 
 import { prisma } from '@colina/db';
 import { getTranslations } from 'next-intl/server';
-import { requireAdmin, type ActionResult } from '../admin-action';
+import type { ActionResult } from '../admin-action';
+import { canModifyEntity, requirePermission } from '../permissions';
 import {
   buildChanges,
   buildSnapshot,
@@ -22,7 +23,7 @@ async function parse(input: unknown) {
 export async function createCategory(
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('categories:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -46,6 +47,7 @@ export async function createCategory(
           nameAr: parsed.data.nameAr,
           nameEn: parsed.data.nameEn,
           slug: parsed.data.slug,
+          createdById: session.user.id,
           descriptionAr: parsed.data.descriptionAr ?? '',
           descriptionEn: parsed.data.descriptionEn ?? '',
           image: parsed.data.image || null,
@@ -84,7 +86,7 @@ export async function updateCategory(
   id: string,
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('categories:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -108,6 +110,7 @@ export async function updateCategory(
       const existing = await tx.machineCategory.findUnique({
         where: { id },
         select: {
+          createdById: true,
           nameAr: true,
           nameEn: true,
           slug: true,
@@ -117,6 +120,10 @@ export async function updateCategory(
         },
       });
       if (!existing) {
+        return null;
+      }
+      // Guessed ids behave like missing rows (see machines.ts).
+      if (!canModifyEntity(session, existing)) {
         return null;
       }
 
@@ -179,7 +186,7 @@ export async function updateCategory(
 export async function deleteCategory(
   id: string
 ): Promise<ActionResult<{ machineCount?: number }>> {
-  const session = await requireAdmin();
+  const session = await requirePermission('categories:write');
   if (!session) {
     return { ok: false, error: 'unauthorized' };
   }
@@ -189,6 +196,12 @@ export async function deleteCategory(
     include: { _count: { select: { machines: true } } },
   });
   if (!existing) {
+    return { ok: false, error: 'not_found' };
+  }
+  // Ownership of the category is a separate question from the machines it
+  // holds: an editor may only delete a category it created, and even then the
+  // existing "no machines" rule below still applies (the FK is Restrict).
+  if (!canModifyEntity(session, existing)) {
     return { ok: false, error: 'not_found' };
   }
 

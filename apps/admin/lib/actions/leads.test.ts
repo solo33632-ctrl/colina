@@ -234,16 +234,15 @@ describe('delete actions: authentication', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('allows an authenticated EDITOR, since editors own the leads inbox', async () => {
+  it('refuses an EDITOR: the leads inbox is outside the editor role', async () => {
     vi.mocked(requireAdmin).mockResolvedValue({
       user: { id: 'editor-1', email: 'editor@example.com', role: 'EDITOR' },
     } as never);
-    const fake = useTx({ contacts: [contactRow()], requests: [] });
 
     await expect(
       deleteLead({ kind: 'contact', id: 'contact-1' })
-    ).resolves.toEqual({ ok: true, deleted: 1, skipped: 0 });
-    expect(auditData(fake).data.adminUserId).toBe('editor-1');
+    ).resolves.toEqual({ ok: false, error: 'unauthorized' });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
 

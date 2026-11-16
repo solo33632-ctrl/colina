@@ -10,6 +10,7 @@ import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
 import { SaveBanner } from '@/components/save-banner';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -27,6 +28,7 @@ type Props = {
 export default async function MaintenanceCategoriesPage({
   searchParams,
 }: Props) {
+  await guardPage('maintenance-categories:write');
   const locale = await getLocale();
   const t = await getTranslations('MaintenanceCategories');
   const common = await getTranslations('Common');

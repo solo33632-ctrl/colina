@@ -7,6 +7,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { DeleteMaintenanceCategoryButton } from '@/components/delete-maintenance-category-button';
 import { MaintenanceCategoryForm } from '@/components/maintenance-category-form';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export default async function EditMaintenanceCategoryPage({ params }: Props) {
+  await guardPage('maintenance-categories:write');
   const { id } = await params;
   const locale = await getLocale();
   const nav = await getTranslations('Nav');

@@ -7,6 +7,8 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { DeleteMachineButton } from '@/components/delete-machine-button';
 import { MachineForm } from '@/components/machine-form';
 import { sectionMetadata } from '@/lib/metadata';
+import { canModifyEntity } from '@/lib/permissions';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -22,6 +24,7 @@ type Props = {
 };
 
 export default async function EditMachinePage({ params }: Props) {
+  const session = await guardPage('machines:write');
   const { id } = await params;
   const locale = await getLocale();
   const nav = await getTranslations('Nav');
@@ -35,9 +38,20 @@ export default async function EditMachinePage({ params }: Props) {
       },
     }),
     prisma.machineCategory.findMany({ orderBy: { nameEn: 'asc' } }),
-    prisma.machine.findMany({ orderBy: { nameEn: 'asc' } }),
+    prisma.machine.findMany({
+      where:
+        session.user.role === 'EDITOR'
+          ? { createdById: session.user.id }
+          : undefined,
+      orderBy: { nameEn: 'asc' },
+    }),
   ]);
   if (!machine) {
+    notFound();
+  }
+  // A guessed id for another owner's machine behaves exactly like a missing
+  // row: the edit page never renders, and no form/delete control is exposed.
+  if (!canModifyEntity(session, machine)) {
     notFound();
   }
 

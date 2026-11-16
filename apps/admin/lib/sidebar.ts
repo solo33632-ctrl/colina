@@ -54,6 +54,22 @@ export function sidebarGroups(options: {
 }): SidebarGroup[] {
   const { role, newLeadCount, t } = options;
 
+  // Stage 4a: an editor manages machines and machine categories and nothing
+  // else. Showing only those two entries is a convenience; every page and
+  // action still enforces its capability server-side.
+  if (role === 'EDITOR') {
+    return [
+      {
+        id: 'catalog',
+        label: t('groupCatalog'),
+        items: [
+          { href: '/categories', label: t('categories'), icon: 'categories' },
+          { href: '/machines', label: t('machines'), icon: 'machines' },
+        ],
+      },
+    ];
+  }
+
   const groups: SidebarGroup[] = [
     {
       id: 'overview',
@@ -120,7 +136,8 @@ export function sidebarGroups(options: {
       id: 'system',
       label: t('groupSystem'),
       items: [
-        // SUPER_ADMIN only, and each page re-checks with requireSuperAdmin():
+        // SUPER_ADMIN only, and each page re-checks with
+        // requirePermission('…:read'/'settings:write'):
         // site settings change what every visitor sees, the audit log shows
         // what staff did, and the insights dashboard shows visitor IP
         // addresses and refused requests. Hiding the link is a convenience,

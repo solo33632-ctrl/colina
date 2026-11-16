@@ -38,16 +38,23 @@ export async function AdminAppShell({
   const t = await getTranslations('Nav');
 
   // Both lead tables land in the same inbox, so the badge is the total of the
-  // untouched ones. A plain count: no rows are read, and the shell is
-  // dynamic (the session is read from a cookie) so it refreshes per request.
-  const [newContacts, newRequests] = await Promise.all([
-    prisma.contactMessage.count({ where: { status: 'NEW' } }),
-    prisma.maintenanceRequest.count({ where: { status: 'NEW' } }),
-  ]);
+  // untouched ones. Only a super admin can open that inbox (Stage 4a), so an
+  // editor's shell does not query it at all. A plain count: no rows are read,
+  // and the shell is dynamic (the session is read from a cookie) so it
+  // refreshes per request.
+  const newLeadCount =
+    session.user.role === 'SUPER_ADMIN'
+      ? (
+          await Promise.all([
+            prisma.contactMessage.count({ where: { status: 'NEW' } }),
+            prisma.maintenanceRequest.count({ where: { status: 'NEW' } }),
+          ])
+        ).reduce((total, count) => total + count, 0)
+      : 0;
 
   const groups = sidebarGroups({
     role: session.user.role,
-    newLeadCount: newContacts + newRequests,
+    newLeadCount,
     t,
   });
 

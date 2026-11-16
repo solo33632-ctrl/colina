@@ -116,7 +116,11 @@ export async function loginState(
     await page.getByLabel(locale.email).fill(email);
     await page.getByLabel(locale.password).fill(password);
     await page.getByRole('button', { name: locale.submit }).click();
-    await page.waitForURL(new RegExp(`/${locale.id}$`), { timeout: 20_000 });
+    // A super admin lands on the dashboard; Stage 4a redirects an editor to
+    // the machines list. Accept either final URL, but never the login page.
+    await page.waitForURL(new RegExp(`/${locale.id}(?:/machines)?$`), {
+      timeout: 20_000,
+    });
     const state = await context.storageState();
     sessions.set(key, state);
     mkdirSync(SESSION_DIR, { recursive: true });

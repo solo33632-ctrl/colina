@@ -30,6 +30,12 @@ export function CategoryForm({
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Existing category id lets the server verify ownership; create has none.
+  const uploadTarget = {
+    kind: 'category' as const,
+    ...(categoryId ? { id: categoryId } : {}),
+  };
+
   // Same message namespace the Server Action validates against.
   const schema = useMemo(() => categoryInputSchema(categoryMessages(t)), [t]);
 
@@ -133,6 +139,7 @@ export function CategoryForm({
               <UploadField
                 id="cat-image"
                 kind="image"
+                target={uploadTarget}
                 value={imageValue ?? ''}
                 onUploaded={(url) => {
                   setValue('image', url, {

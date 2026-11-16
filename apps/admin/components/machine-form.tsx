@@ -46,6 +46,13 @@ export function MachineForm({
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
+  // The server refuses media for a machine owned by someone else. On create
+  // there is no id yet; on edit the id lets the ownership check run.
+  const uploadTarget = {
+    kind: 'machine' as const,
+    ...(machineId ? { id: machineId } : {}),
+  };
+
   // Same message namespace the Server Action validates against.
   const schema = useMemo(() => machineInputSchema(machineMessages(t)), [t]);
 
@@ -359,6 +366,7 @@ export function MachineForm({
               <UploadField
                 id="machine-datasheet"
                 kind="datasheet"
+                target={uploadTarget}
                 value={datasheetValue ?? ''}
                 onUploaded={(url) => {
                   setValue('datasheetUrl', url, {
@@ -404,6 +412,7 @@ export function MachineForm({
                       <UploadField
                         id={`machine-image-${index}`}
                         kind="image"
+                        target={uploadTarget}
                         value={imagesValue?.[index]?.url ?? ''}
                         onUploaded={(url) => {
                           setValue(`images.${index}.url`, url, {
@@ -501,6 +510,7 @@ export function MachineForm({
                 </p>
               ) : null}
               <GalleryAddTile
+                target={uploadTarget}
                 onAdded={(url) => {
                   appendImage({ url, position: imageFields.length });
                 }}

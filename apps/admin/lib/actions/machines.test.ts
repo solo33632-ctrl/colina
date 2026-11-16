@@ -18,6 +18,9 @@ vi.mock('@colina/db', () => {
   const txAuditLog = {
     create: vi.fn(),
   };
+  const outerMachine = {
+    count: vi.fn(),
+  };
   const prisma = {
     $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) =>
       callback({
@@ -26,10 +29,12 @@ vi.mock('@colina/db', () => {
         auditLog: txAuditLog,
       })
     ),
+    machine: outerMachine,
   };
   (prisma as Record<string, unknown>).txMachine = txMachine;
   (prisma as Record<string, unknown>).txMachineImage = txMachineImage;
   (prisma as Record<string, unknown>).txAuditLog = txAuditLog;
+  (prisma as Record<string, unknown>).outerMachine = outerMachine;
   return { prisma };
 });
 
@@ -94,6 +99,10 @@ const doubles = () => {
     machine: mock.txMachine as Record<string, ReturnType<typeof vi.fn>>,
     image: mock.txMachineImage as Record<string, ReturnType<typeof vi.fn>>,
     auditLog: mock.txAuditLog as Record<string, ReturnType<typeof vi.fn>>,
+    relatedMachine: mock.outerMachine as Record<
+      string,
+      ReturnType<typeof vi.fn>
+    >,
   };
 };
 
@@ -117,6 +126,7 @@ beforeEach(() => {
   doubles().image.deleteMany.mockResolvedValue({ count: 0 });
   doubles().image.createMany.mockResolvedValue({ count: 0 });
   doubles().auditLog.create.mockResolvedValue({});
+  doubles().relatedMachine.count.mockResolvedValue(0);
   findUnique.mockResolvedValue({
     ...STORED_MACHINE,
     descriptionEn: 'New description',
@@ -341,5 +351,104 @@ describe('deleteMachine', () => {
     expect(result).toEqual({ ok: false, error: 'not_found' });
     expect(doubles().machine.delete).not.toHaveBeenCalled();
     expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+// Stage 4a: the same action serves both roles; ownership, not the UI, decides
+// which rows an editor can reach. These tests pin both halves of the rule.
+describe('editor ownership', () => {
+  const EDITOR_SESSION = {
+    user: { id: 'editor-1', email: 'editor@example.com', role: 'EDITOR' },
+  };
+
+  beforeEach(() => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+    doubles().relatedMachine.count.mockResolvedValue(0);
+  });
+
+  it('stamps createdById and the audit actor on create', async () => {
+    await createMachine({ ...VALID_INPUT, relatedIds: [] });
+
+    const createData = doubles().machine.create.mock.calls[0][0].data;
+    expect(createData.createdById).toBe('editor-1');
+    const auditData = doubles().auditLog.create.mock.calls[0][0].data;
+    expect(auditData.adminUserId).toBe('editor-1');
+  });
+
+  it('updates and deletes a machine it created, auditing the editor', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      createdById: 'editor-1',
+      category: { slug: 'machine-category' },
+      images: [],
+      relatedMachines: [],
+    });
+
+    await expect(
+      updateMachine('machine-1', { ...VALID_INPUT, relatedIds: [] })
+    ).resolves.toEqual({ ok: true, slug: 'filling-machine' });
+    expect(doubles().auditLog.create.mock.calls[0][0].data.adminUserId).toBe(
+      'editor-1'
+    );
+
+    vi.clearAllMocks();
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      createdById: 'editor-1',
+      category: { slug: 'machine-category' },
+    });
+    await expect(deleteMachine('machine-1')).resolves.toEqual({ ok: true });
+    expect(doubles().auditLog.create.mock.calls[0][0].data.adminUserId).toBe(
+      'editor-1'
+    );
+  });
+
+  it("refuses another editor's machine as not found", async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      createdById: 'editor-2',
+      category: { slug: 'machine-category' },
+      images: [],
+      relatedMachines: [],
+    });
+
+    await expect(
+      updateMachine('machine-1', { ...VALID_INPUT, relatedIds: [] })
+    ).resolves.toEqual({ ok: false, error: 'not_found' });
+    expect(doubles().machine.update).not.toHaveBeenCalled();
+
+    await expect(deleteMachine('machine-1')).resolves.toEqual({
+      ok: false,
+      error: 'not_found',
+    });
+    expect(doubles().machine.delete).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses pre-existing content whose creator is null', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      createdById: null,
+      category: { slug: 'machine-category' },
+    });
+
+    await expect(deleteMachine('machine-1')).resolves.toEqual({
+      ok: false,
+      error: 'not_found',
+    });
+    expect(doubles().machine.delete).not.toHaveBeenCalled();
+  });
+
+  it('refuses to link a machine the editor does not own', async () => {
+    doubles().relatedMachine.count.mockResolvedValue(0);
+
+    const result = await createMachine({
+      ...VALID_INPUT,
+      relatedIds: ['other-editor-machine'],
+    });
+
+    expect(result).toEqual({ ok: false, error: 'not_found' });
+    expect(doubles().machine.create).not.toHaveBeenCalled();
   });
 });

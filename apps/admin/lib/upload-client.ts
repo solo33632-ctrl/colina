@@ -17,6 +17,7 @@ import {
   MAX_PDF_BYTES,
   PDF_MIME_TYPE,
   type UploadKind,
+  type UploadTarget,
 } from './upload-rules';
 
 // Display limits, derived from the byte constants the action enforces, so the
@@ -46,6 +47,10 @@ export function uploadErrorMessage(
   switch (code) {
     case 'unauthorized':
       return t('errors.unauthorized');
+    case 'forbidden':
+      return t('errors.forbidden');
+    case 'invalid_target':
+      return t('errors.invalid_target');
     case 'unconfigured':
       return t('errors.unconfigured');
     case 'no_file':
@@ -89,13 +94,18 @@ export function clientRejection(
   return null;
 }
 
-/** Runs the upload for a kind and normalises both outcomes. */
+/** Runs the upload for a kind and target, and normalises both outcomes. */
 export async function uploadFile(
   file: File,
-  kind: UploadKind
+  kind: UploadKind,
+  target: UploadTarget
 ): Promise<UploadOutcome> {
   const formData = new FormData();
   formData.set('file', file);
+  formData.set('target', target.kind);
+  if ('id' in target && target.id) {
+    formData.set('targetId', target.id);
+  }
   const result =
     kind === 'image'
       ? await uploadImage(formData)

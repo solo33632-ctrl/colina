@@ -13,6 +13,8 @@ import { uploadDatasheet, uploadImage } from './uploads';
 vi.mock('@colina/db', () => ({
   prisma: {
     auditLog: { create: vi.fn() },
+    machine: { findUnique: vi.fn() },
+    machineCategory: { findUnique: vi.fn() },
   },
 }));
 
@@ -53,8 +55,17 @@ afterEach(() => {
   process.env = ORIGINAL_ENV;
 });
 
-function fileFormData(name: string, type: string, bytes: number): FormData {
+function fileFormData(
+  name: string,
+  type: string,
+  bytes: number,
+  target: { kind: string; id?: string } = { kind: 'other' }
+): FormData {
   const formData = new FormData();
+  formData.set('target', target.kind);
+  if (target.id) {
+    formData.set('targetId', target.id);
+  }
   formData.set('file', new File([new Uint8Array(bytes)], name, { type }));
   return formData;
 }
@@ -85,10 +96,152 @@ describe('upload actions: session required', () => {
   });
 });
 
+describe('upload actions: target context and ownership', () => {
+  const EDITOR_SESSION = {
+    user: { id: 'editor-1', email: 'editor@example.com', role: 'EDITOR' },
+  };
+
+  it('rejects a form that sends no target context', async () => {
+    const result = await uploadImage(new FormData());
+    expect(result).toEqual({ ok: false, error: 'invalid_target' });
+  });
+
+  it('denies an editor the non-machine context', async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+    const result = await uploadImage(
+      fileFormData('photo.png', 'image/png', 1024, { kind: 'other' })
+    );
+    expect(result).toEqual({ ok: false, error: 'unauthorized' });
+  });
+
+  it('allows an editor to prepare media for a machine/category not created yet', async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+    setPlaceholderCloudinaryEnv();
+    vi.mocked(uploadBuffer).mockResolvedValue({
+      secureUrl: 'https://res.cloudinary.com/test-cloud/image/upload/new.png',
+      publicId: 'new',
+    });
+
+    await expect(
+      uploadImage(
+        fileFormData('photo.png', 'image/png', 1024, { kind: 'machine' })
+      )
+    ).resolves.toEqual({
+      ok: true,
+      url: 'https://res.cloudinary.com/test-cloud/image/upload/new.png',
+    });
+    await expect(
+      uploadImage(
+        fileFormData('photo.png', 'image/png', 1024, { kind: 'category' })
+      )
+    ).resolves.toEqual({
+      ok: true,
+      url: 'https://res.cloudinary.com/test-cloud/image/upload/new.png',
+    });
+  });
+
+  it('allows an editor to replace media on its own machine and category', async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+    setPlaceholderCloudinaryEnv();
+    vi.mocked(prisma.machine.findUnique).mockResolvedValue({
+      createdById: 'editor-1',
+    } as never);
+    vi.mocked(prisma.machineCategory.findUnique).mockResolvedValue({
+      createdById: 'editor-1',
+    } as never);
+    vi.mocked(uploadBuffer).mockResolvedValue({
+      secureUrl: 'https://res.cloudinary.com/test-cloud/image/upload/own.png',
+      publicId: 'own',
+    });
+
+    await expect(
+      uploadImage(
+        fileFormData('photo.png', 'image/png', 1024, {
+          kind: 'machine',
+          id: 'machine-1',
+        })
+      )
+    ).resolves.toEqual({
+      ok: true,
+      url: 'https://res.cloudinary.com/test-cloud/image/upload/own.png',
+    });
+    await expect(
+      uploadDatasheet(
+        fileFormData('sheet.pdf', 'application/pdf', 1024, {
+          kind: 'machine',
+          id: 'machine-1',
+        })
+      )
+    ).resolves.toEqual({
+      ok: true,
+      url: 'https://res.cloudinary.com/test-cloud/image/upload/own.png',
+    });
+    await expect(
+      uploadImage(
+        fileFormData('photo.png', 'image/png', 1024, {
+          kind: 'category',
+          id: 'cat-1',
+        })
+      )
+    ).resolves.toEqual({
+      ok: true,
+      url: 'https://res.cloudinary.com/test-cloud/image/upload/own.png',
+    });
+  });
+
+  it("denies an editor media for another owner's machine or a null creator", async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+    setPlaceholderCloudinaryEnv();
+
+    for (const createdById of ['editor-2', null]) {
+      vi.mocked(prisma.machine.findUnique).mockResolvedValue({
+        createdById,
+      } as never);
+      await expect(
+        uploadImage(
+          fileFormData('photo.png', 'image/png', 1024, {
+            kind: 'machine',
+            id: 'machine-1',
+          })
+        ),
+        `machine creator ${createdById}`
+      ).resolves.toEqual({ ok: false, error: 'forbidden' });
+      await expect(
+        uploadDatasheet(
+          fileFormData('sheet.pdf', 'application/pdf', 1024, {
+            kind: 'machine',
+            id: 'machine-1',
+          })
+        ),
+        `datasheet creator ${createdById}`
+      ).resolves.toEqual({ ok: false, error: 'forbidden' });
+    }
+  });
+
+  it("denies an editor media for another owner's category", async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+    setPlaceholderCloudinaryEnv();
+    vi.mocked(prisma.machineCategory.findUnique).mockResolvedValue({
+      createdById: 'editor-2',
+    } as never);
+
+    await expect(
+      uploadImage(
+        fileFormData('photo.png', 'image/png', 1024, {
+          kind: 'category',
+          id: 'cat-1',
+        })
+      )
+    ).resolves.toEqual({ ok: false, error: 'forbidden' });
+  });
+});
+
 describe('upload actions: validation before any upload', () => {
   it('rejects a missing file', async () => {
     setPlaceholderCloudinaryEnv();
-    const result = await uploadImage(new FormData());
+    const formData = new FormData();
+    formData.set('target', 'other');
+    const result = await uploadImage(formData);
     expect(result).toEqual({ ok: false, error: 'no_file' });
   });
 
@@ -188,7 +341,11 @@ describe('upload actions: successful upload', () => {
         adminUserId: 'admin-1',
         action: 'UPLOAD_CREATE',
         entity: 'Cloudinary:raw:colina/datasheets/sheet',
-        details: { kind: 'datasheet', mimeType: 'application/pdf', bytes: 2048 },
+        details: {
+          kind: 'datasheet',
+          mimeType: 'application/pdf',
+          bytes: 2048,
+        },
       },
     });
   });

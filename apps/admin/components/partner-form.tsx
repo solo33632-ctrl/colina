@@ -125,6 +125,7 @@ export function PartnerForm({
               <UploadField
                 id="partner-logo"
                 kind="image"
+                target={{ kind: 'other' }}
                 value={logoValue ?? ''}
                 onUploaded={(url) => {
                   setValue('logo', url, {

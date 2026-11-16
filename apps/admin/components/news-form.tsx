@@ -139,6 +139,7 @@ export function NewsForm({ mode, newsId, defaultValues }: NewsFormProps) {
               <UploadField
                 id="news-image"
                 kind="image"
+                target={{ kind: 'other' }}
                 value={imageValue ?? ''}
                 onUploaded={(url) => {
                   setValue('image', url, {

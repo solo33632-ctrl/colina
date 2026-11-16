@@ -8,6 +8,7 @@ import { AgentForm } from '@/components/agent-form';
 import { DeleteButton } from '@/components/delete-button';
 import { deleteAgent } from '@/lib/actions/agents';
 import { sectionMetadata } from '@/lib/metadata';
+import { guardPage } from '@/lib/page-guard';
 
 export async function generateMetadata({
   params,
@@ -23,6 +24,7 @@ type Props = {
 };
 
 export default async function EditAgentPage({ params }: Props) {
+  await guardPage('agents:write');
   const { id } = await params;
   const locale = await getLocale();
   const nav = await getTranslations('Nav');

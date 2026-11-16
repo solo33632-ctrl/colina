@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { Card, Container } from '@colina/ui';
 import { SaveBanner } from '@/components/save-banner';
 import { SettingsForm } from '@/components/settings-form';
-import { requireSuperAdmin } from '@/lib/admin-action';
+import { requirePermission } from '@/lib/permissions';
 import { sectionMetadata } from '@/lib/metadata';
 
 export async function generateMetadata({
@@ -27,7 +27,7 @@ export default async function SettingsPage({ searchParams }: Props) {
   // Same gate as the insights dashboard and the audit log: site-wide settings
   // are a super-admin screen. An editor gets the explanatory card and none of
   // the query below runs.
-  const session = await requireSuperAdmin();
+  const session = await requirePermission('settings:write');
   if (!session) {
     return (
       <main>

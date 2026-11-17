@@ -8,6 +8,7 @@ import { revalidateWebPaths } from '../revalidate-web';
 import { siteSettingsMessages } from './validation-messages';
 import { siteSettingsInputSchema } from '../schemas';
 import { SITE_SETTINGS_AUDIT_SPEC, buildChanges } from '../audit-changes';
+import { auditActor } from '../audit-actor';
 
 const SITE_SETTINGS_AUDIT_SELECT = {
   whatsappNumber: true,
@@ -99,7 +100,7 @@ export async function saveSiteSettings(input: unknown): Promise<ActionResult> {
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'SETTINGS_UPDATE',
           entity: 'SiteSettings:main',
           details: buildChanges(before ?? {}, data, SITE_SETTINGS_AUDIT_SPEC),

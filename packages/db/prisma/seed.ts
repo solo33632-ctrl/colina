@@ -341,6 +341,8 @@ async function main() {
     create: {
       id: 'seed-audit-1',
       adminUserId: admin.id,
+      actorEmail: admin.email,
+      actorName: admin.name,
       action: 'SEED',
       entity: 'database',
     },

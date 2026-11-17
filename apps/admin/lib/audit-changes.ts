@@ -593,14 +593,32 @@ export const LEAD_DELETE_AUDIT_SPEC: AuditEntitySpec = {
 };
 
 /**
- * Defensive allowlist for admin-user actions. No admin-user action writes an
- * audit entry today, but if one is added it may record role/active state and
- * nothing else — the credential columns are excluded by name as well.
+ * The admin-account audit allowlist. Stage 4b turns this from a defensive
+ * placeholder into the real spec for USER_CREATE / USER_PASSWORD_RESET /
+ * USER_DELETE. Credential columns are excluded by name as well, so a password
+ * or hash can never be recorded even if a future field is added here.
+ *
+ * The label is the account email: it is unique, always present, and keeps the
+ * sentence readable after the account itself is gone.
  */
 export const ADMIN_USER_AUDIT_SPEC: AuditEntitySpec = {
   fields: {
+    name: { labelKey: 'name', type: 'text' },
+    email: { labelKey: 'email', type: 'text' },
     role: { labelKey: 'role', type: 'text' },
     isActive: { labelKey: 'isActive', type: 'boolean' },
+    mode: { labelKey: 'mode', type: 'text' },
+    auditRows: { labelKey: 'auditRows', type: 'number' },
+    machines: { labelKey: 'machines', type: 'number' },
+    categories: { labelKey: 'categories', type: 'number' },
   },
-  snapshotFields: ['role', 'isActive'],
+  snapshotFields: [
+    'name',
+    'email',
+    'mode',
+    'auditRows',
+    'machines',
+    'categories',
+  ],
+  labelFields: { en: 'email', ar: 'email' },
 };

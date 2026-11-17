@@ -9,6 +9,8 @@ import {
   buildSnapshot,
   MACHINE_AUDIT_SPEC,
 } from '../audit-changes';
+import { auditActor } from '../audit-actor';
+import { deleteMachineInTransaction } from '../entity-delete';
 import { machineMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { machineInputSchema } from '../schemas';
@@ -118,7 +120,7 @@ export async function createMachine(
       }
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'MACHINE_CREATE',
           entity: `Machine:${row.slug}`,
           details: buildSnapshot(row, MACHINE_AUDIT_SPEC),
@@ -264,7 +266,7 @@ export async function updateMachine(
 
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'MACHINE_UPDATE',
           entity: `Machine:${row.slug}`,
           details: buildChanges(before, after, MACHINE_AUDIT_SPEC),
@@ -316,43 +318,10 @@ export async function deleteMachine(id: string): Promise<ActionResult> {
   }
 
   try {
-    // Images (Cascade) and related-machine join rows go with it — no
-    // manual cleanup needed.
-    const deleted = await prisma.$transaction(async (tx) => {
-      const existing = await tx.machine.findUnique({
-        where: { id },
-        select: {
-          createdById: true,
-          nameAr: true,
-          nameEn: true,
-          slug: true,
-          category: { select: { slug: true } },
-        },
-      });
-      if (!existing) {
-        return null;
-      }
-      // A guessed id must behave exactly like a missing row. EDITOR only
-      // modifies machines it created; null creator means full-admin only.
-      if (!canModifyEntity(session, existing)) {
-        return null;
-      }
-
-      await tx.machine.delete({ where: { id } });
-      await tx.auditLog.create({
-        data: {
-          adminUserId: session.user.id,
-          action: 'MACHINE_DELETE',
-          entity: `Machine:${existing.slug}`,
-          details: buildSnapshot(existing, MACHINE_AUDIT_SPEC, 'delete'),
-        },
-      });
-      return {
-        slug: existing.slug,
-        categorySlug: existing.category.slug,
-      };
-    });
-    if (deleted === null) {
+    const deleted = await prisma.$transaction((tx) =>
+      deleteMachineInTransaction(tx, id, session)
+    );
+    if (!deleted.ok) {
       return { ok: false, error: 'not_found' };
     }
 

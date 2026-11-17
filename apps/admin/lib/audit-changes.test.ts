@@ -859,15 +859,19 @@ describe('remaining entity allowlists', () => {
     expect(json).not.toContain('Private message body');
   });
 
-  it('admin-user specs may record role/active state but never credentials', () => {
+  it('admin-user specs may record account fields but never credentials', () => {
     const details = buildChanges(
       {
+        name: 'Old Name',
+        email: 'old@example.com',
         role: 'EDITOR',
         isActive: true,
         passwordHash: 'old-hash',
         passwordResetTokenHash: 'old-reset-hash',
       },
       {
+        name: 'New Name',
+        email: 'new@example.com',
         role: 'SUPER_ADMIN',
         isActive: false,
         passwordHash: 'new-hash',
@@ -877,6 +881,8 @@ describe('remaining entity allowlists', () => {
     );
 
     expect(details.changes.map((change) => change.field)).toEqual([
+      'name',
+      'email',
       'role',
       'isActive',
     ]);
@@ -888,13 +894,15 @@ describe('remaining entity allowlists', () => {
     expect(
       buildSnapshot(
         {
+          name: 'Editor One',
+          email: 'editor@example.com',
           role: 'EDITOR',
           passwordHash: 'never',
           passwordResetTokenHash: 'never',
         },
         ADMIN_USER_AUDIT_SPEC
       ).changes.map((change) => change.field)
-    ).toEqual(['role']);
+    ).toEqual(['name', 'email']);
   });
 
   it('keeps long-text previews and the byte cap for the new specs', () => {

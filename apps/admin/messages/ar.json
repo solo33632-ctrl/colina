@@ -20,6 +20,7 @@
     "insights": "رؤى",
     "auditLog": "سجل التدقيق",
     "settings": "إعدادات الموقع",
+    "users": "المستخدمون",
     "groupOverview": "نظرة عامة",
     "groupCatalog": "الكتالوج",
     "groupMaintenance": "الصيانة",
@@ -93,6 +94,7 @@
     "saving": "جارٍ الحفظ…",
     "saved": "تم الحفظ بنجاح.",
     "dismiss": "إغلاق",
+    "close": "إغلاق",
     "editNamed": "تعديل {name}"
   },
   "Dashboard": {
@@ -640,6 +642,102 @@
     "notAuthorizedTitle": "غير مصرّح",
     "notAuthorizedDescription": "لوحة الرؤى متاحة لمديري النظام فقط. لا يستطيع حسابك كمحرر عرض هذه الصفحة."
   },
+  "Users": {
+    "heading": "حسابات الإدارة",
+    "intro": "إدارة الحسابات مقصورة على المديرين العامين. يمكن للمحررين المنشئين هنا إدارة الآلات والفئات فقط.",
+    "create": "إنشاء حساب محرر",
+    "createTitle": "إنشاء حساب محرر",
+    "backToUsers": "العودة إلى المستخدمين",
+    "notAuthorizedTitle": "غير مصرح",
+    "notAuthorizedDescription": "إدارة حسابات الإدارة مقصورة على المديرين العامين.",
+    "empty": "لا توجد حسابات إدارة بعد.",
+    "saved": "تم إنشاء حساب المحرر.",
+    "resetSaved": "تمت إعادة تعيين كلمة المرور. تم تسجيل خروج الجلسات الحالية.",
+    "deleted": "تم حذف الحساب.",
+    "table": {
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "role": "الدور",
+      "created": "تاريخ الإنشاء",
+      "lastLogin": "آخر تسجيل دخول",
+      "actionsCount": "الإجراءات المسجلة",
+      "machinesCount": "الآلات",
+      "categoriesCount": "الفئات"
+    },
+    "roles": {
+      "admin": "مدير عام",
+      "editor": "محرر"
+    },
+    "actions": {
+      "activity": "النشاط",
+      "reset": "إعادة تعيين كلمة المرور",
+      "delete": "حذف"
+    },
+    "createForm": {
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور الأولية",
+      "passwordHint": "{min} حرفًا على الأقل. شاركها مع المحرر عبر قناة آمنة؛ لن تُعرض مرة أخرى.",
+      "submit": "إنشاء محرر",
+      "emailTaken": "يوجد حساب بهذا البريد الإلكتروني بالفعل."
+    },
+    "validation": {
+      "name": "أدخل اسمًا.",
+      "email": "أدخل بريدًا إلكترونيًا صالحًا.",
+      "password": "يجب أن تتكون كلمة المرور من 12 حرفًا على الأقل."
+    },
+    "resetDialog": {
+      "title": "إعادة تعيين كلمة المرور",
+      "description": "عيّن كلمة مرور جديدة لـ {email}. سيتم تسجيل خروج كل الجلسات الحالية لهذا الحساب فورًا.",
+      "password": "كلمة المرور الجديدة",
+      "passwordHint": "{min} حرفًا على الأقل.",
+      "confirm": "إعادة تعيين كلمة المرور",
+      "busy": "جارٍ إعادة التعيين…",
+      "success": "تمت إعادة تعيين كلمة المرور. تم تسجيل خروج الجلسات الحالية.",
+      "failed": "تعذّرت إعادة تعيين كلمة المرور. حاول مرة أخرى."
+    },
+    "deleteDialog": {
+      "title": "حذف الحساب",
+      "description": "اختر ما سيحدث لـ {email}.",
+      "modeAccount": "حذف الحساب فقط",
+      "modeAccountHint": "تُحفظ سجلات نشاطه وآلاته وفئاته. يحتفظ السجل باسم الحساب وبريده الإلكتروني.",
+      "modeActivity": "حذف الحساب وسجلات نشاطه",
+      "modeActivityHint": "تُحذف كل إدخالات التدقيق التي كتبها هذا الحساب. تبقى الإدخالات التي كتبها المدير العام عنه.",
+      "deleteContent": "حذف الآلات والفئات التي أنشأها هذا الحساب أيضًا",
+      "deleteContentHint": "{machines, plural, one {# آلة} other {# آلات}} و{categories, plural, one {# فئة} other {# فئات}}. تُحفظ الفئات التي لا تزال تحتوي على آلات مملوكة لحساب آخر.",
+      "typeEmail": "اكتب {email} للتأكيد.",
+      "confirm": "حذف الحساب",
+      "busy": "جارٍ الحذف…",
+      "emailMismatch": "البريد الإلكتروني الذي كتبته لا يطابق هذا الحساب.",
+      "selfDelete": "لا يمكنك حذف الحساب الذي سجلت الدخول به.",
+      "lastAdmin": "لا يمكن حذف حساب المدير العام الأخير.",
+      "protectedAccount": "لا يمكن حذف حسابات المدير العام من هنا.",
+      "failed": "تعذّر الحذف. حاول مرة أخرى.",
+      "resultTitle": "تم حذف الحساب",
+      "resultCounts": "تمت إزالة {auditRows, plural, one {# إدخال تدقيق} other {# إدخالات تدقيق}}، وحذف {machines, plural, one {# آلة} other {# آلات}}، و{categories, plural, one {# فئة} other {# فئات}}.",
+      "blockedTitle": "الفئات المحفوظة:",
+      "blockedHint": "لا تزال تحتوي على آلات أنشأها حساب آخر.",
+      "close": "إغلاق"
+    },
+    "activity": {
+      "heading": "النشاط",
+      "accountInfo": "الحساب",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "role": "الدور",
+      "created": "تاريخ الإنشاء",
+      "actionsCount": "الإجراءات المسجلة",
+      "machinesCount": "الآلات المنشأة",
+      "categoriesCount": "الفئات المنشأة",
+      "actionsHeading": "الإجراءات المسجلة",
+      "empty": "لم يسجل هذا الحساب أي إجراءات.",
+      "viewEntity": "عرض",
+      "deletedEntity": "لم يعد موجودًا",
+      "noDetails": "لا توجد تفاصيل حقول مسجلة لهذا الإدخال.",
+      "changes": "التغييرات",
+      "backToUsers": "العودة إلى المستخدمين"
+    }
+  },
   "AuditLog": {
     "heading": "سجل التدقيق",
     "intro": "كل تغييرات الإدارة، الأحدث أولاً. وسّع أي سجل لرؤية ما تغيّر.",
@@ -647,6 +745,7 @@
     "notAuthorizedTitle": "غير مصرّح",
     "notAuthorizedDescription": "سجل التدقيق متاح لمديري النظام فقط. لا يستطيع حسابك كمحرر عرض هذه الصفحة.",
     "deletedAdmin": "(حساب محذوف)",
+    "deletedAccount": "حساب محذوف",
     "pagesLabel": "صفحات سجل التدقيق",
     "filters": {
       "search": "البحث بالاسم",
@@ -674,7 +773,9 @@
       "settings": "إعدادات الموقع",
       "lead": "الطلبات",
       "contactMessage": "رسالة تواصل",
-      "maintenanceRequest": "طلب صيانة"
+      "maintenanceRequest": "طلب صيانة",
+      "adminUser": "حساب إداري",
+      "cloudinary": "ملف مرفوع"
     },
     "actions": {
       "machineCreate": "أُنشئت آلة {name}",
@@ -705,7 +806,11 @@
       "showcaseDelete": "حُذف عنصر معرض أعمال {name}",
       "settingsUpdate": "حُدّثت إعدادات الموقع",
       "leadStatusUpdate": "غُيّرت حالة الطلب",
-      "leadDelete": "حُذفت طلبات"
+      "leadDelete": "حُذفت طلبات",
+      "userCreate": "أنشأ حساب محرر {name}",
+      "userPasswordReset": "أعاد تعيين كلمة مرور {name}",
+      "userDelete": "حذف حساب إداري {name}",
+      "uploadCreate": "رفع {name}"
     },
     "detailsSummary": "التفاصيل",
     "changesSummary": "التغييرات ({count})",
@@ -774,7 +879,16 @@
       "deleted": "المحذوف",
       "skipped": "المتجاهَل",
       "role": "الدور",
-      "isActive": "نشط"
+      "isActive": "نشط",
+      "name": "الاسم",
+      "mode": "الوضع",
+      "auditRows": "إدخالات التدقيق",
+      "machines": "الآلات",
+      "categories": "الفئات"
+    },
+    "modes": {
+      "account": "الحساب فقط",
+      "accountAndAudit": "الحساب والسجلات"
     }
   },
   "Settings": {

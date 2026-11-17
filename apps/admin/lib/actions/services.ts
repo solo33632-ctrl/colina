@@ -12,6 +12,7 @@ import {
   buildChanges,
   buildSnapshot,
 } from '../audit-changes';
+import { auditActor } from '../audit-actor';
 
 const SERVICE_AUDIT_SELECT = {
   titleEn: true,
@@ -67,7 +68,7 @@ export async function createService(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'SERVICE_CREATE',
           entity: `MaintenanceService:${row.slug}`,
           details: buildSnapshot(row, MAINTENANCE_SERVICE_AUDIT_SPEC),
@@ -125,7 +126,7 @@ export async function updateService(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'SERVICE_UPDATE',
           entity: `MaintenanceService:${row.slug}`,
           details: buildChanges(existing, row, MAINTENANCE_SERVICE_AUDIT_SPEC),
@@ -167,7 +168,7 @@ export async function deleteService(id: string): Promise<ActionResult> {
       await tx.maintenanceService.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'SERVICE_DELETE',
           entity: `MaintenanceService:${existing.slug}`,
           details: buildSnapshot(

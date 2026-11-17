@@ -29,6 +29,7 @@ export type SidebarLabelKey =
   | 'leads'
   | 'auditLog'
   | 'insights'
+  | 'users'
   | 'settings';
 
 export type SidebarItem = {
@@ -144,6 +145,11 @@ export function sidebarGroups(options: {
         // never the protection.
         ...(role === 'SUPER_ADMIN'
           ? [
+              {
+                href: '/users',
+                label: t('users'),
+                icon: 'users' as const,
+              },
               {
                 href: '/settings',
                 label: t('settings'),

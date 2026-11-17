@@ -14,6 +14,13 @@ export const AUDIT_PAGE_SIZE = 25;
 /** Sentinel value for the "deleted admin" option in the admin filter. */
 export const AUDIT_DELETED_ADMIN_FILTER = 'deleted';
 
+/**
+ * Prefix for one deleted actor's snapshot in the admin filter: the stored
+ * email follows it. Kept apart from the plain `deleted` sentinel, which means
+ * every row whose actor no longer exists.
+ */
+export const AUDIT_DELETED_ACTOR_PREFIX = 'deleted:';
+
 /** Every audited entity prefix that can be selected in the entity filter. */
 export const AUDIT_ENTITY_TYPES = [
   'Machine',
@@ -28,6 +35,8 @@ export const AUDIT_ENTITY_TYPES = [
   'Lead',
   'ContactMessage',
   'MaintenanceRequest',
+  'AdminUser',
+  'Cloudinary',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
@@ -46,6 +55,8 @@ export const AUDIT_ENTITY_MESSAGE_KEYS: Readonly<Record<string, string>> = {
   Lead: 'lead',
   ContactMessage: 'contactMessage',
   MaintenanceRequest: 'maintenanceRequest',
+  AdminUser: 'adminUser',
+  Cloudinary: 'cloudinary',
 };
 
 /** Every action code the admin currently writes. */
@@ -79,6 +90,10 @@ export const AUDIT_ACTIONS = [
   'SETTINGS_UPDATE',
   'LEAD_STATUS_UPDATE',
   'DELETE',
+  'USER_CREATE',
+  'USER_PASSWORD_RESET',
+  'USER_DELETE',
+  'UPLOAD_CREATE',
 ] as const;
 
 /**
@@ -116,6 +131,10 @@ export const AUDIT_ACTION_SENTENCES: Readonly<Record<string, string>> = {
   SETTINGS_UPDATE: 'settingsUpdate',
   LEAD_STATUS_UPDATE: 'leadStatusUpdate',
   DELETE: 'leadDelete',
+  USER_CREATE: 'userCreate',
+  USER_PASSWORD_RESET: 'userPasswordReset',
+  USER_DELETE: 'userDelete',
+  UPLOAD_CREATE: 'uploadCreate',
 };
 
 /**

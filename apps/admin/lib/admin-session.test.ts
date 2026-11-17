@@ -22,6 +22,7 @@ import {
 const DB_USER = {
   id: 'admin-1',
   email: 'admin@example.com',
+  name: 'Admin One',
   role: 'SUPER_ADMIN' as const,
   sessionVersion: 4,
 };
@@ -83,12 +84,19 @@ describe('getVerifiedAdminSession', () => {
       user: {
         id: DB_USER.id,
         email: DB_USER.email,
+        name: DB_USER.name,
         role: DB_USER.role,
       },
     });
     expect(findUnique).toHaveBeenCalledWith({
       where: { id: DB_USER.id },
-      select: { id: true, email: true, role: true, sessionVersion: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        sessionVersion: true,
+      },
     });
   });
 });

@@ -9,6 +9,7 @@ import {
   buildSnapshot,
   PARTNER_AUDIT_SPEC,
 } from '../audit-changes';
+import { auditActor } from '../audit-actor';
 import { revalidateWebPaths } from '../revalidate-web';
 import { partnerMessages } from './validation-messages';
 import { partnerInputSchema } from '../schemas';
@@ -51,7 +52,7 @@ export async function createPartner(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'PARTNER_CREATE',
           entity: `Partner:${row.id}`,
           details: buildSnapshot(row, PARTNER_AUDIT_SPEC),
@@ -113,7 +114,7 @@ export async function updatePartner(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'PARTNER_UPDATE',
           entity: `Partner:${id}`,
           details: buildChanges(existing, row, PARTNER_AUDIT_SPEC),
@@ -153,7 +154,7 @@ export async function deletePartner(id: string): Promise<ActionResult> {
       await tx.partner.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'PARTNER_DELETE',
           entity: `Partner:${id}`,
           details: buildSnapshot(existing, PARTNER_AUDIT_SPEC, 'delete'),

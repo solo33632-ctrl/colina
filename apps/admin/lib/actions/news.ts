@@ -8,6 +8,7 @@ import { revalidateWebPaths } from '../revalidate-web';
 import { newsMessages } from './validation-messages';
 import { newsInputSchema } from '../schemas';
 import { NEWS_AUDIT_SPEC, buildChanges, buildSnapshot } from '../audit-changes';
+import { auditActor } from '../audit-actor';
 
 // The before-row is loaded with the same explicit allowlist the diff helper
 // reads, inside the write transaction. Nothing outside these columns can ever
@@ -83,7 +84,7 @@ export async function createNews(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'NEWS_CREATE',
           entity: `NewsPost:${row.slug}`,
           details: buildSnapshot(row, NEWS_AUDIT_SPEC),
@@ -152,7 +153,7 @@ export async function updateNews(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'NEWS_UPDATE',
           entity: `NewsPost:${row.slug}`,
           details: buildChanges(existing, row, NEWS_AUDIT_SPEC),
@@ -195,7 +196,7 @@ export async function deleteNews(id: string): Promise<ActionResult> {
       await tx.newsPost.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'NEWS_DELETE',
           entity: `NewsPost:${existing.slug}`,
           details: buildSnapshot(existing, NEWS_AUDIT_SPEC, 'delete'),

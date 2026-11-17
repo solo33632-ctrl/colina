@@ -12,6 +12,7 @@ import {
   buildChanges,
   buildSnapshot,
 } from '../audit-changes';
+import { auditActor } from '../audit-actor';
 
 const SHOWCASE_AUDIT_SELECT = {
   nameEn: true,
@@ -91,7 +92,7 @@ export async function createShowcase(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'MAINTENANCE_SHOWCASE_CREATE',
           entity: `MaintenanceShowcase:${row.id}`,
           details: buildSnapshot(row, SHOWCASE_AUDIT_SPEC),
@@ -155,7 +156,7 @@ export async function updateShowcase(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'MAINTENANCE_SHOWCASE_UPDATE',
           entity: `MaintenanceShowcase:${id}`,
           details: buildChanges(
@@ -198,7 +199,7 @@ export async function deleteShowcase(id: string): Promise<ActionResult> {
       await tx.maintenanceShowcase.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'MAINTENANCE_SHOWCASE_DELETE',
           entity: `MaintenanceShowcase:${id}`,
           details: buildSnapshot(existing, SHOWCASE_AUDIT_SPEC, 'delete'),

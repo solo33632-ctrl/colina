@@ -12,6 +12,7 @@ import {
   buildChanges,
   buildSnapshot,
 } from '../audit-changes';
+import { auditActor, type AuditActor } from '../audit-actor';
 import {
   leadDeleteAuditEntity,
   type FoundLead,
@@ -60,7 +61,7 @@ function uniqueTargets(items: LeadDeleteTarget[]): LeadDeleteTarget[] {
 }
 
 async function performDelete(
-  adminUserId: string,
+  actor: AuditActor,
   requested: LeadDeleteTarget[]
 ): Promise<ActionResult<DeleteCounts>> {
   const items = uniqueTargets(requested);
@@ -112,7 +113,7 @@ async function performDelete(
 
       await tx.auditLog.create({
         data: {
-          adminUserId,
+          ...actor,
           // Fixed code, not a per-row action: one call is one audited event.
           action: 'DELETE',
           entity: leadDeleteAuditEntity({
@@ -162,7 +163,7 @@ export async function deleteLead(
     return { ok: false, error: 'validation_failed' };
   }
 
-  return performDelete(session.user.id, [parsed.data]);
+  return performDelete(auditActor(session), [parsed.data]);
 }
 
 export async function deleteLeads(
@@ -178,7 +179,7 @@ export async function deleteLeads(
     return { ok: false, error: 'validation_failed' };
   }
 
-  return performDelete(session.user.id, parsed.data.items);
+  return performDelete(auditActor(session), parsed.data.items);
 }
 
 export async function updateLeadStatus(input: unknown) {
@@ -228,7 +229,7 @@ export async function updateLeadStatus(input: unknown) {
           : `MaintenanceRequest:${id}`;
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'LEAD_STATUS_UPDATE',
           entity: `${entity} -> ${status}`,
           details: {

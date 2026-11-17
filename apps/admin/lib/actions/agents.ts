@@ -9,6 +9,7 @@ import {
   buildChanges,
   buildSnapshot,
 } from '../audit-changes';
+import { auditActor } from '../audit-actor';
 import { revalidateWebPaths } from '../revalidate-web';
 import { agentMessages } from './validation-messages';
 import { agentInputSchema } from '../schemas';
@@ -92,7 +93,7 @@ export async function createAgent(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'AGENT_CREATE',
           entity: `Agent:${row.id}`,
           details: buildSnapshot(row, AGENT_AUDIT_SPEC),
@@ -165,7 +166,7 @@ export async function updateAgent(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'AGENT_UPDATE',
           entity: `Agent:${id}`,
           details: buildChanges(existing, row, AGENT_AUDIT_SPEC),
@@ -217,7 +218,7 @@ export async function setAgentPublished(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: published ? 'AGENT_PUBLISH' : 'AGENT_HIDE',
           entity: `Agent:${id}`,
           // The switch is the only change this action can make; an idempotent
@@ -273,7 +274,7 @@ export async function deleteAgent(id: string): Promise<ActionResult> {
       await tx.agent.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'AGENT_DELETE',
           entity: `Agent:${id}`,
           details: buildSnapshot(existing, AGENT_AUDIT_SPEC, 'delete'),

@@ -75,8 +75,6 @@ const doubles = () => {
   };
 };
 
-const outerFindUnique = prisma.machineCategory
-  .findUnique as unknown as ReturnType<typeof vi.fn>;
 const findUnique = doubles().category.findUnique;
 
 beforeEach(() => {
@@ -89,10 +87,8 @@ beforeEach(() => {
   doubles().category.update.mockResolvedValue(STORED_CATEGORY);
   doubles().category.delete.mockResolvedValue(STORED_CATEGORY);
   doubles().auditLog.create.mockResolvedValue({});
-  findUnique.mockResolvedValue(STORED_CATEGORY);
-  outerFindUnique.mockResolvedValue({
-    id: 'cat-1',
-    slug: STORED_CATEGORY.slug,
+  findUnique.mockResolvedValue({
+    ...STORED_CATEGORY,
     _count: { machines: 0 },
   });
 });
@@ -234,6 +230,7 @@ describe('deleteCategory', () => {
       ...STORED_CATEGORY,
       descriptionEn: 'not identifying',
       image: 'https://cdn.example.com/not-identifying.png',
+      _count: { machines: 0 },
     });
 
     const result = await deleteCategory('cat-1');
@@ -274,8 +271,8 @@ describe('deleteCategory', () => {
     expect(json).not.toContain('not-identifying');
   });
 
-  it('still refuses a category with machines before opening the transaction', async () => {
-    outerFindUnique.mockResolvedValue({
+  it('still refuses a category with machines before deleting anything', async () => {
+    findUnique.mockResolvedValue({
       id: 'cat-1',
       slug: 'machine-category',
       _count: { machines: 2 },
@@ -327,9 +324,8 @@ describe('editor ownership', () => {
       'editor-1'
     );
 
-    outerFindUnique.mockResolvedValue({
-      id: 'cat-1',
-      slug: STORED_CATEGORY.slug,
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
       createdById: 'editor-1',
       _count: { machines: 0 },
     });
@@ -350,9 +346,8 @@ describe('editor ownership', () => {
     });
     expect(doubles().category.update).not.toHaveBeenCalled();
 
-    outerFindUnique.mockResolvedValue({
-      id: 'cat-1',
-      slug: STORED_CATEGORY.slug,
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
       createdById: null,
       _count: { machines: 0 },
     });
@@ -365,9 +360,8 @@ describe('editor ownership', () => {
   });
 
   it('still applies the existing delete rule when its own category holds a machine', async () => {
-    outerFindUnique.mockResolvedValue({
-      id: 'cat-1',
-      slug: STORED_CATEGORY.slug,
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
       createdById: 'editor-1',
       _count: { machines: 1 },
     });

@@ -12,6 +12,7 @@ import {
   buildChanges,
   buildSnapshot,
 } from '../audit-changes';
+import { auditActor } from '../audit-actor';
 
 // The before-row is loaded with the same explicit allowlist the diff helper
 // reads, inside the write transaction.
@@ -78,7 +79,7 @@ export async function createMaintenanceCategory(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'MAINTENANCE_CATEGORY_CREATE',
           entity: `MaintenanceCategory:${row.slug}`,
           details: buildSnapshot(row, MAINTENANCE_CATEGORY_AUDIT_SPEC),
@@ -151,7 +152,7 @@ export async function updateMaintenanceCategory(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'MAINTENANCE_CATEGORY_UPDATE',
           entity: `MaintenanceCategory:${row.slug}`,
           details: buildChanges(existing, row, MAINTENANCE_CATEGORY_AUDIT_SPEC),
@@ -222,7 +223,7 @@ export async function deleteMaintenanceCategory(
       await tx.maintenanceCategory.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'MAINTENANCE_CATEGORY_DELETE',
           entity: `MaintenanceCategory:${existing.slug}`,
           details: buildSnapshot(

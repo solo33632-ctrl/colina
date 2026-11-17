@@ -39,6 +39,59 @@ export function resetPasswordInputSchema(messages: {
   });
 }
 
+// Stage 4b: the admin creates editor accounts with a name, a unique email and
+// an initial password. Role is never an input — the action fixes it to EDITOR.
+export function adminUserCreateSchema(messages: {
+  name: string;
+  email: string;
+  password: string;
+}) {
+  return z.object({
+    name: z.string().trim().min(1, { error: messages.name }).max(100, {
+      error: messages.name,
+    }),
+    email: z.email({ error: messages.email }),
+    password: z
+      .string()
+      .min(ADMIN_PASSWORD_MIN_LENGTH, { error: messages.password }),
+  });
+}
+
+export type AdminUserCreateFieldMessages = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type AdminUserCreateInput = z.infer<
+  ReturnType<typeof adminUserCreateSchema>
+>;
+
+export function adminUserPasswordResetSchema(messages: { password: string }) {
+  return z.object({
+    id: z.string().trim().min(1).max(64),
+    password: z
+      .string()
+      .min(ADMIN_PASSWORD_MIN_LENGTH, { error: messages.password }),
+  });
+}
+
+export type AdminUserPasswordResetInput = z.infer<
+  ReturnType<typeof adminUserPasswordResetSchema>
+>;
+
+// Deletion input. `mode` is the account/audit choice; `deleteContent` is the
+// independent content checkbox. `confirmEmail` is checked against the target
+// row server-side whenever either destructive part is chosen.
+export const adminUserDeleteSchema = z.object({
+  id: z.string().trim().min(1).max(64),
+  mode: z.enum(['account', 'account_and_audit']),
+  deleteContent: z.boolean(),
+  confirmEmail: z.string().trim().max(254).default(''),
+});
+
+export type AdminUserDeleteInput = z.infer<typeof adminUserDeleteSchema>;
+
 const slugRule = (message: string) =>
   z
     .string()

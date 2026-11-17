@@ -268,6 +268,9 @@ model AdminUser {
   createdAt                   DateTime          @default(now())
   updatedAt                   DateTime          @updatedAt
   email                       String            @unique
+  // Stage 4b: staff-facing display name. Nullable because accounts created
+  // before this stage have no recorded name; the UI shows "—" for those.
+  name                        String?
   // Argon2id hash (see Phase 9). Never plaintext, never logged.
   passwordHash                String
   role                        AdminRole         @default(EDITOR)
@@ -292,11 +295,17 @@ model AuditLog {
   updatedAt   DateTime   @updatedAt
   adminUserId String?
   adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  // Stage 4b: the actor's identity at write time. The FK above is the live
+  // link (SetNull on deletion); these snapshots keep the row readable after
+  // the account is gone. No credential ever reaches either column.
+  actorEmail  String?
+  actorName   String?
   action      String
   entity      String
   details     Json?
 
   @@index([adminUserId])
+  @@index([actorEmail])
 }
 
 // Blocked / suspicious traffic, recorded by the enforcement points

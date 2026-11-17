@@ -28,7 +28,12 @@ vi.mock('../cloudinary', async (importOriginal) => {
 });
 
 const SESSION = {
-  user: { id: 'admin-1', email: 'admin@example.com', role: 'SUPER_ADMIN' },
+  user: {
+    id: 'admin-1',
+    email: 'admin@example.com',
+    name: 'Admin One',
+    role: 'SUPER_ADMIN',
+  },
 };
 
 const ORIGINAL_ENV = process.env;
@@ -311,9 +316,18 @@ describe('upload actions: successful upload', () => {
     expect(prisma.auditLog.create).toHaveBeenCalledWith({
       data: {
         adminUserId: 'admin-1',
+        actorEmail: 'admin@example.com',
+        actorName: 'Admin One',
         action: 'UPLOAD_CREATE',
         entity: 'Cloudinary:image:abc',
-        details: { kind: 'image', mimeType: 'image/webp', bytes: 1024 },
+        details: {
+          kind: 'image',
+          mimeType: 'image/webp',
+          bytes: 1024,
+          label: { en: 'abc', ar: 'abc' },
+          search: 'abc',
+          changes: [],
+        },
       },
     });
   });
@@ -339,12 +353,20 @@ describe('upload actions: successful upload', () => {
     expect(prisma.auditLog.create).toHaveBeenCalledWith({
       data: {
         adminUserId: 'admin-1',
+        actorEmail: 'admin@example.com',
+        actorName: 'Admin One',
         action: 'UPLOAD_CREATE',
         entity: 'Cloudinary:raw:colina/datasheets/sheet',
         details: {
           kind: 'datasheet',
           mimeType: 'application/pdf',
           bytes: 2048,
+          label: {
+            en: 'colina/datasheets/sheet',
+            ar: 'colina/datasheets/sheet',
+          },
+          search: 'colina/datasheets/sheet',
+          changes: [],
         },
       },
     });

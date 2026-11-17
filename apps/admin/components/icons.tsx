@@ -20,6 +20,7 @@ export type IconName =
   | 'leads'
   | 'auditLog'
   | 'insights'
+  | 'users'
   | 'menu'
   | 'close'
   | 'trash'
@@ -101,6 +102,15 @@ const GLYPHS: Record<IconName, ReactNode> = {
     <>
       <path d="M3 12.5h4.5l1.4 2.6h6.2l1.4-2.6H21" />
       <path d="M4.9 5.9 3 12.5V18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5.5l-1.9-6.6A2 2 0 0 0 17.2 4.5H6.8a2 2 0 0 0-1.9 1.4Z" />
+    </>
+  ),
+  // ID card: a person plus the account rows this section manages.
+  users: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="9" cy="10.5" r="2" />
+      <path d="M6 16a3.5 3.5 0 0 1 6 0" />
+      <path d="M14 9.5h4M14 13h4" />
     </>
   ),
   // Clipboard with lines.

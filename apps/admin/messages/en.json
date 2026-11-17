@@ -20,6 +20,7 @@
     "insights": "Insights",
     "auditLog": "Audit log",
     "settings": "Site settings",
+    "users": "Users",
     "groupOverview": "Overview",
     "groupCatalog": "Catalog",
     "groupMaintenance": "Maintenance",
@@ -93,6 +94,7 @@
     "saving": "Saving…",
     "saved": "Saved successfully.",
     "dismiss": "Dismiss",
+    "close": "Close",
     "editNamed": "Edit {name}"
   },
   "Dashboard": {
@@ -640,6 +642,102 @@
     "notAuthorizedTitle": "Not authorized",
     "notAuthorizedDescription": "The insights dashboard is restricted to super admins. Your editor account cannot view this page."
   },
+  "Users": {
+    "heading": "Admin accounts",
+    "intro": "Only super admins can manage accounts. Editors created here can manage machines and categories, and nothing else.",
+    "create": "Create editor",
+    "createTitle": "Create editor account",
+    "backToUsers": "Back to users",
+    "notAuthorizedTitle": "Not authorized",
+    "notAuthorizedDescription": "Admin accounts are restricted to super admins.",
+    "empty": "No admin accounts yet.",
+    "saved": "Editor account created.",
+    "resetSaved": "Password reset. Existing sessions were signed out.",
+    "deleted": "Account deleted.",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "created": "Created",
+      "lastLogin": "Last login",
+      "actionsCount": "Recorded actions",
+      "machinesCount": "Machines",
+      "categoriesCount": "Categories"
+    },
+    "roles": {
+      "admin": "Admin",
+      "editor": "Editor"
+    },
+    "actions": {
+      "activity": "Activity",
+      "reset": "Reset password",
+      "delete": "Delete"
+    },
+    "createForm": {
+      "name": "Name",
+      "email": "Email",
+      "password": "Initial password",
+      "passwordHint": "At least {min} characters. Share it with the editor over a secure channel; it is never shown again.",
+      "submit": "Create editor",
+      "emailTaken": "An account with this email already exists."
+    },
+    "validation": {
+      "name": "Enter a name.",
+      "email": "Enter a valid email address.",
+      "password": "Password must be at least 12 characters."
+    },
+    "resetDialog": {
+      "title": "Reset password",
+      "description": "Set a new password for {email}. Every existing session for this account is signed out immediately.",
+      "password": "New password",
+      "passwordHint": "At least {min} characters.",
+      "confirm": "Reset password",
+      "busy": "Resetting…",
+      "success": "Password reset. Existing sessions were signed out.",
+      "failed": "Password reset failed. Try again."
+    },
+    "deleteDialog": {
+      "title": "Delete account",
+      "description": "Choose what happens to {email}.",
+      "modeAccount": "Delete the account only",
+      "modeAccountHint": "Its activity log entries, machines and categories are kept. The log keeps the account name and email.",
+      "modeActivity": "Delete the account and its activity log entries",
+      "modeActivityHint": "Every audit entry written by this account is removed. Entries the super admin wrote about it are kept.",
+      "deleteContent": "Also delete the machines and categories this account created",
+      "deleteContentHint": "{machines, plural, one {# machine} other {# machines}} and {categories, plural, one {# category} other {# categories}}. Categories that still contain another owner's machines are kept.",
+      "typeEmail": "Type {email} to confirm.",
+      "confirm": "Delete account",
+      "busy": "Deleting…",
+      "emailMismatch": "The email you typed does not match this account.",
+      "selfDelete": "You cannot delete the account you are signed in with.",
+      "lastAdmin": "The last full admin account cannot be deleted.",
+      "protectedAccount": "Full admin accounts cannot be deleted here.",
+      "failed": "Deletion failed. Try again.",
+      "resultTitle": "Account deleted",
+      "resultCounts": "{auditRows, plural, one {# audit entry} other {# audit entries}} removed, {machines, plural, one {# machine} other {# machines}} deleted, {categories, plural, one {# category} other {# categories}} deleted.",
+      "blockedTitle": "Categories kept:",
+      "blockedHint": "They still contain machines created by another account.",
+      "close": "Close"
+    },
+    "activity": {
+      "heading": "Activity",
+      "accountInfo": "Account",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "created": "Created",
+      "actionsCount": "Recorded actions",
+      "machinesCount": "Machines created",
+      "categoriesCount": "Categories created",
+      "actionsHeading": "Recorded actions",
+      "empty": "This account has not recorded any actions.",
+      "viewEntity": "View",
+      "deletedEntity": "No longer exists",
+      "noDetails": "This entry has no field details recorded.",
+      "changes": "Changes",
+      "backToUsers": "Back to users"
+    }
+  },
   "AuditLog": {
     "heading": "Audit log",
     "intro": "Every admin change, newest first. Expand an entry to see what changed.",
@@ -647,6 +745,7 @@
     "notAuthorizedTitle": "Not authorized",
     "notAuthorizedDescription": "The audit log is restricted to super admins. Your editor account cannot view this page.",
     "deletedAdmin": "(deleted admin)",
+    "deletedAccount": "deleted account",
     "pagesLabel": "Audit log pages",
     "filters": {
       "search": "Search by name",
@@ -674,7 +773,9 @@
       "settings": "Site settings",
       "lead": "Leads",
       "contactMessage": "Contact message",
-      "maintenanceRequest": "Maintenance request"
+      "maintenanceRequest": "Maintenance request",
+      "adminUser": "Admin account",
+      "cloudinary": "Upload"
     },
     "actions": {
       "machineCreate": "Created machine {name}",
@@ -705,7 +806,11 @@
       "showcaseDelete": "Deleted showcase item {name}",
       "settingsUpdate": "Updated site settings",
       "leadStatusUpdate": "Changed lead status",
-      "leadDelete": "Deleted leads"
+      "leadDelete": "Deleted leads",
+      "userCreate": "Created editor account {name}",
+      "userPasswordReset": "Reset password for {name}",
+      "userDelete": "Deleted admin account {name}",
+      "uploadCreate": "Uploaded {name}"
     },
     "detailsSummary": "Details",
     "changesSummary": "Changes ({count})",
@@ -774,7 +879,16 @@
       "deleted": "Deleted",
       "skipped": "Skipped",
       "role": "Role",
-      "isActive": "Active"
+      "isActive": "Active",
+      "name": "Name",
+      "mode": "Mode",
+      "auditRows": "Audit entries",
+      "machines": "Machines",
+      "categories": "Categories"
+    },
+    "modes": {
+      "account": "Account only",
+      "accountAndAudit": "Account + activity"
     }
   },
   "Settings": {

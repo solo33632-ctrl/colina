@@ -32,6 +32,9 @@ export const CAPABILITIES = [
   'maintenance-showcase:write',
   'insights:read',
   'audit:read',
+  // Stage 4b: admin accounts management and per-user activity. SUPER_ADMIN
+  // only; the editor list stays deliberately short.
+  'users:manage',
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];

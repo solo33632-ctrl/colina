@@ -9,6 +9,8 @@ import {
   buildSnapshot,
   CATEGORY_AUDIT_SPEC,
 } from '../audit-changes';
+import { auditActor } from '../audit-actor';
+import { deleteCategoryInTransaction } from '../entity-delete';
 import { categoryMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { categoryInputSchema } from '../schemas';
@@ -55,7 +57,7 @@ export async function createCategory(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'CATEGORY_CREATE',
           entity: `MachineCategory:${row.slug}`,
           details: buildSnapshot(row, CATEGORY_AUDIT_SPEC),
@@ -148,7 +150,7 @@ export async function updateCategory(
       });
       await tx.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'CATEGORY_UPDATE',
           entity: `MachineCategory:${row.slug}`,
           details: buildChanges(existing, row, CATEGORY_AUDIT_SPEC),
@@ -191,59 +193,25 @@ export async function deleteCategory(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const existing = await prisma.machineCategory.findUnique({
-    where: { id },
-    include: { _count: { select: { machines: true } } },
-  });
-  if (!existing) {
-    return { ok: false, error: 'not_found' };
-  }
-  // Ownership of the category is a separate question from the machines it
-  // holds: an editor may only delete a category it created, and even then the
-  // existing "no machines" rule below still applies (the FK is Restrict).
-  if (!canModifyEntity(session, existing)) {
-    return { ok: false, error: 'not_found' };
-  }
-
-  // Explicit block first (friendly message with the count)...
-  if (existing._count.machines > 0) {
-    return {
-      ok: false,
-      error: 'has_machines',
-      machineCount: existing._count.machines,
-    };
-  }
-
   try {
-    const deleted = await prisma.$transaction(async (tx) => {
-      const snapshot = await tx.machineCategory.findUnique({
-        where: { id },
-        select: { nameAr: true, nameEn: true, slug: true },
-      });
-      if (!snapshot) {
-        return false;
-      }
-
-      await tx.machineCategory.delete({ where: { id } });
-      await tx.auditLog.create({
-        data: {
-          adminUserId: session.user.id,
-          action: 'CATEGORY_DELETE',
-          entity: `MachineCategory:${existing.slug}`,
-          details: buildSnapshot(snapshot, CATEGORY_AUDIT_SPEC, 'delete'),
-        },
-      });
-      return true;
-    });
-    if (!deleted) {
-      return { ok: false, error: 'not_found' };
+    const deleted = await prisma.$transaction((tx) =>
+      deleteCategoryInTransaction(tx, id, session)
+    );
+    if (!deleted.ok) {
+      return deleted.error === 'has_machines'
+        ? {
+            ok: false,
+            error: deleted.error,
+            machineCount: deleted.machineCount,
+          }
+        : { ok: false, error: deleted.error };
     }
 
-    revalidateWebPaths(['/', '/categories', `/categories/${existing.slug}`]);
+    revalidateWebPaths(['/', '/categories', `/categories/${deleted.slug}`]);
     return { ok: true };
   } catch (error) {
-    // ...with the schema's onDelete: Restrict as the race-proof backstop:
-    // a machine created between the check and the delete lands here.
+    // The schema's onDelete: Restrict is the race-proof backstop: a machine
+    // created between the check and the delete lands here.
     if (
       typeof error === 'object' &&
       error !== null &&

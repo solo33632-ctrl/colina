@@ -27,7 +27,13 @@ export const getVerifiedAdminSession = cache(async () => {
 
   const user = await prisma.adminUser.findUnique({
     where: { id: tokenUser.id },
-    select: { id: true, email: true, role: true, sessionVersion: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      sessionVersion: true,
+    },
   });
 
   // Deleted account, bumped credential version, or a role change made after
@@ -47,6 +53,7 @@ export const getVerifiedAdminSession = cache(async () => {
     user: {
       id: user.id,
       email: user.email,
+      name: user.name,
       role: user.role as AdminRole,
     },
   };

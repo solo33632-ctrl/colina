@@ -8,6 +8,7 @@ import {
   requirePermission,
   type Capability,
 } from '../permissions';
+import { auditActor } from '../audit-actor';
 import {
   cloudinaryCredentials,
   uploadBuffer,
@@ -216,10 +217,19 @@ async function uploadFile(
     try {
       await prisma.auditLog.create({
         data: {
-          adminUserId: session.user.id,
+          ...auditActor(session),
           action: 'UPLOAD_CREATE',
           entity: `Cloudinary:${resourceType}:${publicId}`,
-          details: { kind, mimeType: file.type, bytes: file.size },
+          details: {
+            kind,
+            mimeType: file.type,
+            bytes: file.size,
+            // Uploads have no entity row to label them; the Cloudinary
+            // public id is the stable, non-secret name the admin recognises.
+            label: { en: publicId, ar: publicId },
+            search: publicId.toLowerCase(),
+            changes: [],
+          },
         },
       });
     } catch (error) {

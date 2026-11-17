@@ -1,6 +1,7 @@
 import type { getTranslations } from 'next-intl/server';
 import type messages from '../../messages/en.json';
 import type {
+  AdminUserCreateFieldMessages,
   AgentFieldMessages,
   CategoryFieldMessages,
   MachineFieldMessages,
@@ -153,5 +154,15 @@ export function siteSettingsMessages(
     workingHoursAr: t('validation.workingHoursAr'),
     mapsUrl: t('validation.mapsUrl'),
     mapsUrlLength: t('validation.mapsUrlLength'),
+  };
+}
+
+export function adminUserMessages(
+  t: Translator<'Users'>
+): AdminUserCreateFieldMessages {
+  return {
+    name: t('validation.name'),
+    email: t('validation.email'),
+    password: t('validation.password'),
   };
 }

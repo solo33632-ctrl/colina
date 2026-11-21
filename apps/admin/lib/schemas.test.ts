@@ -149,27 +149,31 @@ describe('maintenanceCategoryInputSchema', () => {
     );
   });
 
-  it('leaves descriptions optional and validates the cover photo like other images', () => {
+  it('leaves descriptions optional and carries the cover photo as a plain string', () => {
     expect(
       maintenanceCategoryInputSchema(M).safeParse({
         ...valid,
         descriptionAr: 'وصف اختياري.',
         descriptionEn: 'Optional description.',
-        imageUrl: 'https://cdn.test/line.jpg',
+        imageUrl: 'https://res.cloudinary.com/test-cloud/image/upload/line.jpg',
       }).success
     ).toBe(true);
+    // Stage 4c: the host/cloud allowlist moved to the Server Action, which
+    // must load the stored row to grandfather an unchanged legacy value. The
+    // shared schema therefore only carries the field; `media-url.test.ts` and
+    // the action tests pin the rule itself.
     expect(
       maintenanceCategoryInputSchema(M).safeParse({
         ...valid,
         imageUrl: 'javascript:alert(1)',
       }).success
-    ).toBe(false);
+    ).toBe(true);
     expect(
       maintenanceCategoryInputSchema(M).safeParse({
         ...valid,
         imageUrl: '/images/seed/line.jpg',
       }).success
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('requires a non-negative integer display order', () => {
@@ -188,51 +192,55 @@ describe('maintenanceCategoryInputSchema', () => {
   });
 });
 
-describe('URL rules (Phase 13 table, now automated)', () => {
-  const cases: Array<[string, boolean]> = [
-    ['https://cdn.test/a.jpg', true],
-    ['http://cdn.test/a.png', true],
-    ['javascript:alert(1)', false],
-    ['data:text/html,<h1>x</h1>', false],
-    ['/images/seed/x.jpg', false],
-    ['', true],
-    ['ftp://files.test/x', false],
-    ['not a url', false],
-  ];
+describe('media fields: presence only in the shared schema', () => {
+  // Stage 4c moved the stored-media allowlist (https + the project's own
+  // Cloudinary cloud, with an exact stored value grandfathered on update) to
+  // the Server Actions, because only they can read the row being edited.
+  // These tests pin the schema's half of the contract: the field reaches the
+  // action untouched, so a legacy value can be compared with what is stored.
+  // The rule itself is covered by `media-url.test.ts` and the action tests.
+  const base = {
+    nameAr: 'فئة',
+    nameEn: 'Category',
+    slug: 'slug-x',
+    descriptionAr: 'وصف كاف يزيد عن عشرة أحرف.',
+    descriptionEn: 'Description long enough, over ten.',
+  };
 
-  it('category image: absolute http(s) or empty only', () => {
-    const base = {
-      nameAr: 'فئة',
-      nameEn: 'Category',
-      slug: 'slug-x',
-      descriptionAr: 'وصف كاف يزيد عن عشرة أحرف.',
-      descriptionEn: 'Description long enough, over ten.',
-    };
-    for (const [url, expected] of cases) {
-      const result = categoryInputSchema(M).safeParse({ ...base, image: url });
-      expect(result.success, url).toBe(expected);
+  it('category image: optional, and any submitted string reaches the action', () => {
+    for (const image of [
+      'https://res.cloudinary.com/test-cloud/image/upload/a.jpg',
+      'javascript:alert(1)',
+      '/images/seed/x.jpg',
+      '',
+    ]) {
+      expect(
+        categoryInputSchema(M).safeParse({ ...base, image }).success,
+        image
+      ).toBe(true);
     }
   });
 
-  it('partner logo: absolute http(s) or empty only', () => {
-    // Was "required absolute http(s)": an empty logo was rejected. That made
-    // the partner form's own clear-logo control unsavable, and forced the seed
-    // to invent a URL for every partner. The rule is now the same optional
-    // http(s) one the category image and news image use, so the shared `cases`
-    // table applies unmodified — `''` is expected to pass, as it already is
-    // for those two.
-    for (const [url, expected] of cases) {
-      const result = partnerInputSchema(M).safeParse({
-        nameAr: 'شريك',
-        nameEn: 'Partner',
-        logo: url,
-      });
-      expect(result.success, url).toBe(expected);
+  it('partner logo: optional, and any submitted string reaches the action', () => {
+    for (const logo of [
+      'https://res.cloudinary.com/test-cloud/image/upload/logo.png',
+      'javascript:alert(1)',
+      '/images/seed/logo.png',
+      '',
+    ]) {
+      expect(
+        partnerInputSchema(M).safeParse({
+          nameAr: 'شريك',
+          nameEn: 'Partner',
+          logo,
+        }).success,
+        logo
+      ).toBe(true);
     }
   });
 
-  it('machine gallery + datasheet follow the same rules', () => {
-    const base = {
+  it('machine gallery stays required; datasheet stays optional', () => {
+    const machineBase = {
       nameAr: 'آلة',
       nameEn: 'Machine',
       slug: 'machine-x',
@@ -247,21 +255,27 @@ describe('URL rules (Phase 13 table, now automated)', () => {
     };
     const gallery = (url: string) =>
       machineInputSchema(M).safeParse({
-        ...base,
+        ...machineBase,
         datasheetUrl: '',
         images: [{ url, position: 0 }],
       }).success;
-    expect(gallery('https://cdn.test/g.jpg')).toBe(true);
-    expect(gallery('javascript:alert(1)')).toBe(false);
+    // Presence is the schema's job; the URL shape is the action's.
+    expect(
+      gallery('https://res.cloudinary.com/test-cloud/image/upload/g.jpg')
+    ).toBe(true);
+    expect(gallery('javascript:alert(1)')).toBe(true);
+    expect(gallery('')).toBe(false);
     const sheet = (url: string) =>
       machineInputSchema(M).safeParse({
-        ...base,
+        ...machineBase,
         datasheetUrl: url,
         images: [],
       }).success;
     expect(sheet('')).toBe(true);
-    expect(sheet('https://cdn.test/d.pdf')).toBe(true);
-    expect(sheet('data:application/pdf,zzz')).toBe(false);
+    expect(
+      sheet('https://res.cloudinary.com/test-cloud/raw/upload/d.pdf')
+    ).toBe(true);
+    expect(sheet('data:application/pdf,zzz')).toBe(true);
   });
 
   it('machine input carries no featured flag, whatever the caller sends', () => {
@@ -269,7 +283,7 @@ describe('URL rules (Phase 13 table, now automated)', () => {
     // the action no longer writes. The column stays in the database; this pins
     // that the schema has stopped talking about it, so a stray checkbox cannot
     // come back unnoticed.
-    const base = {
+    const machineBase = {
       nameAr: 'آلة',
       nameEn: 'Machine',
       slug: 'machine-x',
@@ -286,20 +300,22 @@ describe('URL rules (Phase 13 table, now automated)', () => {
     };
 
     // No `featured` key at all: the ordinary shape of every save now.
-    expect(machineInputSchema(M).safeParse(base).success).toBe(true);
+    expect(machineInputSchema(M).safeParse(machineBase).success).toBe(true);
     // And an extra one is simply ignored by Zod rather than demanded — the
     // point being that nothing requires it any more, in either direction.
     expect(
-      machineInputSchema(M).safeParse({ ...base, featured: true }).success
+      machineInputSchema(M).safeParse({ ...machineBase, featured: true })
+        .success
     ).toBe(true);
     expect(
-      machineInputSchema(M).safeParse({ ...base, featured: undefined }).success
+      machineInputSchema(M).safeParse({ ...machineBase, featured: undefined })
+        .success
     ).toBe(true);
     expect(machineInputSchema(M).shape).not.toHaveProperty('featured');
   });
 
   it('machine long-form fields are optional; identity and short description stay required', () => {
-    const base = {
+    const machineBase = {
       nameAr: 'آلة',
       nameEn: 'Machine',
       slug: 'machine-x',
@@ -313,7 +329,7 @@ describe('URL rules (Phase 13 table, now automated)', () => {
 
     // Blank full description and specs (both locales) must save (Phase 26).
     const blank = machineInputSchema(M).safeParse({
-      ...base,
+      ...machineBase,
       descriptionAr: '',
       descriptionEn: '',
       specsAr: '',
@@ -322,18 +338,18 @@ describe('URL rules (Phase 13 table, now automated)', () => {
     expect(blank.success).toBe(true);
 
     // Omitting them entirely is accepted too (Server Action normalises to '').
-    const omitted = machineInputSchema(M).safeParse(base);
+    const omitted = machineInputSchema(M).safeParse(machineBase);
     expect(omitted.success).toBe(true);
 
     // What the brief said to KEEP required:
     // - name (the card/listing label)...
     expectInvalid(
-      machineInputSchema(M).safeParse({ ...base, nameEn: '' }),
+      machineInputSchema(M).safeParse({ ...machineBase, nameEn: '' }),
       'nameEn'
     );
     expectInvalid(
       machineInputSchema(M).safeParse({
-        ...base,
+        ...machineBase,
         nameEn: 'x'.repeat(30),
         nameAr: 'n',
       }),
@@ -343,7 +359,7 @@ describe('URL rules (Phase 13 table, now automated)', () => {
     //   meta description), which keeps its min-10 rule.
     expectInvalid(
       machineInputSchema(M).safeParse({
-        ...base,
+        ...machineBase,
         descriptionAr: '',
         descriptionEn: '',
         specsAr: '',
@@ -353,13 +369,13 @@ describe('URL rules (Phase 13 table, now automated)', () => {
       'shortDescriptionEn'
     );
     expectInvalid(
-      machineInputSchema(M).safeParse({ ...base, categoryId: '' }),
+      machineInputSchema(M).safeParse({ ...machineBase, categoryId: '' }),
       'categoryId'
     );
   });
 
-  it('news image is optional but must be http(s) when present', () => {
-    const base = {
+  it('news image is optional and reaches the action as submitted', () => {
+    const newsBase = {
       slug: 'news-x',
       titleAr: 'خبر',
       titleEn: 'News',
@@ -367,13 +383,15 @@ describe('URL rules (Phase 13 table, now automated)', () => {
       bodyEn: 'Body long enough, over ten chars.',
       publishedAt: '2026-09-01',
     };
-    expect(newsInputSchema(M).safeParse({ ...base, image: '' }).success).toBe(
-      true
-    );
     expect(
-      newsInputSchema(M).safeParse({ ...base, image: 'javascript:alert(1)' })
-        .success
-    ).toBe(false);
+      newsInputSchema(M).safeParse({ ...newsBase, image: '' }).success
+    ).toBe(true);
+    expect(
+      newsInputSchema(M).safeParse({
+        ...newsBase,
+        image: 'javascript:alert(1)',
+      }).success
+    ).toBe(true);
   });
 });
 
@@ -442,20 +460,15 @@ describe('showcaseInputSchema', () => {
     );
   });
 
-  it('both photos follow the shared absolute-http(s) rule', () => {
-    // The same table the other stored images use, except `''` now FAILS: this
-    // field is required, so the empty case the optional rules allow is the one
-    // entry whose expectation is inverted. Declared locally rather than shared,
-    // because the shared `cases` lives inside the URL-rules describe.
+  it('both photos are carried as submitted (allowlist is server-side)', () => {
+    // Presence is required here; the Cloudinary rule needs the stored row, so
+    // it runs in `updateShowcase`/`createShowcase`. This pins that a submitted
+    // value is not silently transformed on its way to the action.
     const urlCases: Array<[string, boolean]> = [
-      ['https://cdn.test/a.jpg', true],
-      ['http://cdn.test/a.png', true],
-      ['javascript:alert(1)', false],
-      ['data:text/html,<h1>x</h1>', false],
-      ['/images/seed/x.jpg', false],
+      ['https://res.cloudinary.com/test-cloud/image/upload/a.jpg', true],
+      ['javascript:alert(1)', true],
+      ['/images/seed/x.jpg', true],
       ['', false],
-      ['ftp://files.test/x', false],
-      ['not a url', false],
     ];
     for (const [url, expected] of urlCases) {
       for (const field of ['beforeImageUrl', 'afterImageUrl'] as const) {
@@ -596,9 +609,9 @@ describe('agentInputSchema', () => {
     ) {
       expect(result.success).toBe(true);
       assert(result.success && result.data !== undefined);
-      expect(
-        (result.data as { websiteUrl: string | null }).websiteUrl
-      ).toBe(expected);
+      expect((result.data as { websiteUrl: string | null }).websiteUrl).toBe(
+        expected
+      );
     }
 
     check(parse('https://colina.example.com'), 'https://colina.example.com');
@@ -608,14 +621,19 @@ describe('agentInputSchema', () => {
       'http://colina.example.com/agents'
     );
     // Whitespace outside the URL is trimmed, not rejected.
-    check(parse('  https://colina.example.com  '), 'https://colina.example.com');
+    check(
+      parse('  https://colina.example.com  '),
+      'https://colina.example.com'
+    );
     // Missing and blank mean "no website" — the transform normalizes both
     // to null, which is what the Server Action writes.
     check(parse(undefined), null);
     expect(
-      (agentInputSchema(M).safeParse({ ...agent, websiteUrl: '' }).data as
-        | { websiteUrl: string | null }
-        | undefined)?.websiteUrl
+      (
+        agentInputSchema(M).safeParse({ ...agent, websiteUrl: '' }).data as
+          | { websiteUrl: string | null }
+          | undefined
+      )?.websiteUrl
     ).toBe(null);
 
     for (const bad of [
@@ -637,30 +655,29 @@ describe('agentInputSchema', () => {
       'websiteUrl'
     );
     expect(
-      agentInputSchema(
-        M
-      ).safeParse({ ...agent, websiteUrl: long }).error?.issues[0]
+      agentInputSchema(M).safeParse({ ...agent, websiteUrl: long }).error
+        ?.issues[0]
     ).toMatchObject({ path: ['websiteUrl'] });
   });
 
-  it('validates the logo like the partner logo (absolute http(s), optional)', () => {
+  it('carries the logo as submitted; optional and allowlisted server-side', () => {
+    // Stage 4c: the schema keeps the field optional (blank is "no logo yet")
+    // and leaves the Cloudinary decision to the action, which can read the
+    // stored value for the unchanged-legacy case.
     const withLogo = agentInputSchema(M).safeParse({
       ...agent,
       logoUrl: 'https://res.cloudinary.com/demo/image/upload/logo.png',
     });
     expect(withLogo.success).toBe(true);
-    expect(
-      (withLogo.data as { logoUrl: string }).logoUrl
-    ).toBe('https://res.cloudinary.com/demo/image/upload/logo.png');
-
-    expectInvalid(
-      agentInputSchema(M).safeParse({ ...agent, logoUrl: 'ftp://nope' }),
-      'logoUrl'
+    expect((withLogo.data as { logoUrl: string }).logoUrl).toBe(
+      'https://res.cloudinary.com/demo/image/upload/logo.png'
     );
-    // Absent or blank is the normal "no logo yet" state.
+
     expect(
-      agentInputSchema(M).safeParse({ ...agent }).success
+      agentInputSchema(M).safeParse({ ...agent, logoUrl: 'ftp://nope' }).success
     ).toBe(true);
+    // Absent or blank is the normal "no logo yet" state.
+    expect(agentInputSchema(M).safeParse({ ...agent }).success).toBe(true);
     expect(
       agentInputSchema(M).safeParse({ ...agent, logoUrl: '' }).success
     ).toBe(true);

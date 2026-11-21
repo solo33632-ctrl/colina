@@ -60,6 +60,18 @@ afterEach(() => {
   process.env = ORIGINAL_ENV;
 });
 
+// Real minimal headers for the formats the action accepts. Stage 4c checks
+// content magic bytes, so a fixture must carry the signature its declared type
+// claims — the rest of the buffer is padding.
+const SIGNATURES: Record<string, number[]> = {
+  'image/jpeg': [0xff, 0xd8, 0xff, 0xe0],
+  'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  'image/webp': [
+    0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
+  ],
+  'application/pdf': [0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37],
+};
+
 function fileFormData(
   name: string,
   type: string,
@@ -71,7 +83,12 @@ function fileFormData(
   if (target.id) {
     formData.set('targetId', target.id);
   }
-  formData.set('file', new File([new Uint8Array(bytes)], name, { type }));
+  const content = new Uint8Array(bytes);
+  const signature = SIGNATURES[type];
+  if (signature) {
+    content.set(signature.slice(0, bytes));
+  }
+  formData.set('file', new File([content], name, { type }));
   return formData;
 }
 
@@ -274,6 +291,74 @@ describe('upload actions: validation before any upload', () => {
     expect(result).toEqual({ ok: false, error: 'invalid_type' });
   });
 
+  it('rejects a text file renamed and declared as a PNG before Cloudinary', async () => {
+    setPlaceholderCloudinaryEnv();
+    const formData = new FormData();
+    formData.set('target', 'other');
+    formData.set(
+      'file',
+      new File([new TextEncoder().encode('not really a png')], 'photo.png', {
+        type: 'image/png',
+      })
+    );
+    const result = await uploadImage(formData);
+    expect(result).toEqual({ ok: false, error: 'invalid_type' });
+    expect(uploadBuffer).not.toHaveBeenCalled();
+  });
+
+  it('rejects an SVG or HTML file declared as an image', async () => {
+    setPlaceholderCloudinaryEnv();
+    for (const content of [
+      '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+      '<!doctype html><script>alert(1)</script>',
+    ]) {
+      const formData = new FormData();
+      formData.set('target', 'other');
+      formData.set(
+        'file',
+        new File([new TextEncoder().encode(content)], 'photo.png', {
+          type: 'image/png',
+        })
+      );
+      await expect(uploadImage(formData), content).resolves.toEqual({
+        ok: false,
+        error: 'invalid_type',
+      });
+    }
+    expect(uploadBuffer).not.toHaveBeenCalled();
+  });
+
+  it('rejects bytes that are a different accepted format than declared', async () => {
+    setPlaceholderCloudinaryEnv();
+    const formData = new FormData();
+    formData.set('target', 'other');
+    // Real PNG bytes behind a .jpg / image/jpeg declaration.
+    formData.set(
+      'file',
+      new File([new Uint8Array(SIGNATURES['image/png'])], 'photo.jpg', {
+        type: 'image/jpeg',
+      })
+    );
+    const result = await uploadImage(formData);
+    expect(result).toEqual({ ok: false, error: 'invalid_type' });
+    expect(uploadBuffer).not.toHaveBeenCalled();
+  });
+
+  it('rejects HTML bytes declared as a PDF datasheet', async () => {
+    setPlaceholderCloudinaryEnv();
+    const formData = new FormData();
+    formData.set('target', 'other');
+    formData.set(
+      'file',
+      new File([new TextEncoder().encode('<html>hi</html>')], 'sheet.pdf', {
+        type: 'application/pdf',
+      })
+    );
+    const result = await uploadDatasheet(formData);
+    expect(result).toEqual({ ok: false, error: 'invalid_type' });
+    expect(uploadBuffer).not.toHaveBeenCalled();
+  });
+
   it('rejects images over 5 MB', async () => {
     setPlaceholderCloudinaryEnv();
     const result = await uploadImage(
@@ -310,6 +395,7 @@ describe('upload actions: successful upload', () => {
     expect(uploadBuffer).toHaveBeenCalledWith(expect.any(Buffer), {
       resourceType: 'image',
       folder: 'colina',
+      allowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
       incomingTransformation: 'c_limit,w_2400,h_2400,q_auto',
     });
     // Stage 2a: every stored asset has an audit row.
@@ -349,6 +435,7 @@ describe('upload actions: successful upload', () => {
     expect(uploadBuffer).toHaveBeenCalledWith(expect.any(Buffer), {
       resourceType: 'raw',
       folder: 'colina/datasheets',
+      allowedFormats: ['pdf'],
     });
     expect(prisma.auditLog.create).toHaveBeenCalledWith({
       data: {

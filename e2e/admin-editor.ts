@@ -143,6 +143,7 @@ export type OwnedMachineFixture = {
   categorySlug: string;
   createdById: string | null;
   images?: { url: string; position: number }[];
+  datasheetUrl?: string | null;
 };
 
 /** Creates a machine with an explicit owner, optionally with gallery rows. */
@@ -163,6 +164,7 @@ export function createOwnedMachine(fixture: OwnedMachineFixture): string {
         descriptionAr: 'وصف كامل لآلة الاختبار.',
         specsEn: 'Fixture specs.',
         specsAr: 'مواصفات الاختبار.',
+        datasheetUrl: ${JSON.stringify(fixture.datasheetUrl ?? null)},
         categoryId: category.id,
         createdById: ${JSON.stringify(fixture.createdById)},
         images: {

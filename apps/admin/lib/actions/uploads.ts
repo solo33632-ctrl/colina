@@ -23,6 +23,7 @@ import {
   PDF_MIME_TYPE,
   type UploadTarget,
 } from '../upload-rules';
+import { fileContentMatchesDeclaration } from '../file-signature';
 
 // Cloudinary upload Server Actions for the admin panel. Each action:
 //   - parses the target context the form sent (machine, category or other),
@@ -36,6 +37,11 @@ import {
 //     Cloudinary (agent.md: restrict by MIME type, extension and size,
 //     never trust a client-supplied filename — only the extension is read
 //     from it, and only to cross-check the declared MIME type),
+//   - Stage 4c: reads the leading bytes and refuses a file whose real content
+//     (jpeg/png/webp/pdf) does not match the declared MIME type and
+//     extension, so a renamed HTML/SVG/text file never reaches Cloudinary,
+//   - passes Cloudinary an `allowed_formats` allowlist as a provider-side
+//     backstop,
 //   - writes an AuditLog row for every asset it creates, immediately after
 //     Cloudinary accepts it (the asset lives outside Postgres, so the two
 //     writes cannot share a transaction; a failed audit row fails the
@@ -60,7 +66,9 @@ const IMAGE_INCOMING_TRANSFORMATION = 'c_limit,w_2400,h_2400,q_auto';
 //   unconfigured   — CLOUDINARY_* env vars missing (rendered as a clear
 //                    "uploads are not configured" message, never a crash)
 //   no_file        — FormData carried no File under the `file` key
-//   invalid_type   — MIME type / extension not allowed for this kind
+//   invalid_type   — MIME type / extension not allowed for this kind, or the
+//                    file content does not match the declared type (a text
+//                    file renamed .png, an SVG, HTML, ...)
 //   too_large      — file exceeds the kind's max size
 //   upload_failed  — Cloudinary rejected the upload (or returned no URL)
 //   server_error   — the asset was stored but its audit row could not be
@@ -204,9 +212,19 @@ async function uploadFile(
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Stage 4c: the declared MIME type and extension are only claims. Check
+    // the actual bytes before any network call; a mismatch is reported with
+    // the same generic `invalid_type` as a bad declaration.
+    if (!fileContentMatchesDeclaration(buffer, file.type, extension)) {
+      return { ok: false, error: 'invalid_type' };
+    }
+
     const { secureUrl, publicId } = await uploadBuffer(buffer, {
       resourceType,
       folder,
+      allowedFormats:
+        kind === 'image' ? [...IMAGE_EXTENSIONS] : [PDF_EXTENSION],
       ...(kind === 'image'
         ? { incomingTransformation: IMAGE_INCOMING_TRANSFORMATION }
         : {}),

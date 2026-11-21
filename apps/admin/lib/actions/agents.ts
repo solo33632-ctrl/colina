@@ -13,12 +13,14 @@ import { auditActor } from '../audit-actor';
 import { revalidateWebPaths } from '../revalidate-web';
 import { agentMessages } from './validation-messages';
 import { agentInputSchema } from '../schemas';
+import { mediaFieldIssues } from '../media-url';
 
 // Validation messages come from the message files, in the admin's current
 // language (see `validation-messages.ts`).
 async function parse(input: unknown) {
   const t = await getTranslations('Agents');
-  return agentInputSchema(agentMessages(t)).safeParse(input);
+  const messages = agentMessages(t);
+  return { parsed: agentInputSchema(messages).safeParse(input), messages };
 }
 
 // Prisma optional text columns accept undefined (skip) — empty form
@@ -56,7 +58,7 @@ export async function createAgent(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -66,6 +68,18 @@ export async function createAgent(
         message: issue.message,
       })),
     };
+  }
+
+  const mediaIssues = mediaFieldIssues([
+    {
+      field: 'logoUrl',
+      value: parsed.data.logoUrl,
+      optional: true,
+      message: messages.logoUrl,
+    },
+  ]);
+  if (mediaIssues.length > 0) {
+    return { ok: false, error: 'validation_failed', issues: mediaIssues };
   }
 
   try {
@@ -121,7 +135,7 @@ export async function updateAgent(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -134,13 +148,31 @@ export async function updateAgent(
   }
 
   try {
-    const updated = await prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => {
       const existing = await tx.agent.findUnique({
         where: { id },
         select: AGENT_AUDIT_SELECT,
       });
       if (!existing) {
-        return null;
+        return { status: 'not_found' as const };
+      }
+
+      // Stage 4c: an exact stored logo stays saveable; a new or changed logo
+      // must be on the configured Cloudinary cloud.
+      const mediaIssues = mediaFieldIssues([
+        {
+          field: 'logoUrl',
+          value: parsed.data.logoUrl,
+          optional: true,
+          message: messages.logoUrl,
+          unchanged: existing.logoUrl,
+        },
+      ]);
+      if (mediaIssues.length > 0) {
+        return {
+          status: 'validation_failed' as const,
+          issues: mediaIssues,
+        };
       }
 
       const row = await tx.agent.update({
@@ -172,10 +204,17 @@ export async function updateAgent(
           details: buildChanges(existing, row, AGENT_AUDIT_SPEC),
         },
       });
-      return row;
+      return { status: 'ok' as const, row };
     });
-    if (updated === null) {
+    if (outcome.status === 'not_found') {
       return { ok: false, error: 'not_found' };
+    }
+    if (outcome.status === 'validation_failed') {
+      return {
+        ok: false,
+        error: 'validation_failed',
+        issues: outcome.issues,
+      };
     }
 
     // Same revalidation as createAgent (see there).

@@ -7,6 +7,7 @@ import { requirePermission } from '../permissions';
 import { revalidateWebPaths } from '../revalidate-web';
 import { showcaseMessages } from './validation-messages';
 import { showcaseInputSchema } from '../schemas';
+import { mediaFieldIssues } from '../media-url';
 import {
   SHOWCASE_AUDIT_SPEC,
   buildChanges,
@@ -43,7 +44,8 @@ function withCategoryName<T extends ShowcaseAuditRow>(row: T) {
 // language (see `validation-messages.ts`).
 async function parse(input: unknown) {
   const t = await getTranslations('MaintenanceShowcase');
-  return showcaseInputSchema(showcaseMessages(t)).safeParse(input);
+  const messages = showcaseMessages(t);
+  return { parsed: showcaseInputSchema(messages).safeParse(input), messages };
 }
 
 // Prisma optional text columns accept undefined (skip) — empty form
@@ -63,7 +65,7 @@ export async function createShowcase(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -73,6 +75,24 @@ export async function createShowcase(
         message: issue.message,
       })),
     };
+  }
+
+  // Stage 4c: a create has no stored photos, so both must already be on the
+  // configured Cloudinary cloud.
+  const mediaIssues = mediaFieldIssues([
+    {
+      field: 'beforeImageUrl',
+      value: parsed.data.beforeImageUrl,
+      message: messages.beforeImageUrl,
+    },
+    {
+      field: 'afterImageUrl',
+      value: parsed.data.afterImageUrl,
+      message: messages.afterImageUrl,
+    },
+  ]);
+  if (mediaIssues.length > 0) {
+    return { ok: false, error: 'validation_failed', issues: mediaIssues };
   }
 
   try {
@@ -120,7 +140,7 @@ export async function updateShowcase(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -133,14 +153,38 @@ export async function updateShowcase(
   }
 
   try {
-    const updated = await prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => {
       const existing = await tx.maintenanceShowcase.findUnique({
         where: { id },
         select: SHOWCASE_AUDIT_SELECT,
       });
       if (!existing) {
-        return false;
+        return { status: 'not_found' as const };
       }
+
+      // Stage 4c: each exact stored photo stays saveable; a new or changed
+      // photo must be on the configured Cloudinary cloud.
+      const mediaIssues = mediaFieldIssues([
+        {
+          field: 'beforeImageUrl',
+          value: parsed.data.beforeImageUrl,
+          message: messages.beforeImageUrl,
+          unchanged: existing.beforeImageUrl,
+        },
+        {
+          field: 'afterImageUrl',
+          value: parsed.data.afterImageUrl,
+          message: messages.afterImageUrl,
+          unchanged: existing.afterImageUrl,
+        },
+      ]);
+      if (mediaIssues.length > 0) {
+        return {
+          status: 'validation_failed' as const,
+          issues: mediaIssues,
+        };
+      }
+
       const row = await tx.maintenanceShowcase.update({
         where: { id },
         data: {
@@ -166,10 +210,17 @@ export async function updateShowcase(
           ),
         },
       });
-      return true;
+      return { status: 'ok' as const };
     });
-    if (!updated) {
+    if (outcome.status === 'not_found') {
       return { ok: false, error: 'not_found' };
+    }
+    if (outcome.status === 'validation_failed') {
+      return {
+        ok: false,
+        error: 'validation_failed',
+        issues: outcome.issues,
+      };
     }
 
     revalidateWebPaths(['/', '/maintenance']);

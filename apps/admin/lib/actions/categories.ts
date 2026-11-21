@@ -14,12 +14,14 @@ import { deleteCategoryInTransaction } from '../entity-delete';
 import { categoryMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { categoryInputSchema } from '../schemas';
+import { mediaFieldIssues } from '../media-url';
 
 // Validation messages come from the message files, in the admin's current
 // language (see `validation-messages.ts`).
 async function parse(input: unknown) {
   const t = await getTranslations('Categories');
-  return categoryInputSchema(categoryMessages(t)).safeParse(input);
+  const messages = categoryMessages(t);
+  return { parsed: categoryInputSchema(messages).safeParse(input), messages };
 }
 
 export async function createCategory(
@@ -30,7 +32,7 @@ export async function createCategory(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -40,6 +42,20 @@ export async function createCategory(
         message: issue.message,
       })),
     };
+  }
+
+  // Stage 4c: no stored value exists on create, so any supplied cover image
+  // must already be a Cloudinary URL on the configured cloud.
+  const mediaIssues = mediaFieldIssues([
+    {
+      field: 'image',
+      value: parsed.data.image,
+      optional: true,
+      message: messages.image,
+    },
+  ]);
+  if (mediaIssues.length > 0) {
+    return { ok: false, error: 'validation_failed', issues: mediaIssues };
   }
 
   try {
@@ -93,7 +109,7 @@ export async function updateCategory(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -106,7 +122,7 @@ export async function updateCategory(
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => {
       // Before-row with the allowlisted fields only, read in the write's
       // transaction so the diff is consistent with what gets stored.
       const existing = await tx.machineCategory.findUnique({
@@ -122,11 +138,29 @@ export async function updateCategory(
         },
       });
       if (!existing) {
-        return null;
+        return { status: 'not_found' as const };
       }
       // Guessed ids behave like missing rows (see machines.ts).
       if (!canModifyEntity(session, existing)) {
-        return null;
+        return { status: 'not_found' as const };
+      }
+
+      // Stage 4c: an exact stored value is grandfathered; anything new or
+      // changed must be a Cloudinary URL on the configured cloud.
+      const mediaIssues = mediaFieldIssues([
+        {
+          field: 'image',
+          value: parsed.data.image,
+          optional: true,
+          message: messages.image,
+          unchanged: existing.image,
+        },
+      ]);
+      if (mediaIssues.length > 0) {
+        return {
+          status: 'validation_failed' as const,
+          issues: mediaIssues,
+        };
       }
 
       const row = await tx.machineCategory.update({
@@ -156,15 +190,22 @@ export async function updateCategory(
           details: buildChanges(existing, row, CATEGORY_AUDIT_SPEC),
         },
       });
-      return { row, previousSlug: existing.slug };
+      return { status: 'ok' as const, row, previousSlug: existing.slug };
     });
-    if (result === null) {
+    if (outcome.status === 'not_found') {
       return { ok: false, error: 'not_found' };
+    }
+    if (outcome.status === 'validation_failed') {
+      return {
+        ok: false,
+        error: 'validation_failed',
+        issues: outcome.issues,
+      };
     }
 
     // Affected public pages: home grid + listing + this category's detail
     // (both locales; old slug too when the slug itself changed).
-    const { row: updated, previousSlug } = result;
+    const { row: updated, previousSlug } = outcome;
     const detailPaths =
       previousSlug === updated.slug
         ? [`/categories/${updated.slug}`]

@@ -7,6 +7,7 @@ import { requirePermission } from '../permissions';
 import { revalidateWebPaths } from '../revalidate-web';
 import { newsMessages } from './validation-messages';
 import { newsInputSchema } from '../schemas';
+import { mediaFieldIssues } from '../media-url';
 import { NEWS_AUDIT_SPEC, buildChanges, buildSnapshot } from '../audit-changes';
 import { auditActor } from '../audit-actor';
 
@@ -27,7 +28,8 @@ const NEWS_AUDIT_SELECT = {
 // language (see `validation-messages.ts`).
 async function parse(input: unknown) {
   const t = await getTranslations('News');
-  return newsInputSchema(newsMessages(t)).safeParse(input);
+  const messages = newsMessages(t);
+  return { parsed: newsInputSchema(messages).safeParse(input), messages };
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -55,7 +57,7 @@ export async function createNews(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -65,6 +67,18 @@ export async function createNews(
         message: issue.message,
       })),
     };
+  }
+
+  const mediaIssues = mediaFieldIssues([
+    {
+      field: 'image',
+      value: parsed.data.image,
+      optional: true,
+      message: messages.image,
+    },
+  ]);
+  if (mediaIssues.length > 0) {
+    return { ok: false, error: 'validation_failed', issues: mediaIssues };
   }
 
   try {
@@ -115,7 +129,7 @@ export async function updateNews(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -129,14 +143,33 @@ export async function updateNews(
 
   try {
     const publishedAt = toDate(parsed.data.publishedAt);
-    const updated = await prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => {
       const existing = await tx.newsPost.findUnique({
         where: { id },
         select: NEWS_AUDIT_SELECT,
       });
       if (!existing) {
-        return null;
+        return { status: 'not_found' as const };
       }
+
+      // Stage 4c: an exact stored image is grandfathered; a new or changed
+      // image must be on the configured Cloudinary cloud.
+      const mediaIssues = mediaFieldIssues([
+        {
+          field: 'image',
+          value: parsed.data.image,
+          optional: true,
+          message: messages.image,
+          unchanged: existing.image,
+        },
+      ]);
+      if (mediaIssues.length > 0) {
+        return {
+          status: 'validation_failed' as const,
+          issues: mediaIssues,
+        };
+      }
+
       const row = await tx.newsPost.update({
         where: { id },
         data: {
@@ -159,15 +192,22 @@ export async function updateNews(
           details: buildChanges(existing, row, NEWS_AUDIT_SPEC),
         },
       });
-      return row;
+      return { status: 'ok' as const, row };
     });
-    if (updated === null) {
+    if (outcome.status === 'not_found') {
       return { ok: false, error: 'not_found' };
+    }
+    if (outcome.status === 'validation_failed') {
+      return {
+        ok: false,
+        error: 'validation_failed',
+        issues: outcome.issues,
+      };
     }
 
     // No public consumer exists yet (see createNews).
     revalidateWebPaths([]);
-    return { ok: true, slug: updated.slug };
+    return { ok: true, slug: outcome.row.slug };
   } catch (error) {
     if (isUniqueViolation(error)) {
       return { ok: false, error: 'slug_taken' };

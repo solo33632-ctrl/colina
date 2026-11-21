@@ -50,6 +50,12 @@ export type UploadBufferOptions = {
    * resources (PDF datasheets) must not be transformed.
    */
   incomingTransformation?: string;
+  /**
+   * Formats Cloudinary may store for this asset. The action already checks
+   * magic bytes, declared MIME type and extension; this is the provider-side
+   * backstop that refuses a format the panel does not accept.
+   */
+  allowedFormats?: string[];
 };
 
 export type UploadBufferResult = {
@@ -70,6 +76,9 @@ export function uploadBuffer(
         folder: options.folder,
         ...(options.incomingTransformation
           ? { incoming_transformation: options.incomingTransformation }
+          : {}),
+        ...(options.allowedFormats && options.allowedFormats.length > 0
+          ? { allowed_formats: options.allowedFormats }
           : {}),
       },
       (error, result) => {

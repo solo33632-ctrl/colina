@@ -19,18 +19,35 @@ const ar = copyFor('ar');
 // and `deleteShowcasesByTag` can find them again without knowing their cuids.
 const TAG = 'st28a';
 
-// Two real, absolute http(s) URLs the admin server itself serves.
+// Stage 4c: stored media must be an https URL on the project's own Cloudinary
+// cloud, so these fixtures look exactly like a real upload result. The URLs
+// are served by Playwright itself (see `stubPhotos`), never by Cloudinary:
+// uploads need credentials a test run has no business depending on, and the
+// form's own "Or paste a URL" path feeds the identical field through the
+// identical Server Action.
 //
-// Pasted rather than uploaded: uploading needs Cloudinary credentials that a
-// test run has no business depending on, and the form's own "Or paste a URL"
-// path feeds the identical field through the identical schema.
-//
-// Served by THIS app so the list thumbnails actually load — `AdminThumb` only
-// renders an <img> after it has probed the URL, and a photo-less letter tile
-// would make "the list shows both photos" pass without ever proving a URL was
-// stored. Distinct paths so the two columns can be told apart.
-const BEFORE_PHOTO = `${ADMIN_URL}/icon.png`;
-const AFTER_PHOTO = `${ADMIN_URL}/apple-icon.png`;
+// Distinct paths so the two columns can be told apart.
+const BEFORE_PHOTO = `https://res.cloudinary.com/demo-cloud/image/upload/v1712345678/colina/${TAG}-showcase-before.png`;
+const AFTER_PHOTO = `https://res.cloudinary.com/demo-cloud/image/upload/v1712345678/colina/${TAG}-showcase-after.png`;
+
+// A tiny, valid image: `AdminThumb` only renders its <img> after the URL has
+// loaded, and a photo-less letter tile would make "the list shows both photos"
+// pass without ever proving a URL was stored.
+const STUB_IMAGE = [
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300">',
+  '<rect width="400" height="300" fill="#EB693F"/>',
+  '</svg>',
+].join('');
+
+async function stubPhotos(page: import('@playwright/test').Page) {
+  await page.route('https://res.cloudinary.com/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: STUB_IMAGE,
+    })
+  );
+}
 
 const STAMP = `${TAG}-${Date.now().toString(36)}`;
 const NAME_EN = `Showcase E2E ${STAMP}`;
@@ -80,6 +97,7 @@ test.describe('maintenance showcase CRUD', () => {
     const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
     const context = await browser.newContext({ storageState: state });
     const page = await context.newPage();
+    await stubPhotos(page);
 
     // The section is reachable from the sidebar, not just by typing the URL.
     await page.goto(`${ADMIN_URL}/en`);
@@ -177,6 +195,7 @@ test.describe('maintenance showcase CRUD', () => {
     const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
     const context = await browser.newContext({ storageState: state });
     const page = await context.newPage();
+    await stubPhotos(page);
 
     await page.goto(`${ADMIN_URL}/en/maintenance-showcase/new`);
     await page.getByLabel('Machine name').fill(`${NAME_EN} no-photo`);
@@ -209,6 +228,7 @@ test.describe('maintenance showcase CRUD', () => {
     const state = await loginState(browser, ar, ADMIN_EMAIL, ADMIN_PASSWORD);
     const context = await browser.newContext({ storageState: state });
     const page = await context.newPage();
+    await stubPhotos(page);
 
     await page.goto(`${ADMIN_URL}/ar`);
     const navLink = page.getByRole('link', { name: 'ماكينات الصيانة' });

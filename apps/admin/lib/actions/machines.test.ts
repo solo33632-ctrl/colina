@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { requireAdmin } from '../admin-action';
@@ -65,10 +65,17 @@ const VALID_INPUT = {
   descriptionEn: 'New description',
   specsAr: '',
   specsEn: '',
-  datasheetUrl: 'https://example.com/datasheet.pdf',
+  datasheetUrl:
+    'https://res.cloudinary.com/test-cloud/raw/upload/datasheet.pdf',
   images: [
-    { url: 'https://cdn.example.com/second.png', position: 1 },
-    { url: 'https://cdn.example.com/first.png', position: 0 },
+    {
+      url: 'https://res.cloudinary.com/test-cloud/image/upload/second.png',
+      position: 1,
+    },
+    {
+      url: 'https://res.cloudinary.com/test-cloud/image/upload/first.png',
+      position: 0,
+    },
   ],
   relatedIds: ['r1', 'r2'],
 };
@@ -85,7 +92,8 @@ const STORED_MACHINE = {
   descriptionEn: 'New description',
   specsAr: '',
   specsEn: '',
-  datasheetUrl: 'https://example.com/datasheet.pdf',
+  datasheetUrl:
+    'https://res.cloudinary.com/test-cloud/raw/upload/datasheet.pdf',
 };
 
 const label = (en: string, ar: string) => ({
@@ -108,7 +116,11 @@ const doubles = () => {
 
 const findUnique = doubles().machine.findUnique;
 
+// Stage 4c: the media allowlist reads the configured cloud at call time.
+const ORIGINAL_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+
 beforeEach(() => {
+  process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
   vi.clearAllMocks();
   vi.mocked(requireAdmin).mockResolvedValue(SESSION as never);
   vi.mocked(getTranslations).mockResolvedValue(
@@ -131,9 +143,19 @@ beforeEach(() => {
     ...STORED_MACHINE,
     descriptionEn: 'New description',
     category: { slug: 'machine-category' },
-    images: [{ url: 'https://cdn.example.com/second.png' }],
+    images: [
+      { url: 'https://res.cloudinary.com/test-cloud/image/upload/second.png' },
+    ],
     relatedMachines: [{ id: 'r1' }, { id: 'r2' }],
   });
+});
+
+afterEach(() => {
+  if (ORIGINAL_CLOUD_NAME === undefined) {
+    delete process.env.CLOUDINARY_CLOUD_NAME;
+  } else {
+    process.env.CLOUDINARY_CLOUD_NAME = ORIGINAL_CLOUD_NAME;
+  }
 });
 
 describe('createMachine', () => {
@@ -197,7 +219,9 @@ describe('updateMachine', () => {
       ...STORED_MACHINE,
       descriptionEn: 'Old description',
       category: { slug: 'old-category' },
-      images: [{ url: 'https://cdn.example.com/old.png' }],
+      images: [
+        { url: 'https://res.cloudinary.com/test-cloud/image/upload/old.png' },
+      ],
       relatedMachines: [{ id: 'r1' }],
       internalNote: 'old-note',
       passwordHash: 'old-hash',
@@ -267,8 +291,10 @@ describe('updateMachine', () => {
       ...STORED_MACHINE,
       category: { slug: 'machine-category' },
       images: [
-        { url: 'https://cdn.example.com/first.png' },
-        { url: 'https://cdn.example.com/second.png' },
+        { url: 'https://res.cloudinary.com/test-cloud/image/upload/first.png' },
+        {
+          url: 'https://res.cloudinary.com/test-cloud/image/upload/second.png',
+        },
       ],
       relatedMachines: [{ id: 'r1' }, { id: 'r2' }],
     });
@@ -292,6 +318,140 @@ describe('updateMachine', () => {
     expect(doubles().machine.update).not.toHaveBeenCalled();
     expect(doubles().image.deleteMany).not.toHaveBeenCalled();
     expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+// Stage 4c: the stored-media allowlist is enforced in the action. A create
+// has no stored value to grandfather; an update accepts the exact stored
+// value (legacy seed path or older URL) and refuses any changed foreign URL.
+describe('media allowlist (Stage 4c)', () => {
+  const FOREIGN_IMAGE = 'https://evil.test/uploads/photo.png';
+  const FOREIGN_SHEET = 'https://evil.test/uploads/sheet.pdf';
+  const LEGACY_IMAGE = '/images/seed/gallery-legacy.png';
+  const LEGACY_SHEET = '/datasheets/seed/legacy.pdf';
+
+  it('refuses foreign gallery and datasheet URLs on create for both roles', async () => {
+    for (const session of [
+      SESSION,
+      {
+        user: {
+          id: 'editor-1',
+          email: 'editor@example.com',
+          role: 'EDITOR',
+        },
+      },
+    ]) {
+      vi.mocked(requireAdmin).mockResolvedValue(session as never);
+      doubles().relatedMachine.count.mockResolvedValue(0);
+
+      const gallery = await createMachine({
+        ...VALID_INPUT,
+        relatedIds: [],
+        images: [{ url: FOREIGN_IMAGE, position: 0 }],
+      });
+      expect(gallery).toEqual({
+        ok: false,
+        error: 'validation_failed',
+        issues: [{ field: 'images.0.url', message: 'msg-validation.imageUrl' }],
+      });
+
+      const sheet = await createMachine({
+        ...VALID_INPUT,
+        relatedIds: [],
+        images: [],
+        datasheetUrl: FOREIGN_SHEET,
+      });
+      expect(sheet).toEqual({
+        ok: false,
+        error: 'validation_failed',
+        issues: [
+          { field: 'datasheetUrl', message: 'msg-validation.datasheetUrl' },
+        ],
+      });
+    }
+    expect(doubles().machine.create).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a changed foreign gallery URL on update, writing nothing', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      createdById: 'editor-1',
+      category: { slug: 'machine-category' },
+      images: [
+        { url: 'https://res.cloudinary.com/test-cloud/image/upload/old.png' },
+      ],
+      relatedMachines: [],
+    });
+
+    await expect(
+      updateMachine('machine-1', {
+        ...VALID_INPUT,
+        relatedIds: [],
+        datasheetUrl: '',
+        images: [{ url: FOREIGN_IMAGE, position: 0 }],
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [{ field: 'images.0.url', message: 'msg-validation.imageUrl' }],
+    });
+    expect(doubles().machine.update).not.toHaveBeenCalled();
+    expect(doubles().image.deleteMany).not.toHaveBeenCalled();
+    expect(doubles().image.createMany).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts unchanged legacy gallery and datasheet values on update', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      createdById: 'editor-1',
+      category: { slug: 'machine-category' },
+      images: [{ url: LEGACY_IMAGE }],
+      datasheetUrl: LEGACY_SHEET,
+      relatedMachines: [],
+    });
+
+    await expect(
+      updateMachine('machine-1', {
+        ...VALID_INPUT,
+        relatedIds: [],
+        datasheetUrl: LEGACY_SHEET,
+        images: [{ url: LEGACY_IMAGE, position: 0 }],
+      })
+    ).resolves.toEqual({ ok: true, slug: 'filling-machine' });
+    expect(doubles().machine.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ datasheetUrl: LEGACY_SHEET }),
+      })
+    );
+    expect(doubles().image.createMany).toHaveBeenCalledWith({
+      data: [{ machineId: 'machine-1', url: LEGACY_IMAGE, position: 0 }],
+    });
+  });
+
+  it('refuses a legacy-looking value that is not exactly what is stored', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      createdById: 'editor-1',
+      category: { slug: 'machine-category' },
+      images: [{ url: LEGACY_IMAGE }],
+      relatedMachines: [],
+    });
+
+    await expect(
+      updateMachine('machine-1', {
+        ...VALID_INPUT,
+        relatedIds: [],
+        datasheetUrl: '',
+        images: [{ url: '/images/seed/another-legacy.png', position: 0 }],
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [{ field: 'images.0.url', message: 'msg-validation.imageUrl' }],
+    });
+    expect(doubles().machine.update).not.toHaveBeenCalled();
   });
 });
 

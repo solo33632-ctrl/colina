@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { requireAdmin } from '../admin-action';
@@ -84,7 +84,11 @@ const doubles = () => {
   };
 };
 
+// Stage 4c: the media allowlist reads the configured cloud at call time.
+const ORIGINAL_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+
 beforeEach(() => {
+  process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
   vi.clearAllMocks();
   vi.mocked(requireAdmin).mockResolvedValue(SESSION as never);
   vi.mocked(getTranslations).mockResolvedValue(
@@ -99,6 +103,14 @@ beforeEach(() => {
     _count: { items: 0 },
   });
   doubles().auditLog.create.mockResolvedValue({});
+});
+
+afterEach(() => {
+  if (ORIGINAL_CLOUD_NAME === undefined) {
+    delete process.env.CLOUDINARY_CLOUD_NAME;
+  } else {
+    process.env.CLOUDINARY_CLOUD_NAME = ORIGINAL_CLOUD_NAME;
+  }
 });
 
 describe('createMaintenanceCategory', () => {
@@ -339,5 +351,68 @@ describe('deleteMaintenanceCategory', () => {
     });
     expect(doubles().category.delete).not.toHaveBeenCalled();
     expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+// Stage 4c: the cover photo is media and follows the Cloudinary allowlist.
+describe('media allowlist (Stage 4c)', () => {
+  const FOREIGN = 'https://evil.test/uploads/line.png';
+  const LEGACY = '/images/seed/legacy-line.png';
+
+  it('refuses a foreign cover on create, writing nothing', async () => {
+    await expect(
+      createMaintenanceCategory({ ...INPUT, imageUrl: FOREIGN })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [{ field: 'imageUrl', message: 'msg-validation.imageUrl' }],
+    });
+    expect(doubles().category.create).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a changed foreign cover on update, writing nothing', async () => {
+    doubles().category.findUnique.mockResolvedValue({
+      ...STORED,
+      imageUrl: LEGACY,
+    });
+
+    await expect(
+      updateMaintenanceCategory('category-1', {
+        ...INPUT,
+        imageUrl: FOREIGN,
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [{ field: 'imageUrl', message: 'msg-validation.imageUrl' }],
+    });
+    expect(doubles().category.update).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts an unchanged legacy cover on update', async () => {
+    doubles().category.findUnique.mockResolvedValue({
+      ...STORED,
+      imageUrl: LEGACY,
+    });
+    doubles().category.update.mockResolvedValue({
+      ...STORED,
+      imageUrl: LEGACY,
+      nameEn: 'Bottling line renamed',
+    });
+
+    await expect(
+      updateMaintenanceCategory('category-1', {
+        ...INPUT,
+        nameEn: 'Bottling line renamed',
+        imageUrl: LEGACY,
+      })
+    ).resolves.toEqual({ ok: true, slug: 'bottling-line' });
+    expect(doubles().category.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ imageUrl: LEGACY }),
+      })
+    );
   });
 });

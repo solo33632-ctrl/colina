@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { requireAdmin } from '../admin-action';
@@ -49,7 +49,7 @@ const VALID_INPUT = {
   slug: 'machine-category',
   descriptionAr: 'وصف الفئة',
   descriptionEn: 'Category description',
-  image: 'https://cdn.example.com/category.png',
+  image: 'https://res.cloudinary.com/test-cloud/category.png',
 };
 
 const STORED_CATEGORY = {
@@ -59,7 +59,7 @@ const STORED_CATEGORY = {
   slug: 'machine-category',
   descriptionAr: 'وصف الفئة',
   descriptionEn: 'Category description',
-  image: 'https://cdn.example.com/category.png',
+  image: 'https://res.cloudinary.com/test-cloud/category.png',
 };
 
 const label = (en: string, ar: string) => ({
@@ -77,7 +77,11 @@ const doubles = () => {
 
 const findUnique = doubles().category.findUnique;
 
+// Stage 4c: the media allowlist reads the configured cloud at call time.
+const ORIGINAL_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+
 beforeEach(() => {
+  process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
   vi.clearAllMocks();
   vi.mocked(requireAdmin).mockResolvedValue(SESSION as never);
   vi.mocked(getTranslations).mockResolvedValue(
@@ -93,12 +97,20 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => {
+  if (ORIGINAL_CLOUD_NAME === undefined) {
+    delete process.env.CLOUDINARY_CLOUD_NAME;
+  } else {
+    process.env.CLOUDINARY_CLOUD_NAME = ORIGINAL_CLOUD_NAME;
+  }
+});
+
 describe('createCategory', () => {
   it('records an identifying snapshot and nothing else', async () => {
     doubles().category.create.mockResolvedValue({
       ...STORED_CATEGORY,
       descriptionEn: 'must-not-leak',
-      image: 'https://cdn.example.com/secret.png',
+      image: 'https://res.cloudinary.com/test-cloud/secret.png',
       createdAt: new Date(0),
       passwordHash: 'must-not-leak',
     });
@@ -155,7 +167,7 @@ describe('updateCategory', () => {
     doubles().category.update.mockResolvedValue({
       ...STORED_CATEGORY,
       descriptionEn: longDescription,
-      image: 'https://cdn.example.com/new.png',
+      image: 'https://res.cloudinary.com/test-cloud/new.png',
       internalNote: 'new-note',
       passwordHash: 'new-hash',
     });
@@ -163,7 +175,7 @@ describe('updateCategory', () => {
     const result = await updateCategory('cat-1', {
       ...VALID_INPUT,
       descriptionEn: longDescription,
-      image: 'https://cdn.example.com/new.png',
+      image: 'https://res.cloudinary.com/test-cloud/new.png',
     });
 
     expect(result).toEqual({ ok: true, slug: 'machine-category' });
@@ -193,7 +205,7 @@ describe('updateCategory', () => {
       labelKey: 'image',
       type: 'imageUrl',
       from: null,
-      to: 'https://cdn.example.com/new.png',
+      to: 'https://res.cloudinary.com/test-cloud/new.png',
     });
     const json = JSON.stringify(data.details);
     expect(json).not.toContain('old-note');
@@ -224,12 +236,107 @@ describe('updateCategory', () => {
   });
 });
 
+// Stage 4c: the stored-media allowlist is enforced in the action, not the
+// client schema. A create never has a legacy value to grandfather; an update
+// accepts the exact stored value and refuses anything else foreign.
+describe('media allowlist (Stage 4c)', () => {
+  const FOREIGN = 'https://evil.test/uploads/category.png';
+  const LEGACY = '/images/seed/legacy-category.png';
+
+  it('refuses a foreign image on create for an admin and an editor, writing nothing', async () => {
+    for (const session of [
+      SESSION,
+      {
+        user: {
+          id: 'editor-1',
+          email: 'editor@example.com',
+          role: 'EDITOR',
+        },
+      },
+    ]) {
+      vi.mocked(requireAdmin).mockResolvedValue(session as never);
+      const result = await createCategory({ ...VALID_INPUT, image: FOREIGN });
+      expect(result).toEqual({
+        ok: false,
+        error: 'validation_failed',
+        issues: [{ field: 'image', message: 'msg-validation.image' }],
+      });
+    }
+    expect(doubles().category.create).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a changed foreign image on update, writing nothing', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
+      image: 'https://res.cloudinary.com/test-cloud/image/upload/old.png',
+    });
+
+    await expect(
+      updateCategory('cat-1', { ...VALID_INPUT, image: FOREIGN })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [{ field: 'image', message: 'msg-validation.image' }],
+    });
+    expect(doubles().category.update).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts an unchanged legacy image on update (grandfathered exact match)', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
+      image: LEGACY,
+      createdById: 'editor-1',
+    });
+    doubles().category.update.mockResolvedValue({
+      ...STORED_CATEGORY,
+      image: LEGACY,
+    });
+
+    await expect(
+      updateCategory('cat-1', {
+        ...VALID_INPUT,
+        image: LEGACY,
+        nameEn: 'Machine category renamed',
+      })
+    ).resolves.toEqual({ ok: true, slug: 'machine-category' });
+    expect(doubles().category.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ image: LEGACY }),
+      })
+    );
+  });
+
+  it('accepts clearing the image and a changed Cloudinary image', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
+      image: LEGACY,
+    });
+
+    await expect(
+      updateCategory('cat-1', { ...VALID_INPUT, image: '' })
+    ).resolves.toEqual({ ok: true, slug: 'machine-category' });
+
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
+      image: LEGACY,
+    });
+    await expect(
+      updateCategory('cat-1', {
+        ...VALID_INPUT,
+        image: 'https://res.cloudinary.com/test-cloud/image/upload/new.png',
+      })
+    ).resolves.toEqual({ ok: true, slug: 'machine-category' });
+  });
+});
+
 describe('deleteCategory', () => {
   it('records the identifying snapshot in the Before column', async () => {
     findUnique.mockResolvedValue({
       ...STORED_CATEGORY,
       descriptionEn: 'not identifying',
-      image: 'https://cdn.example.com/not-identifying.png',
+      image: 'https://res.cloudinary.com/test-cloud/not-identifying.png',
       _count: { machines: 0 },
     });
 

@@ -98,11 +98,17 @@ const slugRule = (message: string) =>
     .min(2, { error: message })
     .regex(/^[a-z0-9-]+$/, { error: message });
 
-// Stored URLs render into <img src> / <a href> on the public site, so only
-// absolute http(s) URLs are accepted — javascript:, data:, etc. are
-// rejected at validation time (XSS / protocol-smuggling hardening,
-// Phase 13). Pre-existing relative seed paths predate this rule and are
-// grandfathered data, not new input.
+// Stored links render into <a href> on the public site, so only absolute
+// http(s) URLs are accepted — javascript:, data:, etc. are rejected at
+// validation time (XSS / protocol-smuggling hardening, Phase 13).
+//
+// Stage 4c moved the *media* fields (images, gallery, datasheet, logos) to a
+// stricter server-side rule in `lib/media-url.ts`: only the project's own
+// Cloudinary account is allowed, and an exact legacy stored value is accepted
+// unchanged on update. Those fields are plain strings here because the client
+// has no access to the stored row; the update actions enforce the rule after
+// loading it. The external-link rules below (`websiteUrl`, `mapsUrl`) stay
+// here because they are typed links, not media.
 export function isHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
@@ -110,22 +116,6 @@ export function isHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
-}
-
-export function optionalHttpUrl(message: string) {
-  return z
-    .string()
-    .optional()
-    .refine(
-      (value) => value === undefined || value === '' || isHttpUrl(value),
-      {
-        error: message,
-      }
-    );
-}
-
-export function requiredHttpUrl(message: string) {
-  return z.string().refine((value) => isHttpUrl(value), { error: message });
 }
 
 type CategoryBaseMessages = {
@@ -150,9 +140,11 @@ export function categoryInputSchema(messages: CategoryFieldMessages) {
     // Server Actions normalise from `undefined` here.
     descriptionAr: z.string().optional(),
     descriptionEn: z.string().optional(),
-    // Cloudinary uploads store their delivered secure URL here; pasted
-    // URLs follow the same absolute-http(s) rule.
-    image: optionalHttpUrl(messages.image),
+    // Cloudinary uploads store their delivered secure URL here. The host/cloud
+    // allowlist lives in the Server Action (`lib/media-url.ts`), which also
+    // grandfathers an unchanged legacy value; the client schema only carries
+    // the field and its generic message.
+    image: z.string().optional(),
   });
 }
 
@@ -176,7 +168,7 @@ export function maintenanceCategoryInputSchema(
     slug: slugRule(messages.slug),
     descriptionAr: z.string().optional(),
     descriptionEn: z.string().optional(),
-    imageUrl: optionalHttpUrl(messages.imageUrl),
+    imageUrl: z.string().optional(),
     sortOrder: z
       .number()
       .int()
@@ -228,10 +220,10 @@ export function machineInputSchema(messages: MachineFieldMessages) {
     descriptionEn: z.string().optional(),
     specsAr: z.string().optional(),
     specsEn: z.string().optional(),
-    datasheetUrl: optionalHttpUrl(messages.datasheetUrl),
+    datasheetUrl: z.string().optional(),
     images: z.array(
       z.object({
-        url: requiredHttpUrl(messages.imageUrl),
+        url: z.string().min(1, { error: messages.imageUrl }),
         position: z.number().int().min(0, { error: messages.imagePosition }),
       })
     ),
@@ -256,11 +248,11 @@ export function partnerInputSchema(messages: PartnerFieldMessages) {
   return z.object({
     nameAr: z.string().min(2, { error: messages.nameAr }),
     nameEn: z.string().min(2, { error: messages.nameEn }),
-    // Uploaded logos land here as Cloudinary secure URLs (same rule as
-    // pasted URLs). Optional, like the category and news images: a partner
-    // exists before its logo does, and the form's own clear control set an
-    // empty string, which a required rule would then refuse to save.
-    logo: optionalHttpUrl(messages.logo),
+    // Uploaded logos land here as Cloudinary secure URLs. Optional, like the
+    // category and news images: a partner exists before its logo does, and the
+    // form's own clear control sets an empty string, which a required rule
+    // would then refuse to save. The allowlist is enforced server-side.
+    logo: z.string().optional(),
   });
 }
 
@@ -287,13 +279,13 @@ export function showcaseInputSchema(messages: ShowcaseFieldMessages) {
     // a blank description saves and simply renders nothing.
     descriptionAr: z.string().optional(),
     descriptionEn: z.string().optional(),
-    // BOTH photos required, with the same absolute-http(s) rule every other
-    // stored image uses. Required — not optional like a partner's logo — on
-    // purpose: the row exists to be a before/after comparison, so a single
+    // BOTH photos required. Required — not optional like a partner's logo —
+    // on purpose: the row exists to be a before/after comparison, so a single
     // photo is not a half-finished record but a different thing entirely, and
     // saving it would only produce a card the public section cannot render.
-    beforeImageUrl: requiredHttpUrl(messages.beforeImageUrl),
-    afterImageUrl: requiredHttpUrl(messages.afterImageUrl),
+    // Presence is checked here; the Cloudinary allowlist is server-side.
+    beforeImageUrl: z.string().min(1, { error: messages.beforeImageUrl }),
+    afterImageUrl: z.string().min(1, { error: messages.afterImageUrl }),
   });
 }
 
@@ -344,7 +336,7 @@ export function newsInputSchema(messages: NewsFieldMessages) {
     titleEn: z.string().min(2, { error: messages.titleEn }),
     bodyAr: z.string().min(10, { error: messages.bodyAr }),
     bodyEn: z.string().min(10, { error: messages.bodyEn }),
-    image: optionalHttpUrl(messages.image),
+    image: z.string().optional(),
     // YYYY-MM-DD from a date input; converted to DateTime server-side.
     publishedAt: z
       .string()
@@ -445,10 +437,9 @@ export function agentInputSchema(messages: AgentFieldMessages) {
         }
         return result.value;
       }),
-    // Same rule as the Partner logo (see `optionalHttpUrl`): the field is
-    // filled by the Cloudinary uploader (secure https URL) or a pasted
-    // absolute URL, and blank stays blank ("no logo yet").
-    logoUrl: optionalHttpUrl(messages.logoUrl),
+    // Filled by the Cloudinary uploader or a pasted URL. Blank stays blank
+    // ("no logo yet"); the host/cloud allowlist is enforced by the action.
+    logoUrl: z.string().optional(),
     // The hide switch. Undefined keeps the stored value on an update (the
     // form always sends it, so undefined only arrives from other clients);
     // the create action defaults it to published.

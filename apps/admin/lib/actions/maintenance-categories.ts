@@ -7,6 +7,7 @@ import { requirePermission } from '../permissions';
 import { maintenanceCategoryMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { maintenanceCategoryInputSchema } from '../schemas';
+import { mediaFieldIssues } from '../media-url';
 import {
   MAINTENANCE_CATEGORY_AUDIT_SPEC,
   buildChanges,
@@ -30,9 +31,11 @@ const MAINTENANCE_CATEGORY_AUDIT_SELECT = {
 // language (see `validation-messages.ts`).
 async function parse(input: unknown) {
   const t = await getTranslations('MaintenanceCategories');
-  return maintenanceCategoryInputSchema(
-    maintenanceCategoryMessages(t)
-  ).safeParse(input);
+  const messages = maintenanceCategoryMessages(t);
+  return {
+    parsed: maintenanceCategoryInputSchema(messages).safeParse(input),
+    messages,
+  };
 }
 
 // Prisma optional text columns accept undefined (skip); an empty form string
@@ -52,7 +55,7 @@ export async function createMaintenanceCategory(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -62,6 +65,18 @@ export async function createMaintenanceCategory(
         message: issue.message,
       })),
     };
+  }
+
+  const mediaIssues = mediaFieldIssues([
+    {
+      field: 'imageUrl',
+      value: parsed.data.imageUrl,
+      optional: true,
+      message: messages.imageUrl,
+    },
+  ]);
+  if (mediaIssues.length > 0) {
+    return { ok: false, error: 'validation_failed', issues: mediaIssues };
   }
 
   try {
@@ -116,7 +131,7 @@ export async function updateMaintenanceCategory(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -129,14 +144,33 @@ export async function updateMaintenanceCategory(
   }
 
   try {
-    const updated = await prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => {
       const existing = await tx.maintenanceCategory.findUnique({
         where: { id },
         select: MAINTENANCE_CATEGORY_AUDIT_SELECT,
       });
       if (!existing) {
-        return null;
+        return { status: 'not_found' as const };
       }
+
+      // Stage 4c: an exact stored cover stays saveable; a new or changed
+      // cover must be on the configured Cloudinary cloud.
+      const mediaIssues = mediaFieldIssues([
+        {
+          field: 'imageUrl',
+          value: parsed.data.imageUrl,
+          optional: true,
+          message: messages.imageUrl,
+          unchanged: existing.imageUrl,
+        },
+      ]);
+      if (mediaIssues.length > 0) {
+        return {
+          status: 'validation_failed' as const,
+          issues: mediaIssues,
+        };
+      }
+
       const row = await tx.maintenanceCategory.update({
         where: { id },
         data: {
@@ -158,14 +192,25 @@ export async function updateMaintenanceCategory(
           details: buildChanges(existing, row, MAINTENANCE_CATEGORY_AUDIT_SPEC),
         },
       });
-      return { row, previousSlug: existing.slug };
+      return {
+        status: 'ok' as const,
+        row,
+        previousSlug: existing.slug,
+      };
     });
-    if (updated === null) {
+    if (outcome.status === 'not_found') {
       return { ok: false, error: 'not_found' };
+    }
+    if (outcome.status === 'validation_failed') {
+      return {
+        ok: false,
+        error: 'validation_failed',
+        issues: outcome.issues,
+      };
     }
 
     // Both the old and the new detail path when the slug changed.
-    const { row: updatedRow, previousSlug } = updated;
+    const { row: updatedRow, previousSlug } = outcome;
     const detailPaths =
       previousSlug === updatedRow.slug
         ? [`/maintenance/${updatedRow.slug}`]

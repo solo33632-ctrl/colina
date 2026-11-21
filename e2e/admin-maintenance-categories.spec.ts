@@ -26,9 +26,28 @@ const OTHER_CATEGORY_NAME_EN = `Other Line ${STAMP}`;
 const MACHINE_NAME_EN = `Machine ${STAMP}`;
 const MACHINE_NAME_AR = `ماكينة ${STAMP}`;
 
-const COVER_PHOTO = `${ADMIN_URL}/icon.png`;
-const BEFORE_PHOTO = `${ADMIN_URL}/icon.png`;
-const AFTER_PHOTO = `${ADMIN_URL}/apple-icon.png`;
+const COVER_PHOTO = `https://res.cloudinary.com/demo-cloud/image/upload/v1712345678/colina/${TAG}-line-cover.png`;
+const BEFORE_PHOTO = `https://res.cloudinary.com/demo-cloud/image/upload/v1712345678/colina/${TAG}-line-before.png`;
+const AFTER_PHOTO = `https://res.cloudinary.com/demo-cloud/image/upload/v1712345678/colina/${TAG}-line-after.png`;
+
+// Stage 4c: stored media must be an https URL on the project's own Cloudinary
+// cloud, so these fixtures look like a real upload result. Playwright serves
+// them locally (see `stubPhotos`) — no request ever reaches Cloudinary.
+const STUB_IMAGE = [
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300">',
+  '<rect width="400" height="300" fill="#EB693F"/>',
+  '</svg>',
+].join('');
+
+async function stubPhotos(page: import('@playwright/test').Page) {
+  await page.route('https://res.cloudinary.com/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: STUB_IMAGE,
+    })
+  );
+}
 
 async function pastePhoto(
   page: import('@playwright/test').Page,
@@ -71,6 +90,7 @@ test.describe('maintenance categories and showcase assignment', () => {
     const state = await loginState(browser, en, ADMIN_EMAIL, ADMIN_PASSWORD);
     const context = await browser.newContext({ storageState: state });
     const page = await context.newPage();
+    await stubPhotos(page);
 
     // The section is reachable from the sidebar, not just by typing the URL.
     await page.goto(`${ADMIN_URL}/en`);

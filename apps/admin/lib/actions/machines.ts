@@ -14,12 +14,48 @@ import { deleteMachineInTransaction } from '../entity-delete';
 import { machineMessages } from './validation-messages';
 import { revalidateWebPaths } from '../revalidate-web';
 import { machineInputSchema } from '../schemas';
+import { mediaFieldIssues } from '../media-url';
 
 // Validation messages come from the message files, in the admin's current
 // language (see `validation-messages.ts`).
 async function parseResult(input: unknown) {
   const t = await getTranslations('Machines');
-  return machineInputSchema(machineMessages(t)).safeParse(input);
+  const messages = machineMessages(t);
+  return { parsed: machineInputSchema(messages).safeParse(input), messages };
+}
+
+type StoredMachineMedia = {
+  datasheetUrl: string | null;
+  images: { url: string }[];
+};
+
+/**
+ * Stage 4c: the Cloudinary allowlist for the datasheet and every gallery URL.
+ * On update an exact stored value is accepted unchanged, so a legacy seed path
+ * or an older URL does not block an ordinary edit. New/changed values must be
+ * https URLs on the configured cloud.
+ */
+function machineMediaIssues(
+  input: { datasheetUrl?: string; images: { url: string }[] },
+  existing: StoredMachineMedia | null,
+  messages: { datasheetUrl: string; imageUrl: string }
+) {
+  const storedUrls = new Set(existing?.images.map((image) => image.url));
+  return mediaFieldIssues([
+    {
+      field: 'datasheetUrl',
+      value: input.datasheetUrl,
+      optional: true,
+      message: messages.datasheetUrl,
+      unchanged: existing?.datasheetUrl,
+    },
+    ...input.images.map((image, index) => ({
+      field: `images.${index}.url`,
+      value: image.url,
+      message: messages.imageUrl,
+      unchanged: storedUrls.has(image.url) ? image.url : undefined,
+    })),
+  ]);
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -60,7 +96,7 @@ export async function createMachine(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parseResult(input);
+  const { parsed, messages } = await parseResult(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -70,6 +106,13 @@ export async function createMachine(
         message: issue.message,
       })),
     };
+  }
+
+  // Stage 4c: a create has no stored value to grandfather, so every supplied
+  // media URL must be a Cloudinary URL for the configured cloud.
+  const mediaIssues = machineMediaIssues(parsed.data, null, messages);
+  if (mediaIssues.length > 0) {
+    return { ok: false, error: 'validation_failed', issues: mediaIssues };
   }
 
   // Self-links are impossible on create (no id yet); dedupe defensively.
@@ -157,7 +200,7 @@ export async function updateMachine(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parseResult(input);
+  const { parsed, messages } = await parseResult(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -179,7 +222,7 @@ export async function updateMachine(
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => {
       // Before-row with exactly the audited fields, read inside the write's
       // transaction so the diff cannot race a concurrent edit.
       const existing = await tx.machine.findUnique({
@@ -202,12 +245,24 @@ export async function updateMachine(
         },
       });
       if (!existing) {
-        return null;
+        return { status: 'not_found' as const };
       }
       // Same generic not_found as a missing row: an editor guessing another
       // owner's id learns nothing from the response.
       if (!canModifyEntity(session, existing)) {
-        return null;
+        return { status: 'not_found' as const };
+      }
+
+      // Stage 4c: the media allowlist runs against the row just loaded, so an
+      // exact stored value (legacy seed path or older URL) stays saveable and
+      // a changed/new value must be on the configured Cloudinary cloud. This
+      // happens inside the transaction and before any write.
+      const mediaIssues = machineMediaIssues(parsed.data, existing, messages);
+      if (mediaIssues.length > 0) {
+        return {
+          status: 'validation_failed' as const,
+          issues: mediaIssues,
+        };
       }
 
       const row = await tx.machine.update({
@@ -273,18 +328,26 @@ export async function updateMachine(
         },
       });
       return {
+        status: 'ok' as const,
         row,
         previousSlug: existing.slug,
         previousCategorySlug: existing.category.slug,
       };
     });
-    if (result === null) {
+    if (outcome.status === 'not_found') {
       return { ok: false, error: 'not_found' };
+    }
+    if (outcome.status === 'validation_failed') {
+      return {
+        ok: false,
+        error: 'validation_failed',
+        issues: outcome.issues,
+      };
     }
 
     // Affected public pages: own detail + parent category detail (both
     // locales; old slug/category too when either changed).
-    const { row: updated, previousSlug, previousCategorySlug } = result;
+    const { row: updated, previousSlug, previousCategorySlug } = outcome;
     const detailPaths =
       previousSlug === updated.slug
         ? [`/machines/${updated.slug}`]

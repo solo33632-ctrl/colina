@@ -133,6 +133,9 @@ launch_server() {
 
   # All server-relevant values are exported explicitly in this same command so
   # the app-specific .env.local (which names the REAL database) cannot win.
+  # The Cloudinary cloud name is a deterministic e2e fixture too: stored media
+  # is only accepted on this cloud (Stage 4c), and the specs use demo-cloud
+  # URLs. No request ever reaches Cloudinary; Playwright serves the images.
   # setsid detaches the server into its own process group; the shell records
   # that group's id before exec'ing npm, which is what `stop` kills.
   DATABASE_URL="$DATABASE_URL" \
@@ -140,6 +143,7 @@ launch_server() {
     NEXTAUTH_SECRET="local-dev-only-not-a-real-secret" \
     NEXT_PUBLIC_WEB_URL="http://localhost:3000" \
     NEXTAUTH_URL="http://localhost:3001" \
+    CLOUDINARY_CLOUD_NAME="demo-cloud" \
     E2E_EXPOSE_DB=1 \
     setsid --fork bash -c 'echo $$ > "$1"; exec npm run "$2"' _ \
     "$pid_file" "$npm_script" >>"$log_file" 2>&1

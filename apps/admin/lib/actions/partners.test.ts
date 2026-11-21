@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { requireAdmin } from '../admin-action';
@@ -43,14 +43,14 @@ const SESSION = {
 const VALID_INPUT = {
   nameAr: 'شريك تجاري',
   nameEn: 'Trade partner',
-  logo: 'https://cdn.example.com/logo.png',
+  logo: 'https://res.cloudinary.com/test-cloud/image/upload/logo.png',
 };
 
 const STORED_PARTNER = {
   id: 'partner-1',
   nameAr: 'شريك تجاري',
   nameEn: 'Trade partner',
-  logo: 'https://cdn.example.com/logo.png',
+  logo: 'https://res.cloudinary.com/test-cloud/image/upload/logo.png',
 };
 
 const label = (en: string, ar: string) => ({
@@ -68,7 +68,11 @@ const doubles = () => {
 
 const findUnique = doubles().partner.findUnique;
 
+// Stage 4c: the media allowlist reads the configured cloud at call time.
+const ORIGINAL_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+
 beforeEach(() => {
+  process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
   vi.clearAllMocks();
   vi.mocked(requireAdmin).mockResolvedValue(SESSION as never);
   vi.mocked(getTranslations).mockResolvedValue(
@@ -79,6 +83,14 @@ beforeEach(() => {
   doubles().partner.delete.mockResolvedValue(STORED_PARTNER);
   doubles().auditLog.create.mockResolvedValue({});
   findUnique.mockResolvedValue(STORED_PARTNER);
+});
+
+afterEach(() => {
+  if (ORIGINAL_CLOUD_NAME === undefined) {
+    delete process.env.CLOUDINARY_CLOUD_NAME;
+  } else {
+    process.env.CLOUDINARY_CLOUD_NAME = ORIGINAL_CLOUD_NAME;
+  }
 });
 
 describe('createPartner', () => {
@@ -137,7 +149,7 @@ describe('updatePartner', () => {
     doubles().partner.update.mockResolvedValue({
       nameAr: 'شريك تجاري',
       nameEn: 'New partner name',
-      logo: 'https://cdn.example.com/new-logo.png',
+      logo: 'https://res.cloudinary.com/test-cloud/image/upload/new-logo.png',
       updatedAt: new Date(1),
       internalNote: 'new-note',
       passwordHash: 'new-hash',
@@ -146,7 +158,7 @@ describe('updatePartner', () => {
     const result = await updatePartner('partner-1', {
       ...VALID_INPUT,
       nameEn: 'New partner name',
-      logo: 'https://cdn.example.com/new-logo.png',
+      logo: 'https://res.cloudinary.com/test-cloud/image/upload/new-logo.png',
     });
 
     expect(result).toEqual({ ok: true });
@@ -169,7 +181,7 @@ describe('updatePartner', () => {
           labelKey: 'logo',
           type: 'imageUrl',
           from: null,
-          to: 'https://cdn.example.com/new-logo.png',
+          to: 'https://res.cloudinary.com/test-cloud/image/upload/new-logo.png',
         },
       ],
       ...label('New partner name', 'شريك تجاري'),
@@ -216,6 +228,67 @@ describe('updatePartner', () => {
     expect(result).toEqual({ ok: false, error: 'server_error' });
     expect(JSON.stringify(result)).not.toContain('raw database detail');
     consoleError.mockRestore();
+  });
+});
+
+// Stage 4c: foreign logos are refused in the action; an unchanged stored
+// legacy value is the only exception.
+describe('media allowlist (Stage 4c)', () => {
+  const FOREIGN = 'https://evil.test/uploads/logo.png';
+  const LEGACY = '/images/seed/legacy-logo.png';
+
+  it('refuses a foreign logo on create, writing nothing', async () => {
+    await expect(
+      createPartner({ ...VALID_INPUT, logo: FOREIGN })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [{ field: 'logo', message: 'msg-validation.logo' }],
+    });
+    expect(doubles().partner.create).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a changed foreign logo on update, writing nothing', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_PARTNER,
+      logo: LEGACY,
+    });
+
+    await expect(
+      updatePartner('partner-1', { ...VALID_INPUT, logo: FOREIGN })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [{ field: 'logo', message: 'msg-validation.logo' }],
+    });
+    expect(doubles().partner.update).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts an unchanged legacy logo on update', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_PARTNER,
+      logo: LEGACY,
+    });
+    doubles().partner.update.mockResolvedValue({
+      ...STORED_PARTNER,
+      logo: LEGACY,
+      nameEn: 'Trade partner renamed',
+    });
+
+    await expect(
+      updatePartner('partner-1', {
+        ...VALID_INPUT,
+        nameEn: 'Trade partner renamed',
+        logo: LEGACY,
+      })
+    ).resolves.toEqual({ ok: true });
+    expect(doubles().partner.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ logo: LEGACY }),
+      })
+    );
   });
 });
 

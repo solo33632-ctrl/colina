@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
 import { requireAdmin } from '../admin-action';
@@ -42,8 +42,10 @@ const INPUT = {
   categoryId: 'cat-2',
   descriptionEn: 'New description',
   descriptionAr: 'الوصف الجديد',
-  beforeImageUrl: 'https://cdn.example.com/before-b.png',
-  afterImageUrl: 'https://cdn.example.com/after-b.png',
+  beforeImageUrl:
+    'https://res.cloudinary.com/test-cloud/image/upload/before-b.png',
+  afterImageUrl:
+    'https://res.cloudinary.com/test-cloud/image/upload/after-b.png',
 };
 
 const STORED = {
@@ -54,8 +56,10 @@ const STORED = {
   category: { nameEn: 'Packaging line' },
   descriptionEn: 'New description',
   descriptionAr: 'الوصف الجديد',
-  beforeImageUrl: 'https://cdn.example.com/before-b.png',
-  afterImageUrl: 'https://cdn.example.com/after-b.png',
+  beforeImageUrl:
+    'https://res.cloudinary.com/test-cloud/image/upload/before-b.png',
+  afterImageUrl:
+    'https://res.cloudinary.com/test-cloud/image/upload/after-b.png',
 };
 
 const label = (en: string, ar: string) => ({
@@ -74,7 +78,11 @@ const doubles = () => {
   };
 };
 
+// Stage 4c: the media allowlist reads the configured cloud at call time.
+const ORIGINAL_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+
 beforeEach(() => {
+  process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
   vi.clearAllMocks();
   vi.mocked(requireAdmin).mockResolvedValue(SESSION as never);
   vi.mocked(getTranslations).mockResolvedValue(
@@ -85,6 +93,14 @@ beforeEach(() => {
   doubles().showcase.delete.mockResolvedValue(STORED);
   doubles().showcase.findUnique.mockResolvedValue(STORED);
   doubles().auditLog.create.mockResolvedValue({});
+});
+
+afterEach(() => {
+  if (ORIGINAL_CLOUD_NAME === undefined) {
+    delete process.env.CLOUDINARY_CLOUD_NAME;
+  } else {
+    process.env.CLOUDINARY_CLOUD_NAME = ORIGINAL_CLOUD_NAME;
+  }
 });
 
 describe('createShowcase', () => {
@@ -152,8 +168,10 @@ describe('updateShowcase', () => {
       categoryId: 'cat-1',
       category: { nameEn: 'Bottling line' },
       descriptionEn: 'Old description',
-      beforeImageUrl: 'https://cdn.example.com/before-a.png',
-      afterImageUrl: 'https://cdn.example.com/after-a.png',
+      beforeImageUrl:
+        'https://res.cloudinary.com/test-cloud/image/upload/before-a.png',
+      afterImageUrl:
+        'https://res.cloudinary.com/test-cloud/image/upload/after-a.png',
     });
     doubles().showcase.update.mockResolvedValue({
       ...STORED,
@@ -189,15 +207,15 @@ describe('updateShowcase', () => {
           field: 'beforeImageUrl',
           labelKey: 'beforeImage',
           type: 'imageUrl',
-          from: 'https://cdn.example.com/before-a.png',
-          to: 'https://cdn.example.com/before-b.png',
+          from: 'https://res.cloudinary.com/test-cloud/image/upload/before-a.png',
+          to: 'https://res.cloudinary.com/test-cloud/image/upload/before-b.png',
         },
         {
           field: 'afterImageUrl',
           labelKey: 'afterImage',
           type: 'imageUrl',
-          from: 'https://cdn.example.com/after-a.png',
-          to: 'https://cdn.example.com/after-b.png',
+          from: 'https://res.cloudinary.com/test-cloud/image/upload/after-a.png',
+          to: 'https://res.cloudinary.com/test-cloud/image/upload/after-b.png',
         },
       ],
       ...label('Filling job', 'عمل التعبئة'),
@@ -242,6 +260,82 @@ describe('updateShowcase', () => {
     expect(result).toEqual({ ok: false, error: 'server_error' });
     expect(JSON.stringify(result)).not.toContain('raw database detail');
     consoleError.mockRestore();
+  });
+});
+
+// Stage 4c: showcase photos are required, and both must pass the Cloudinary
+// allowlist on create. On update an exact stored value is grandfathered.
+describe('media allowlist (Stage 4c)', () => {
+  const FOREIGN_BEFORE = 'https://evil.test/uploads/before.png';
+  const FOREIGN_AFTER = 'https://evil.test/uploads/after.png';
+  const LEGACY_BEFORE = '/images/seed/showcase-before.png';
+  const LEGACY_AFTER = '/images/seed/showcase-after.png';
+
+  it('refuses foreign photos on create, writing nothing', async () => {
+    await expect(
+      createShowcase({ ...INPUT, beforeImageUrl: FOREIGN_BEFORE })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [
+        { field: 'beforeImageUrl', message: 'msg-validation.beforeImageUrl' },
+      ],
+    });
+    expect(doubles().showcase.create).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a changed foreign photo on update, writing nothing', async () => {
+    await expect(
+      updateShowcase('showcase-1', { ...INPUT, afterImageUrl: FOREIGN_AFTER })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [
+        { field: 'afterImageUrl', message: 'msg-validation.afterImageUrl' },
+      ],
+    });
+    expect(doubles().showcase.update).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts unchanged legacy photos, and a changed Cloudinary photo', async () => {
+    doubles().showcase.findUnique.mockResolvedValue({
+      ...STORED,
+      beforeImageUrl: LEGACY_BEFORE,
+      afterImageUrl: LEGACY_AFTER,
+    });
+
+    await expect(
+      updateShowcase('showcase-1', {
+        ...INPUT,
+        beforeImageUrl: LEGACY_BEFORE,
+        afterImageUrl: LEGACY_AFTER,
+        nameEn: 'Filling job renamed',
+      })
+    ).resolves.toEqual({ ok: true });
+    expect(doubles().showcase.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          beforeImageUrl: LEGACY_BEFORE,
+          afterImageUrl: LEGACY_AFTER,
+        }),
+      })
+    );
+
+    doubles().showcase.findUnique.mockResolvedValue({
+      ...STORED,
+      beforeImageUrl: LEGACY_BEFORE,
+      afterImageUrl: LEGACY_AFTER,
+    });
+    await expect(
+      updateShowcase('showcase-1', {
+        ...INPUT,
+        beforeImageUrl:
+          'https://res.cloudinary.com/test-cloud/image/upload/new-before.png',
+        afterImageUrl: LEGACY_AFTER,
+      })
+    ).resolves.toEqual({ ok: true });
   });
 });
 

@@ -13,12 +13,14 @@ import { auditActor } from '../audit-actor';
 import { revalidateWebPaths } from '../revalidate-web';
 import { partnerMessages } from './validation-messages';
 import { partnerInputSchema } from '../schemas';
+import { mediaFieldIssues } from '../media-url';
 
 // Validation messages come from the message files, in the admin's current
 // language (see `validation-messages.ts`).
 async function parse(input: unknown) {
   const t = await getTranslations('Partners');
-  return partnerInputSchema(partnerMessages(t)).safeParse(input);
+  const messages = partnerMessages(t);
+  return { parsed: partnerInputSchema(messages).safeParse(input), messages };
 }
 
 export async function createPartner(
@@ -29,7 +31,7 @@ export async function createPartner(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -39,6 +41,18 @@ export async function createPartner(
         message: issue.message,
       })),
     };
+  }
+
+  const mediaIssues = mediaFieldIssues([
+    {
+      field: 'logo',
+      value: parsed.data.logo,
+      optional: true,
+      message: messages.logo,
+    },
+  ]);
+  if (mediaIssues.length > 0) {
+    return { ok: false, error: 'validation_failed', issues: mediaIssues };
   }
 
   try {
@@ -79,7 +93,7 @@ export async function updatePartner(
     return { ok: false, error: 'unauthorized' };
   }
 
-  const parsed = await parse(input);
+  const { parsed, messages } = await parse(input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -92,7 +106,7 @@ export async function updatePartner(
   }
 
   try {
-    const updated = await prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => {
       // The before-row is read inside the same transaction as the write, so
       // the diff and the write see the same committed state.
       const existing = await tx.partner.findUnique({
@@ -100,7 +114,25 @@ export async function updatePartner(
         select: { nameAr: true, nameEn: true, logo: true },
       });
       if (!existing) {
-        return null;
+        return { status: 'not_found' as const };
+      }
+
+      // Stage 4c: an exact stored logo stays saveable (legacy rows); a new or
+      // changed logo must be on the configured Cloudinary cloud.
+      const mediaIssues = mediaFieldIssues([
+        {
+          field: 'logo',
+          value: parsed.data.logo,
+          optional: true,
+          message: messages.logo,
+          unchanged: existing.logo,
+        },
+      ]);
+      if (mediaIssues.length > 0) {
+        return {
+          status: 'validation_failed' as const,
+          issues: mediaIssues,
+        };
       }
 
       const row = await tx.partner.update({
@@ -120,10 +152,17 @@ export async function updatePartner(
           details: buildChanges(existing, row, PARTNER_AUDIT_SPEC),
         },
       });
-      return row;
+      return { status: 'ok' as const, row };
     });
-    if (updated === null) {
+    if (outcome.status === 'not_found') {
       return { ok: false, error: 'not_found' };
+    }
+    if (outcome.status === 'validation_failed') {
+      return {
+        ok: false,
+        error: 'validation_failed',
+        issues: outcome.issues,
+      };
     }
 
     revalidateWebPaths(['/', '/partners']);

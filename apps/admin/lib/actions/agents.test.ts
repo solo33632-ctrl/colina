@@ -1,4 +1,12 @@
-import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  assert,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { prisma } from '@colina/db';
@@ -97,7 +105,11 @@ const doubles = () => {
 
 const findUnique = doubles().agent.findUnique;
 
+// Stage 4c: the media allowlist reads the configured cloud at call time.
+const ORIGINAL_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+
 beforeEach(() => {
+  process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
   vi.clearAllMocks();
   vi.mocked(requireAdmin).mockResolvedValue(SESSION as never);
   vi.mocked(getTranslations).mockResolvedValue(
@@ -108,6 +120,14 @@ beforeEach(() => {
   doubles().agent.delete.mockResolvedValue(STORED_AGENT);
   doubles().auditLog.create.mockResolvedValue({});
   findUnique.mockResolvedValue(STORED_AGENT);
+});
+
+afterEach(() => {
+  if (ORIGINAL_CLOUD_NAME === undefined) {
+    delete process.env.CLOUDINARY_CLOUD_NAME;
+  } else {
+    process.env.CLOUDINARY_CLOUD_NAME = ORIGINAL_CLOUD_NAME;
+  }
 });
 
 const revalidatedLocales = () =>
@@ -236,7 +256,7 @@ describe('createAgent', () => {
     const result = await createAgent({
       ...VALID_INPUT,
       websiteUrl: 'https://agent.example.com',
-      logoUrl: 'https://res.cloudinary.com/demo/image/upload/logo.png',
+      logoUrl: 'https://res.cloudinary.com/test-cloud/image/upload/logo.png',
       isPublished: undefined,
     });
 
@@ -248,7 +268,8 @@ describe('createAgent', () => {
           nameAr: 'وكيل الجيزة',
           nameEn: 'Giza office',
           websiteUrl: 'https://agent.example.com',
-          logoUrl: 'https://res.cloudinary.com/demo/image/upload/logo.png',
+          logoUrl:
+            'https://res.cloudinary.com/test-cloud/image/upload/logo.png',
           isPublished: true,
         }),
       })
@@ -547,5 +568,66 @@ describe('deleteAgent', () => {
     expect(result).toEqual({ ok: false, error: 'unauthorized' });
     expect(doubles().agent.delete).not.toHaveBeenCalled();
     expect(revalidatedLocales()).toEqual([]);
+  });
+});
+
+// Stage 4c: the logo is media and follows the Cloudinary allowlist; the
+// website URL is a typed link and keeps its own rule.
+describe('media allowlist (Stage 4c)', () => {
+  const FOREIGN = 'https://evil.test/uploads/logo.png';
+  const LEGACY = '/images/seed/legacy-agent-logo.png';
+
+  it('refuses a foreign logo on create, writing nothing', async () => {
+    await expect(
+      createAgent({ ...VALID_INPUT, logoUrl: FOREIGN })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [{ field: 'logoUrl', message: 'msg-validation.logoUrl' }],
+    });
+    expect(doubles().agent.create).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a changed foreign logo on update, writing nothing', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_AGENT,
+      logoUrl: LEGACY,
+    });
+
+    await expect(
+      updateAgent('agent-1', { ...VALID_INPUT, logoUrl: FOREIGN })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'validation_failed',
+      issues: [{ field: 'logoUrl', message: 'msg-validation.logoUrl' }],
+    });
+    expect(doubles().agent.update).not.toHaveBeenCalled();
+    expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts an unchanged legacy logo on update', async () => {
+    findUnique.mockResolvedValue({
+      ...STORED_AGENT,
+      logoUrl: LEGACY,
+    });
+    doubles().agent.update.mockResolvedValue({
+      ...STORED_AGENT,
+      logoUrl: LEGACY,
+      nameEn: 'Giza office renamed',
+    });
+
+    await expect(
+      updateAgent('agent-1', {
+        ...VALID_INPUT,
+        nameEn: 'Giza office renamed',
+        logoUrl: LEGACY,
+      })
+    ).resolves.toEqual({ ok: true });
+    expect(doubles().agent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ logoUrl: LEGACY }),
+      })
+    );
   });
 });

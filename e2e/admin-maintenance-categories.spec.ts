@@ -11,6 +11,7 @@ import {
   deleteMaintenanceCategoriesByTag,
   deleteShowcasesByTag,
 } from './db-fixture';
+import { openPasteUrl, waitForHydration } from './admin-form';
 
 const en = copyFor('en');
 
@@ -58,7 +59,7 @@ async function pastePhoto(
     which === 'before'
       ? page.getByRole('button', { name: 'Paste a URL for the before photo' })
       : page.getByRole('button', { name: 'Paste a URL for the after photo' });
-  await toggle.click();
+  await openPasteUrl(toggle, page.locator(`#showcase-${which}-url`));
   await page.locator(`#showcase-${which}-url`).fill(url);
 }
 
@@ -103,6 +104,7 @@ test.describe('maintenance categories and showcase assignment', () => {
     // Create, including the optional cover photo and an explicit display order.
     await page.getByRole('link', { name: 'New category' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/maintenance-categories/new`);
+    await waitForHydration(page);
     await page.getByLabel('Name').fill(CATEGORY_NAME_EN);
     await page.getByLabel('الاسم').fill(CATEGORY_NAME_AR);
     await page.getByLabel('Slug').fill(CATEGORY_SLUG);
@@ -124,10 +126,14 @@ test.describe('maintenance categories and showcase assignment', () => {
     // Edit: the stored values come back, then change the name and the order.
     await row.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/maintenance-categories\/[^/]+\/edit$/);
+    await waitForHydration(page);
     await expect(page.getByLabel('Name')).toHaveValue(CATEGORY_NAME_EN);
     await expect(page.getByLabel('Slug')).toHaveValue(CATEGORY_SLUG);
     await expect(page.getByLabel('Display order')).toHaveValue('5');
-    await page.getByRole('button', { name: 'Or paste a URL' }).click();
+    await openPasteUrl(
+      page.getByRole('button', { name: 'Or paste a URL' }),
+      page.locator('#maintenance-category-image-url')
+    );
     await expect(page.locator('#maintenance-category-image-url')).toHaveValue(
       COVER_PHOTO
     );
@@ -139,6 +145,7 @@ test.describe('maintenance categories and showcase assignment', () => {
 
     // The showcase form refuses to save without a category...
     await page.goto(`${ADMIN_URL}/en/maintenance-showcase/new`);
+    await waitForHydration(page);
     await page.getByLabel('Machine name').fill(MACHINE_NAME_EN);
     await page.getByLabel('اسم الماكينة').fill(MACHINE_NAME_AR);
     await pastePhoto(page, 'before', BEFORE_PHOTO);

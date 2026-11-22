@@ -20,6 +20,7 @@ import {
   storedCategory,
   storedMachine,
 } from './admin-editor';
+import { openPasteUrl, waitForHydration } from './admin-form';
 import { runInDbValue } from './db-fixture';
 
 // Stage 4c: stored media URLs are restricted to the project's own Cloudinary
@@ -383,6 +384,7 @@ test.describe('stored media allowlist (Stage 4c)', () => {
     await expect(page).toHaveURL(new RegExp(`/machines/[^/]+/edit$`));
 
     // The legacy path is what the form holds; the image input is not touched.
+    await waitForHydration(page);
     await expect(page.getByAltText('Current image')).toHaveCount(1);
     await page
       .getByLabel('Name (English)')
@@ -407,6 +409,7 @@ test.describe('stored media allowlist (Stage 4c)', () => {
 
     // Category form: the ordinary path, including the collapsed URL field.
     await page.goto(`${ADMIN_URL}/en/categories/new`);
+    await waitForHydration(page);
     await page.getByLabel('Name (English)').fill(NEW_CATEGORY_NAME);
     await page.getByLabel('Name (Arabic)').fill(`فئة النموذج ${STAMP}`);
     await page.getByLabel('Slug').fill(tag('new-category'));
@@ -414,7 +417,10 @@ test.describe('stored media allowlist (Stage 4c)', () => {
       .getByLabel('Description (English)')
       .fill('Category saved through the form with a fixture image.');
     await page.getByLabel('Description (Arabic)').fill('وصف فئة النموذج.');
-    await page.getByRole('button', { name: 'Or paste a URL' }).click();
+    await openPasteUrl(
+      page.getByRole('button', { name: 'Or paste a URL' }),
+      page.locator('#cat-image-url')
+    );
     await page.locator('#cat-image-url').fill(cloudPhoto('form-category'));
     await page.getByRole('button', { name: 'Create category' }).click();
 
@@ -431,16 +437,19 @@ test.describe('stored media allowlist (Stage 4c)', () => {
       .getByRole('link', { name: 'Edit' })
       .click();
     await expect(page).toHaveURL(new RegExp(`/machines/[^/]+/edit$`));
+    await waitForHydration(page);
     await expect(page.getByAltText('Current image')).toHaveCount(1);
 
-    await page
-      .getByRole('button', { name: 'Or paste a URL for image 1' })
-      .click();
+    await openPasteUrl(
+      page.getByRole('button', { name: 'Or paste a URL for image 1' }),
+      page.locator('#machine-image-0-url')
+    );
     await page.locator('#machine-image-0-url').fill(cloudPhoto('form-gallery'));
 
-    await page
-      .getByRole('button', { name: 'Or paste a URL for the datasheet' })
-      .click();
+    await openPasteUrl(
+      page.getByRole('button', { name: 'Or paste a URL for the datasheet' }),
+      page.locator('#machine-datasheet-url')
+    );
     await page.locator('#machine-datasheet-url').fill(cloudDatasheet('form'));
 
     await page.getByRole('button', { name: 'Save changes' }).click();

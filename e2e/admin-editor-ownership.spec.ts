@@ -25,6 +25,7 @@ import {
   storedCategory,
   storedMachine,
 } from './admin-editor';
+import { openPasteUrl, waitForHydration } from './admin-form';
 
 // Stage 4a: the EDITOR role is not a UI preference. These tests drive the real
 // forms for what an editor may do, and replay the exact Server Action wire
@@ -398,6 +399,7 @@ test.describe('editor role: ownership, permissions and navigation', () => {
     const page = await context.newPage();
 
     await page.goto(`${ADMIN_URL}/en/categories/new`);
+    await waitForHydration(page);
     await page.getByLabel('Name (English)').fill(UI_CATEGORY_NAME);
     await page.getByLabel('Name (Arabic)').fill(`فئة واجهة ${STAMP}`);
     await page.getByLabel('Slug').fill(UI_CATEGORY_SLUG);
@@ -431,8 +433,12 @@ test.describe('editor role: ownership, permissions and navigation', () => {
       .getByRole('link', { name: 'Edit' })
       .click();
     await expect(page).toHaveURL(/\/categories\/[^/]+\/edit$/);
+    await waitForHydration(page);
     await page.getByLabel('Name (English)').fill(UI_CATEGORY_RENAMED);
-    await page.getByRole('button', { name: 'Or paste a URL' }).click();
+    await openPasteUrl(
+      page.getByRole('button', { name: 'Or paste a URL' }),
+      page.locator('#cat-image-url')
+    );
     await page.locator('#cat-image-url').fill(photo('ui-cat-second'));
     await page.getByRole('button', { name: 'Save changes' }).click();
 
@@ -463,6 +469,7 @@ test.describe('editor role: ownership, permissions and navigation', () => {
     // The machine form may file a machine under ANY category: it sees all
     // category names, even though the management list does not.
     await page.goto(`${ADMIN_URL}/en/machines/new`);
+    await waitForHydration(page);
     const categoryOptions = await page
       .locator('#machine-category option')
       .allTextContents();
@@ -560,6 +567,7 @@ test.describe('editor role: ownership, permissions and navigation', () => {
       .getByRole('link', { name: 'Edit' })
       .click();
     await expect(page).toHaveURL(/\/machines\/[^/]+\/edit$/);
+    await waitForHydration(page);
     await page.getByLabel('Name (English)').fill(UI_MACHINE_RENAMED);
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);
@@ -620,12 +628,14 @@ test.describe('editor role: ownership, permissions and navigation', () => {
       .getByRole('link', { name: 'Edit' })
       .click();
     await expect(page).toHaveURL(new RegExp(`/machines/${machineAId}/edit$`));
+    await waitForHydration(page);
     await expect(page.getByAltText('Current image')).toHaveCount(2);
 
     const replacement = photo('a-second-replaced');
-    await page
-      .getByRole('button', { name: 'Or paste a URL for image 2' })
-      .click();
+    await openPasteUrl(
+      page.getByRole('button', { name: 'Or paste a URL for image 2' }),
+      page.locator('#machine-image-1-url')
+    );
     await page.locator('#machine-image-1-url').fill(replacement);
     await page.getByRole('button', { name: 'Move image 2 earlier' }).click();
     await page.getByRole('button', { name: 'Save changes' }).click();
@@ -891,6 +901,7 @@ test.describe('editor role: ownership, permissions and navigation', () => {
       .getByRole('link', { name: 'Edit' })
       .click();
     await expect(page).toHaveURL(/\/machines\/[^/]+\/edit$/);
+    await waitForHydration(page);
     await page.getByLabel('Name (English)').fill(adminEdited);
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);

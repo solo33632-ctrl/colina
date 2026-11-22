@@ -12,6 +12,7 @@ import {
   ensureEditor,
   removeEditor,
 } from './admin-editor';
+import { waitForHydration } from './admin-form';
 import { runInDb, runInDbValue } from './db-fixture';
 
 const en = copyFor('en');
@@ -157,6 +158,9 @@ async function openSettings(browser: Browser) {
   // contain "Site settings".
   await page.getByRole('link', { name: COPY.heading, exact: true }).click();
   await expect(page).toHaveURL(`${ADMIN_URL}/en/settings`);
+  // The sidebar click can be a full document load if the dashboard was not
+  // hydrated yet; every caller starts typing immediately, so wait here.
+  await waitForHydration(page);
   return { context, page };
 }
 

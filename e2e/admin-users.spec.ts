@@ -9,6 +9,7 @@ import {
   loginState,
 } from './admin-session';
 import { DATABASE_URL, storedCategory, storedMachine } from './admin-editor';
+import { waitForHydration, waitForSavedBanner } from './admin-form';
 import { resetRateLimitBuckets } from './db-fixture';
 import {
   GATE_EDITOR,
@@ -184,17 +185,28 @@ test.describe.serial('admin accounts, activity and deletion', () => {
 
     await page.getByRole('link', { name: 'Create editor' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/users/new`);
+    // The link click can land as a full document load if the list was not
+    // hydrated yet; wait for the form itself before typing, or the first fill
+    // can be reconciled away by hydration.
+    await waitForHydration(page);
 
     await page.getByLabel('Name').fill(UI_EDITOR.name);
     await page.getByLabel('Email').fill(UI_EDITOR.email);
     await page.getByLabel('Initial password').fill(UI_EDITOR.password);
-    await page.getByRole('button', { name: 'Create editor' }).click();
 
-    // The SaveBanner consumes `?saved=1` on mount (see the agents spec), so
-    // the banner is the contract, not the raw URL.
-    await expect(page.getByText('Editor account created.')).toBeVisible();
+    // The SaveBanner consumes `?saved=1` on mount and hides itself after eight
+    // seconds, so waiting for it in the DOM races the client. Assert the
+    // redirect payload that carried it, then the durable URL and row. Arm the
+    // waiter before the click.
+    const savedBanner = waitForSavedBanner(
+      page,
+      '/en/users',
+      'Editor account created.'
+    );
+    await page.getByRole('button', { name: 'Create editor' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/users`);
     await expect(row(page, UI_EDITOR.email)).toBeVisible();
+    await savedBanner;
     await expect(
       row(page, UI_EDITOR.email).getByText('Editor', { exact: true })
     ).toBeVisible();
@@ -225,6 +237,7 @@ test.describe.serial('admin accounts, activity and deletion', () => {
     const page = await context.newPage();
 
     await page.goto(`${ADMIN_URL}/en/categories/new`);
+    await waitForHydration(page);
     await page.getByLabel('Name (English)').fill('E2E 4b UI category');
     await page.getByLabel('Name (Arabic)').fill('فئة واجهة 4ب');
     await page.getByLabel('Slug').fill('st4b-ui-cat');
@@ -236,6 +249,7 @@ test.describe.serial('admin accounts, activity and deletion', () => {
     await expect(row(page, 'E2E 4b UI category')).toBeVisible();
 
     await page.goto(`${ADMIN_URL}/en/machines/new`);
+    await waitForHydration(page);
     await page.getByLabel('Name (English)').fill('E2E 4b UI machine');
     await page.getByLabel('Name (Arabic)').fill('آلة واجهة 4ب');
     await page.getByLabel('Slug').fill('st4b-ui-machine');
@@ -330,6 +344,7 @@ test.describe.serial('admin accounts, activity and deletion', () => {
     const loginContext = await browser.newContext();
     const loginPage = await loginContext.newPage();
     await loginPage.goto(`${ADMIN_URL}/en/login`);
+    await waitForHydration(loginPage);
     await loginPage.getByLabel('Email').fill(UI_EDITOR.email);
     await loginPage.getByLabel('Password').fill(UI_EDITOR.password);
     await loginPage.getByRole('button', { name: 'Log in' }).click();

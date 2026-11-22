@@ -7,6 +7,7 @@ import {
   copyFor,
   loginState,
 } from './admin-session';
+import { waitForHydration } from './admin-form';
 
 test.describe('admin login', () => {
   test("an unauthenticated page request redirects to that locale's login", async ({
@@ -32,6 +33,7 @@ test.describe('admin login', () => {
         page,
       }) => {
         await page.goto(`${ADMIN_URL}/${locale.id}/login`);
+        await waitForHydration(page);
         await page.getByLabel(locale.email).fill('admin@example.com');
         await page
           .getByLabel(locale.password)

@@ -6,6 +6,7 @@ import {
   copyFor,
   loginState,
 } from './admin-session';
+import { waitForHydration } from './admin-form';
 
 const en = copyFor('en');
 const STAMP = `e2e-${Date.now().toString(36)}`;
@@ -31,6 +32,7 @@ test.describe('category CRUD flow', () => {
 
     // Create.
     await page.goto(`${ADMIN_URL}/en/categories/new`);
+    await waitForHydration(page);
     await page.getByLabel('Name (English)').fill(catName);
     await page.getByLabel('Name (Arabic)').fill(`فئة ${STAMP}`);
     await page.getByLabel('Slug').fill(catSlug);
@@ -51,6 +53,7 @@ test.describe('category CRUD flow', () => {
       .getByRole('link', { name: 'Edit' })
       .click();
     await expect(page).toHaveURL(/\/categories\/[^/]+\/edit$/);
+    await waitForHydration(page);
     await expect(page.getByLabel('Name (English)')).toHaveValue(catName);
     await page.getByLabel('Name (English)').fill(`${catName} Renamed`);
     await page.getByRole('button', { name: 'Save changes' }).click();
@@ -59,6 +62,7 @@ test.describe('category CRUD flow', () => {
 
     // Attach a machine, then prove deletion is blocked.
     await page.goto(`${ADMIN_URL}/en/machines/new`);
+    await waitForHydration(page);
     await page.getByLabel('Name (English)').fill(`E2E Machine ${STAMP}`);
     await page.getByLabel('Name (Arabic)').fill(`آلة ${STAMP}`);
     await page.getByLabel('Slug').fill(`e2e-machine-${STAMP}`);

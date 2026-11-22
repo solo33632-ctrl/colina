@@ -1,5 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { ADMIN_URL } from './admin-session';
+import { waitForHydration } from './admin-form';
 import {
   DATABASE_URL,
   resetRateLimitBuckets,
@@ -79,6 +80,7 @@ test.describe('auth POST origin check', () => {
     page,
   }) => {
     await page.goto(`${ADMIN_URL}/en/forgot-password`);
+    await waitForHydration(page);
     await page.getByLabel('Email').fill('origin-e2e@example.com');
 
     const forgotResponse = page.waitForResponse(
@@ -96,6 +98,7 @@ test.describe('auth POST origin check', () => {
     await page.goto(
       `${ADMIN_URL}/en/reset-password?token=origin-e2e-invalid-token`
     );
+    await waitForHydration(page);
     await page
       .getByLabel('New password', { exact: true })
       .fill('correct horse battery staple');

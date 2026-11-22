@@ -16,6 +16,7 @@ import {
   copyFor,
   loginState,
 } from './admin-session';
+import { waitForHydration } from './admin-form';
 import {
   auditLogsByTag,
   cleanupFixtures,
@@ -138,6 +139,7 @@ test.describe('admin audit log', () => {
     ]);
 
     await page.goto(`${ADMIN_URL}/en/partners/${partnerId}/edit`);
+    await waitForHydration(page);
     await expect(page.getByLabel('Name (English)')).toHaveValue(oldName);
     await page.getByLabel('Name (English)').fill(newName);
     await page.getByRole('button', { name: 'Save changes' }).click();
@@ -211,6 +213,7 @@ test.describe('admin audit log', () => {
       .getByRole('link', { name: 'Edit' })
       .click();
     await expect(page).toHaveURL(/\/machines\/[^/]+\/edit$/);
+    await waitForHydration(page);
     await expect(page.getByLabel('Full description (English)')).toHaveValue('');
     await page.getByLabel('Full description (English)').fill(description);
     await page.getByRole('button', { name: 'Save changes' }).click();
@@ -250,6 +253,7 @@ test.describe('admin audit log', () => {
     const agentAddress = `${TAG} Industrial Road`;
 
     await page.goto(`${ADMIN_URL}/en/agents/new`);
+    await waitForHydration(page);
     await page.getByLabel('Agent name (English)').fill(agentName);
     await page.getByLabel('Agent name (Arabic)').fill(agentNameAr);
     await page.getByLabel('Country (English)').fill(countryEn);
@@ -339,6 +343,7 @@ test.describe('admin audit log', () => {
     });
 
     await page.goto(`${ADMIN_URL}/en/settings`);
+    await waitForHydration(page);
     // Wait for the client form to hydrate before typing: filling the
     // server-rendered value first can land before react-hook-form attaches,
     // and the hydrated default then gets concatenated with the typed text.
@@ -427,6 +432,7 @@ test.describe('admin audit log', () => {
     await expect(listRow).toHaveCount(1);
     await listRow.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/maintenance-categories\/[^/]+\/edit$/);
+    await waitForHydration(page);
     await expect(page.getByLabel('Name')).toHaveValue(oldName);
     await page.getByLabel('Name').fill(newName);
     await page.getByRole('button', { name: 'Save changes' }).click();

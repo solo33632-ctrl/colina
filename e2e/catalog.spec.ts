@@ -10,8 +10,10 @@ import {
   cleanupFixtures,
   createCategory,
   createMachine,
+  deleteMachineBySlug,
   widePhoto,
 } from './db-fixture';
+import { waitForHydration } from './admin-form';
 
 const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 const en = copyFor('en');
@@ -943,6 +945,7 @@ test.describe('optional machine long-form fields', () => {
 
     try {
       await page.goto(`${ADMIN_URL}/en/machines/new`);
+      await waitForHydration(page);
       await page.getByLabel('Name (English)').fill(name);
       await page.getByLabel('Name (Arabic)').fill(`آلة ${stamp}`);
       await page.getByLabel('Slug').fill(stamp);
@@ -975,20 +978,12 @@ test.describe('optional machine long-form fields', () => {
       await expect(page.locator('#description-heading')).toBeVisible();
       await expect(page.locator('#specs-heading')).toBeVisible();
     } finally {
-      await page.goto(`${ADMIN_URL}/en/machines?q=${stamp}`);
-      await page
-        .locator('tr', { hasText: name })
-        .getByRole('link', { name: 'Edit' })
-        .click();
-      await expect(page).toHaveURL(/\/machines\/[^/]+\/edit$/);
-      await page
-        .getByRole('button', { name: new RegExp(`^Delete ${name}`) })
-        .click();
-      await page
-        .getByRole('dialog')
-        .getByRole('button', { name: 'Delete' })
-        .click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/en/machines`);
+      // Cleanup must not navigate after the test body: on a timeout Playwright
+      // has already closed the browser, and `page.goto` here then fails with
+      // "Target page, context or browser has been closed" — masking the real
+      // failure. Delete the row directly instead; it is the same row, and the
+      // delete dialog is not what this test is about.
+      deleteMachineBySlug(stamp);
       await context.close();
     }
   });

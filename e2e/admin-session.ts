@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DATABASE_URL, resetRateLimitBuckets } from './db-fixture';
+import { waitForHydration } from './admin-form';
 
 export const ADMIN_URL = process.env.ADMIN_URL ?? 'http://localhost:3001';
 export const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@example.com';
@@ -113,6 +114,7 @@ export async function loginState(
   const page = await context.newPage();
   try {
     await page.goto(`${ADMIN_URL}/${locale.id}/login`);
+    await waitForHydration(page);
     await page.getByLabel(locale.email).fill(email);
     await page.getByLabel(locale.password).fill(password);
     await page.getByRole('button', { name: locale.submit }).click();

@@ -6,6 +6,7 @@ import {
   copyFor,
   loginState,
 } from './admin-session';
+import { waitForHydration } from './admin-form';
 import {
   createContactLeads,
   createMaintenanceLeads,
@@ -130,6 +131,9 @@ test.describe('admin leads inbox', () => {
       page.getByRole('heading', { name: 'Leads', level: 1 })
     ).toBeVisible();
     await expect(page.getByText(/Total requests: \d+/)).toBeVisible();
+    // The search box is server-rendered; type only after hydration or the
+    // first fill can be reconciled back to its empty value.
+    await waitForHydration(page);
 
     const tabs = page.getByRole('navigation', { name: 'Filter by type' });
     for (const label of ['All', 'Contact', 'Maintenance', 'Quotes']) {

@@ -274,6 +274,19 @@ export function createMachine(fixture: MachineFixture) {
 }
 
 /**
+ * Deletes one machine by slug. Used where cleanup must not depend on the
+ * browser still being open (a `finally` that runs after a test timeout).
+ * MachineImage rows cascade; audit rows reference the slug only as text.
+ */
+export function deleteMachineBySlug(slug: string) {
+  runInDb(`
+    await prisma.machine.deleteMany({
+      where: { slug: ${JSON.stringify(slug)} },
+    });
+  `);
+}
+
+/**
  * Like `runInDb`, but hands back the value the body `return`s.
  *
  * `runInDb` discards stdout, which is right for a fixture that only writes. A

@@ -10,6 +10,7 @@ import {
   copyFor,
   loginState,
 } from './admin-session';
+import { waitForHydration } from './admin-form';
 import { createAgents, deleteAgentsByTag } from './db-fixture';
 
 // Stage 37b: the redesigned admin agents list + form.
@@ -177,6 +178,7 @@ test.describe('admin agents list and form', () => {
   }) => {
     const { context, page } = await signedInPage(browser, 'en');
     await page.goto(`${ADMIN_URL}/en/agents/new`);
+    await waitForHydration(page);
 
     await page.getByLabel('Agent name (English)').fill(NAME_F1);
     await page.getByLabel('Agent name (Arabic)').fill('وكيل النموذج');
@@ -208,6 +210,7 @@ test.describe('admin agents list and form', () => {
   }) => {
     const { context, page } = await signedInPage(browser, 'en');
     await page.goto(`${ADMIN_URL}/en/agents/new`);
+    await waitForHydration(page);
 
     await page.getByLabel('Agent name (English)').fill(NAME_F2);
     await page.getByLabel('Agent name (Arabic)').fill('وكيل مرفوض');
@@ -251,6 +254,7 @@ test.describe('admin agents list and form', () => {
     // without names fails and stays on the edit page.
     await legacy.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/en\/agents\/.+\/edit/);
+    await waitForHydration(page);
     await expect(page.getByLabel('Agent name (English)')).toHaveValue('');
     await expect(page.getByLabel('Agent name (Arabic)')).toHaveValue('');
 

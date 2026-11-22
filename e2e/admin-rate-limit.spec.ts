@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ADMIN_URL, copyFor } from './admin-session';
+import { waitForHydration } from './admin-form';
 import {
   DATABASE_URL,
   resetRateLimitBuckets,
@@ -29,6 +30,7 @@ test.describe('durable login rate limit', () => {
 
     try {
       await page.goto(`${ADMIN_URL}/en/login`);
+      await waitForHydration(page);
 
       for (let attempt = 1; attempt <= LOGIN_MAX_ATTEMPTS + 1; attempt++) {
         await page.getByLabel(en.email).fill('rate-limit-e2e@example.com');

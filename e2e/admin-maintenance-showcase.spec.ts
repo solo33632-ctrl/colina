@@ -11,6 +11,7 @@ import {
   deleteMaintenanceCategoriesByTag,
   deleteShowcasesByTag,
 } from './db-fixture';
+import { openPasteUrl, waitForHydration } from './admin-form';
 
 const en = copyFor('en');
 const ar = copyFor('ar');
@@ -65,7 +66,7 @@ async function pastePhoto(
     which === 'before'
       ? page.getByRole('button', { name: 'Paste a URL for the before photo' })
       : page.getByRole('button', { name: 'Paste a URL for the after photo' });
-  await toggle.click();
+  await openPasteUrl(toggle, page.locator(`#showcase-${which}-url`));
   await page.locator(`#showcase-${which}-url`).fill(url);
 }
 
@@ -111,6 +112,10 @@ test.describe('maintenance showcase CRUD', () => {
     // <a> whenever it is given an href.
     await page.getByRole('link', { name: 'New machine' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/maintenance-showcase/new`);
+    // The click can land as a full document load if the list was not hydrated
+    // yet; wait for the form before the first fill, or hydration can reconcile
+    // the English name back to its empty server-rendered value.
+    await waitForHydration(page);
     await page.getByLabel('Machine name').fill(NAME_EN);
     await page.getByLabel('اسم الماكينة').fill(NAME_AR);
     await page.getByLabel('Category').selectOption({
@@ -121,6 +126,7 @@ test.describe('maintenance showcase CRUD', () => {
       .fill('E2E description of the finished job, over ten characters.');
     await pastePhoto(page, 'before', BEFORE_PHOTO);
     await pastePhoto(page, 'after', AFTER_PHOTO);
+    await expect(page.getByLabel('Machine name')).toHaveValue(NAME_EN);
     await page.getByRole('button', { name: 'Create machine' }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/en/maintenance-showcase`);
 
@@ -146,16 +152,19 @@ test.describe('maintenance showcase CRUD', () => {
     // being read, the way an admin replacing one half would.
     await row.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/maintenance-showcase\/[^/]+\/edit$/);
+    await waitForHydration(page);
     await expect(page.getByLabel('Machine name')).toHaveValue(NAME_EN);
     await expect(
       page.getByLabel('Category').locator('option:checked')
     ).toHaveText(CATEGORY_NAME_EN);
-    await page
-      .getByRole('button', { name: 'Paste a URL for the before photo' })
-      .click();
-    await page
-      .getByRole('button', { name: 'Paste a URL for the after photo' })
-      .click();
+    await openPasteUrl(
+      page.getByRole('button', { name: 'Paste a URL for the before photo' }),
+      page.locator('#showcase-before-url')
+    );
+    await openPasteUrl(
+      page.getByRole('button', { name: 'Paste a URL for the after photo' }),
+      page.locator('#showcase-after-url')
+    );
     await expect(page.locator('#showcase-before-url')).toHaveValue(
       BEFORE_PHOTO
     );
@@ -198,6 +207,7 @@ test.describe('maintenance showcase CRUD', () => {
     await stubPhotos(page);
 
     await page.goto(`${ADMIN_URL}/en/maintenance-showcase/new`);
+    await waitForHydration(page);
     await page.getByLabel('Machine name').fill(`${NAME_EN} no-photo`);
     await page.getByLabel('اسم الماكينة').fill(`${NAME_AR} بدون صورة`);
     await page.getByLabel('Category').selectOption({

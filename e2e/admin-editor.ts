@@ -220,6 +220,7 @@ export type StoredMachine = {
   slug: string;
   nameEn: string;
   createdById: string | null;
+  isPublished: boolean;
   images: string[];
 };
 
@@ -228,6 +229,7 @@ export type StoredCategory = {
   slug: string;
   nameEn: string;
   createdById: string | null;
+  isPublished: boolean;
   image: string | null;
 };
 
@@ -240,6 +242,7 @@ export function storedMachine(slug: string): StoredMachine | null {
         slug: true,
         nameEn: true,
         createdById: true,
+        isPublished: true,
         images: { select: { url: true }, orderBy: { position: 'asc' } },
       },
     });
@@ -256,6 +259,7 @@ export function storedCategory(slug: string): StoredCategory | null {
         slug: true,
         nameEn: true,
         createdById: true,
+        isPublished: true,
         image: true,
       },
     });

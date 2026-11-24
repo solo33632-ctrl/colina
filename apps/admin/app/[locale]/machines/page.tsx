@@ -9,6 +9,10 @@ import { DeleteMachineButton } from '@/components/delete-machine-button';
 import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
 import { ListPagination } from '@/components/list-pagination';
+import {
+  EditorOriginBadge,
+  PublishStatusBadge,
+} from '@/components/publish-status-badge';
 import { SaveBanner } from '@/components/save-banner';
 import { sectionMetadata } from '@/lib/metadata';
 import { guardPage } from '@/lib/page-guard';
@@ -26,10 +30,15 @@ export async function generateMetadata({
 // paginated; the other five lists are bounded (see the phase notes).
 const PAGE_SIZE = 20;
 
+// Stage 4e: the one extra list filter. "Awaiting review" is exactly what the
+// Stage brief defines — an unpublished row created by an EDITOR.
+const AWAITING_REVIEW = 'awaiting-review';
+
 type Props = {
   searchParams: Promise<{
     q?: string;
     category?: string;
+    status?: string;
     page?: string;
     saved?: string;
   }>;
@@ -43,19 +52,26 @@ export default async function MachinesPage({ searchParams }: Props) {
   const {
     q,
     category: categoryFilter,
+    status: statusParam,
     page: pageParam,
     saved,
   } = await searchParams;
 
   const query = (q ?? '').trim();
-  const isFiltered = query.length > 0 || Boolean(categoryFilter);
+  const awaitingReview = statusParam === AWAITING_REVIEW;
+  const isFiltered =
+    query.length > 0 || Boolean(categoryFilter) || awaitingReview;
 
   // Search and the category filter combine: both narrow the same `where`.
   // Stage 4a: an editor's list is narrowed in the database to rows it created,
   // not filtered after loading. A null creator never matches an editor id.
+  // Stage 4e: "Awaiting review" is an editor's drafts, filtered in SQL too.
   const where = {
     ...(session.user.role === 'EDITOR' ? { createdById: session.user.id } : {}),
     ...(categoryFilter ? { categoryId: categoryFilter } : {}),
+    ...(awaitingReview
+      ? { isPublished: false, createdBy: { role: 'EDITOR' as const } }
+      : {}),
     ...(query
       ? {
           OR: [
@@ -92,6 +108,7 @@ export default async function MachinesPage({ searchParams }: Props) {
     skip: (page - 1) * PAGE_SIZE,
     include: {
       category: { select: { nameEn: true, nameAr: true } },
+      createdBy: { select: { role: true } },
       images: { select: { url: true }, take: 1, orderBy: { position: 'asc' } },
     },
   });
@@ -136,6 +153,21 @@ export default async function MachinesPage({ searchParams }: Props) {
           : row.category.nameEn || row.category.nameAr,
     },
     {
+      key: 'status',
+      header: t('list.status'),
+      className: 'whitespace-nowrap',
+      render: (row) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <PublishStatusBadge published={row.isPublished}>
+            {row.isPublished ? common('published') : common('draft')}
+          </PublishStatusBadge>
+          {row.createdBy?.role === 'EDITOR' ? (
+            <EditorOriginBadge>{common('createdByEditor')}</EditorOriginBadge>
+          ) : null}
+        </div>
+      ),
+    },
+    {
       key: 'actions',
       header: common('actions'),
       className: 'text-end',
@@ -163,6 +195,7 @@ export default async function MachinesPage({ searchParams }: Props) {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
     if (categoryFilter) params.set('category', categoryFilter);
+    if (awaitingReview) params.set('status', AWAITING_REVIEW);
     params.set('page', String(target));
     return `/machines?${params.toString()}`;
   };
@@ -205,6 +238,25 @@ export default async function MachinesPage({ searchParams }: Props) {
                     : category.nameEn || category.nameAr}
                 </option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="machine-status-filter"
+              className="mb-1 block text-sm font-medium text-stone-700"
+            >
+              {common('filterByStatus')}
+            </label>
+            <select
+              id="machine-status-filter"
+              name="status"
+              defaultValue={awaitingReview ? AWAITING_REVIEW : ''}
+              className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
+            >
+              <option value="">{common('all')}</option>
+              <option value={AWAITING_REVIEW}>
+                {t('list.awaitingReview')}
+              </option>
             </select>
           </div>
         </ListFilters>

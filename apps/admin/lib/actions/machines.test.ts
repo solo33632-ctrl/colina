@@ -54,6 +54,10 @@ const SESSION = {
   user: { id: 'admin-1', email: 'admin@example.com', role: 'SUPER_ADMIN' },
 };
 
+const EDITOR_SESSION = {
+  user: { id: 'editor-1', email: 'editor@example.com', role: 'EDITOR' },
+};
+
 const VALID_INPUT = {
   nameAr: 'آلة التعبئة',
   nameEn: 'Filling machine',
@@ -94,6 +98,10 @@ const STORED_MACHINE = {
   specsEn: '',
   datasheetUrl:
     'https://res.cloudinary.com/test-cloud/raw/upload/datasheet.pdf',
+  isPublished: true,
+  // Stage 4e: the update's before-row also selects the machines that point at
+  // this one, so their related strips are purged when it goes to draft.
+  relatedTo: [] as { slug: string }[],
 };
 
 const label = (en: string, ar: string) => ({
@@ -318,6 +326,113 @@ describe('updateMachine', () => {
     expect(doubles().machine.update).not.toHaveBeenCalled();
     expect(doubles().image.deleteMany).not.toHaveBeenCalled();
     expect(doubles().auditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('publication is enforced by the Server Action (Stage 4e)', () => {
+  it('saves an editor create as draft even when the payload says published', async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+
+    const result = await createMachine({
+      ...VALID_INPUT,
+      relatedIds: [],
+      isPublished: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(doubles().machine.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ isPublished: false }),
+      })
+    );
+  });
+
+  it('returns an editor edit of a published machine to draft and audits the change', async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      isPublished: true,
+      createdById: EDITOR_SESSION.user.id,
+      category: { slug: 'machine-category' },
+      images: [],
+      relatedMachines: [],
+    });
+    doubles().machine.update.mockResolvedValue({
+      ...STORED_MACHINE,
+      isPublished: false,
+      category: { slug: 'machine-category' },
+    });
+
+    const result = await updateMachine('machine-1', {
+      ...VALID_INPUT,
+      relatedIds: [],
+      images: [],
+      isPublished: true,
+    });
+
+    expect(result).toEqual({ ok: true, slug: 'filling-machine' });
+    expect(doubles().machine.update.mock.calls[0][0].data.isPublished).toBe(
+      false
+    );
+    const details = doubles().auditLog.create.mock.calls[0][0].data.details;
+    expect(details.changes).toContainEqual({
+      field: 'isPublished',
+      labelKey: 'isPublished',
+      type: 'boolean',
+      from: true,
+      to: false,
+    });
+  });
+
+  it('leaves a full admin in control of the value on create and update', async () => {
+    await createMachine({
+      ...VALID_INPUT,
+      relatedIds: [],
+      isPublished: false,
+    });
+    expect(doubles().machine.create.mock.calls[0][0].data.isPublished).toBe(
+      false
+    );
+
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      isPublished: true,
+      category: { slug: 'machine-category' },
+      images: [],
+      relatedMachines: [],
+    });
+    doubles().machine.update.mockResolvedValue({
+      ...STORED_MACHINE,
+      isPublished: false,
+      category: { slug: 'machine-category' },
+    });
+
+    await updateMachine('machine-1', {
+      ...VALID_INPUT,
+      relatedIds: [],
+      images: [],
+      isPublished: false,
+    });
+    expect(doubles().machine.update.mock.calls[0][0].data.isPublished).toBe(
+      false
+    );
+
+    // An omitted switch (a non-form caller) preserves the stored value.
+    findUnique.mockResolvedValue({
+      ...STORED_MACHINE,
+      isPublished: false,
+      category: { slug: 'machine-category' },
+      images: [],
+      relatedMachines: [],
+    });
+    await updateMachine('machine-1', {
+      ...VALID_INPUT,
+      relatedIds: [],
+      images: [],
+    });
+    expect(doubles().machine.update.mock.calls[1][0].data.isPublished).toBe(
+      false
+    );
   });
 });
 

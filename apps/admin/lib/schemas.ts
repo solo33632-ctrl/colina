@@ -145,6 +145,10 @@ export function categoryInputSchema(messages: CategoryFieldMessages) {
     // grandfathers an unchanged legacy value; the client schema only carries
     // the field and its generic message.
     image: z.string().optional(),
+    // Stage 4e: the full admin's publish switch. Optional so the editor's
+    // form (which has no control) still validates; the Server Action decides
+    // the stored value from the role, not from this field.
+    isPublished: z.boolean().optional(),
   });
 }
 
@@ -221,6 +225,10 @@ export function machineInputSchema(messages: MachineFieldMessages) {
     specsAr: z.string().optional(),
     specsEn: z.string().optional(),
     datasheetUrl: z.string().optional(),
+    // Stage 4e: the full admin's publish switch. Optional so the editor's
+    // form (which has no control) still validates; the Server Action decides
+    // the stored value from the role, not from this field.
+    isPublished: z.boolean().optional(),
     images: z.array(
       z.object({
         url: z.string().min(1, { error: messages.imageUrl }),

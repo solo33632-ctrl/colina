@@ -73,6 +73,7 @@ export default async function EditMachinePage({ params }: Props) {
           machineId={machine.id}
           categories={categories}
           machines={machines}
+          canPublish={session.user.role === 'SUPER_ADMIN'}
           defaultValues={{
             nameAr: machine.nameAr,
             nameEn: machine.nameEn,
@@ -90,6 +91,7 @@ export default async function EditMachinePage({ params }: Props) {
               position: image.position,
             })),
             relatedIds: machine.relatedMachines.map((related) => related.id),
+            isPublished: machine.isPublished,
           }}
         />
         <DeleteMachineButton

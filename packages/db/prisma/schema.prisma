@@ -56,6 +56,10 @@ model MachineCategory {
   descriptionEn String     @db.Text
   image         String?
   machines      Machine[]
+  // Stage 4e: an editor's category is a draft until a full admin publishes
+  // it. Default true so every existing row keeps its current public state;
+  // the Server Actions force false for an EDITOR write.
+  isPublished   Boolean    @default(true)
   // Stage 4a: the admin account that created this category. Null for rows
   // that predate the column (and for a creator account later deleted), which
   // means "not owned by any editor": only a full admin can modify it.
@@ -63,6 +67,7 @@ model MachineCategory {
   createdBy     AdminUser? @relation("MachineCategoryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([createdById])
+  @@index([isPublished])
 }
 
 model Machine {
@@ -96,6 +101,10 @@ model Machine {
   // seed both directions when the relation should read as symmetric.
   relatedMachines    Machine[]       @relation("RelatedMachines")
   relatedTo          Machine[]       @relation("RelatedMachines")
+  // Stage 4e: an editor's machine is a draft until a full admin publishes
+  // it. Default true so every existing row keeps its current public state;
+  // the Server Actions force false for an EDITOR write.
+  isPublished        Boolean         @default(true)
   // Stage 4a: the admin account that created this machine. Null for rows
   // that predate the column (and for a creator account later deleted), which
   // means "not owned by any editor": only a full admin can modify it.
@@ -104,6 +113,7 @@ model Machine {
 
   @@index([categoryId])
   @@index([createdById])
+  @@index([isPublished])
 }
 
 model MachineImage {

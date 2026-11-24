@@ -69,6 +69,12 @@ export async function createCategory(
           descriptionAr: parsed.data.descriptionAr ?? '',
           descriptionEn: parsed.data.descriptionEn ?? '',
           image: parsed.data.image || null,
+          // Stage 4e: an editor's new category is always a draft; a full
+          // admin keeps the form's switch (default publish).
+          isPublished:
+            session.user.role === 'EDITOR'
+              ? false
+              : (parsed.data.isPublished ?? true),
         },
       });
       await tx.auditLog.create({
@@ -135,6 +141,10 @@ export async function updateCategory(
           descriptionAr: true,
           descriptionEn: true,
           image: true,
+          isPublished: true,
+          // Stage 4e: a category becoming a draft hides every machine detail
+          // page in it, so those cached paths are purged too.
+          machines: { select: { slug: true } },
         },
       });
       if (!existing) {
@@ -172,6 +182,14 @@ export async function updateCategory(
           descriptionAr: parsed.data.descriptionAr ?? '',
           descriptionEn: parsed.data.descriptionEn ?? '',
           image: parsed.data.image || null,
+          // Stage 4e: an editor's save always lands in draft, even when the
+          // stored row was published — the item goes back for review. A full
+          // admin keeps whatever the form says, or the current value when the
+          // field is omitted from a non-form call.
+          isPublished:
+            session.user.role === 'EDITOR'
+              ? false
+              : (parsed.data.isPublished ?? existing.isPublished),
         },
         select: {
           nameAr: true,
@@ -180,6 +198,7 @@ export async function updateCategory(
           descriptionAr: true,
           descriptionEn: true,
           image: true,
+          isPublished: true,
         },
       });
       await tx.auditLog.create({
@@ -190,7 +209,12 @@ export async function updateCategory(
           details: buildChanges(existing, row, CATEGORY_AUDIT_SPEC),
         },
       });
-      return { status: 'ok' as const, row, previousSlug: existing.slug };
+      return {
+        status: 'ok' as const,
+        row,
+        previousSlug: existing.slug,
+        machineSlugs: existing.machines.map((machine) => machine.slug),
+      };
     });
     if (outcome.status === 'not_found') {
       return { ok: false, error: 'not_found' };
@@ -204,13 +228,20 @@ export async function updateCategory(
     }
 
     // Affected public pages: home grid + listing + this category's detail
-    // (both locales; old slug too when the slug itself changed).
+    // (both locales; old slug too when the slug itself changed), plus every
+    // machine detail in the category because the category rule can hide or
+    // reveal all of them at once.
     const { row: updated, previousSlug } = outcome;
     const detailPaths =
       previousSlug === updated.slug
         ? [`/categories/${updated.slug}`]
         : [`/categories/${previousSlug}`, `/categories/${updated.slug}`];
-    revalidateWebPaths(['/', '/categories', ...detailPaths]);
+    revalidateWebPaths([
+      '/',
+      '/categories',
+      ...detailPaths,
+      ...outcome.machineSlugs.map((slug) => `/machines/${slug}`),
+    ]);
     return { ok: true, slug: updated.slug };
   } catch (error) {
     if (

@@ -6,6 +6,7 @@ import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { CategoryCard } from '@/components/category-card';
 import { PageViewTracker } from '@/components/page-view-tracker';
+import { PUBLIC_CATEGORY_WHERE } from '@/lib/public-content';
 import { routing } from '@/i18n/routing';
 import { localeAlternates } from '@/lib/seo';
 
@@ -40,6 +41,7 @@ export default async function CategoriesPage({ params }: Props) {
 
   const t = await getTranslations('Categories');
   const categories = await prisma.machineCategory.findMany({
+    where: PUBLIC_CATEGORY_WHERE,
     orderBy: { createdAt: 'asc' },
   });
 

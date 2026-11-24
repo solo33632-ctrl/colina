@@ -10,6 +10,7 @@ import { Field, inputClasses } from './form-fields';
 import { FormActions } from './form-actions';
 import { GalleryAddTile } from './gallery-add-tile';
 import { Icon } from './icons';
+import { PublishStatusBadge } from './publish-status-badge';
 import { UploadField } from './upload-field';
 import { useAutoSlug } from './use-auto-slug';
 import { createMachine, updateMachine } from '@/lib/actions/machines';
@@ -32,6 +33,8 @@ type MachineFormProps = {
   categories: CategoryOption[];
   machines: MachineOption[];
   defaultValues?: MachineInput;
+  /** A full admin sees the publish switch; an editor sees the review note. */
+  canPublish: boolean;
 };
 
 export function MachineForm({
@@ -40,6 +43,7 @@ export function MachineForm({
   categories,
   machines,
   defaultValues,
+  canPublish,
 }: MachineFormProps) {
   const t = useTranslations('Machines');
   const common = useTranslations('Common');
@@ -80,6 +84,7 @@ export function MachineForm({
       datasheetUrl: '',
       images: [],
       relatedIds: [],
+      isPublished: canPublish,
     },
   });
 
@@ -93,6 +98,7 @@ export function MachineForm({
   const datasheetValue = useWatch({ control, name: 'datasheetUrl' });
   const imagesValue = useWatch({ control, name: 'images' });
   const nameEnValue = useWatch({ control, name: 'nameEn' });
+  const isPublishedValue = useWatch({ control, name: 'isPublished' });
 
   const { markSlugTouched } = useAutoSlug<MachineInput>({
     enabled: mode === 'create',
@@ -220,6 +226,46 @@ export function MachineForm({
               </select>
             </Field>
           </div>
+        </Card>
+        <Card title={common('visibility')}>
+          {canPublish ? (
+            <>
+              <label
+                htmlFor="machine-published"
+                className="flex w-fit cursor-pointer items-center gap-3"
+              >
+                <div className="relative grid place-items-center">
+                  <input
+                    id="machine-published"
+                    type="checkbox"
+                    className="peer sr-only"
+                    {...register('isPublished')}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none relative h-6 w-11 rounded-full bg-stone-300 transition-colors peer-checked:bg-brand-700 after:absolute after:top-0.5 after:start-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5 rtl:peer-checked:after:-translate-x-5 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600"
+                  />
+                </div>
+                <span className="text-sm font-medium text-stone-900">
+                  {t('form.publish')}
+                </span>
+              </label>
+              <p className="mt-2 text-sm text-stone-500">
+                {t('form.publishHelp')}
+              </p>
+            </>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <PublishStatusBadge published={Boolean(isPublishedValue)}>
+                {isPublishedValue ? common('published') : common('draft')}
+              </PublishStatusBadge>
+              <p className="text-sm text-stone-600">
+                {isPublishedValue
+                  ? t('form.editorPublishedNote')
+                  : t('form.editorDraftNote')}
+              </p>
+            </div>
+          )}
         </Card>
         <Card title={t('form.relatedLegend')}>
           {relatedOptions.length === 0 ? (

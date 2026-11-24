@@ -43,6 +43,10 @@ const SESSION = {
   user: { id: 'admin-1', email: 'admin@example.com', role: 'SUPER_ADMIN' },
 };
 
+const EDITOR_SESSION = {
+  user: { id: 'editor-1', email: 'editor@example.com', role: 'EDITOR' },
+};
+
 const VALID_INPUT = {
   nameAr: 'فئة الآلات',
   nameEn: 'Machine category',
@@ -60,6 +64,10 @@ const STORED_CATEGORY = {
   descriptionAr: 'وصف الفئة',
   descriptionEn: 'Category description',
   image: 'https://res.cloudinary.com/test-cloud/category.png',
+  isPublished: true,
+  // Stage 4e: the update's before-row also selects the category's machines so
+  // the action can purge their public detail pages when this flag changes.
+  machines: [] as { slug: string }[],
 };
 
 const label = (en: string, ar: string) => ({
@@ -76,6 +84,89 @@ const doubles = () => {
 };
 
 const findUnique = doubles().category.findUnique;
+
+describe('publication is enforced by the Server Action (Stage 4e)', () => {
+  it('saves an editor create as draft even when the payload says published', async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+
+    const result = await createCategory({
+      ...VALID_INPUT,
+      isPublished: true,
+    });
+
+    expect(result).toEqual({ ok: true, slug: 'machine-category' });
+    expect(doubles().category.create.mock.calls[0][0].data.isPublished).toBe(
+      false
+    );
+  });
+
+  it('returns an editor edit of a published category to draft and audits the change', async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(EDITOR_SESSION as never);
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
+      isPublished: true,
+      createdById: EDITOR_SESSION.user.id,
+    });
+    doubles().category.update.mockResolvedValue({
+      ...STORED_CATEGORY,
+      isPublished: false,
+    });
+
+    const result = await updateCategory('cat-1', {
+      ...VALID_INPUT,
+      isPublished: true,
+    });
+
+    expect(result).toEqual({ ok: true, slug: 'machine-category' });
+    expect(doubles().category.update.mock.calls[0][0].data.isPublished).toBe(
+      false
+    );
+    const details = doubles().auditLog.create.mock.calls[0][0].data.details;
+    expect(details.changes).toContainEqual({
+      field: 'isPublished',
+      labelKey: 'isPublished',
+      type: 'boolean',
+      from: true,
+      to: false,
+    });
+  });
+
+  it('leaves a full admin in control of the value on create and update', async () => {
+    await createCategory({
+      ...VALID_INPUT,
+      isPublished: false,
+    });
+    expect(doubles().category.create.mock.calls[0][0].data.isPublished).toBe(
+      false
+    );
+
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
+      isPublished: true,
+    });
+    doubles().category.update.mockResolvedValue({
+      ...STORED_CATEGORY,
+      isPublished: false,
+    });
+    await updateCategory('cat-1', {
+      ...VALID_INPUT,
+      isPublished: false,
+    });
+    expect(doubles().category.update.mock.calls[0][0].data.isPublished).toBe(
+      false
+    );
+
+    // An omitted switch (a non-form caller) preserves the stored value.
+    findUnique.mockResolvedValue({
+      ...STORED_CATEGORY,
+      isPublished: false,
+    });
+    await updateCategory('cat-1', VALID_INPUT);
+    expect(doubles().category.update.mock.calls[1][0].data.isPublished).toBe(
+      false
+    );
+  });
+});
 
 // Stage 4c: the media allowlist reads the configured cloud at call time.
 const ORIGINAL_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;

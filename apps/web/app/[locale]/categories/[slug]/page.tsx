@@ -10,6 +10,7 @@ import { MachineSummaryCard } from '@/components/machine-summary-card';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { Reveal } from '@/components/reveal';
 import { routing } from '@/i18n/routing';
+import { PUBLIC_CATEGORY_WHERE } from '@/lib/public-content';
 import {
   buildOpenGraph,
   buildTwitter,
@@ -27,6 +28,7 @@ type Props = {
 
 export async function generateStaticParams() {
   const categories = await prisma.machineCategory.findMany({
+    where: PUBLIC_CATEGORY_WHERE,
     select: { slug: true },
   });
   return categories.map((category) => ({ slug: category.slug }));
@@ -37,8 +39,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!hasLocale(routing.locales, locale)) {
     notFound();
   }
-  const category = await prisma.machineCategory.findUnique({
-    where: { slug },
+  const category = await prisma.machineCategory.findFirst({
+    where: { slug, ...PUBLIC_CATEGORY_WHERE },
     select: {
       nameAr: true,
       nameEn: true,
@@ -85,10 +87,11 @@ export default async function CategoryDetailPage({ params }: Props) {
   const t = await getTranslations('CategoryPage');
   const nav = await getTranslations('Nav');
   const card = await getTranslations('MachineCard');
-  const category = await prisma.machineCategory.findUnique({
-    where: { slug },
+  const category = await prisma.machineCategory.findFirst({
+    where: { slug, ...PUBLIC_CATEGORY_WHERE },
     include: {
       machines: {
+        where: { isPublished: true },
         orderBy: { createdAt: 'asc' },
         include: {
           // The card labels each machine with its category, so the grid needs

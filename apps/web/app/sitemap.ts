@@ -2,6 +2,10 @@ import type { MetadataRoute } from 'next';
 import { prisma } from '@colina/db';
 import { getPathname } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
+import {
+  PUBLIC_CATEGORY_WHERE,
+  PUBLIC_MACHINE_WHERE,
+} from '@/lib/public-content';
 import { getBaseUrl } from '@/lib/seo';
 
 type Locale = (typeof routing.locales)[number];
@@ -51,9 +55,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [categories, machines, maintenanceLines, maintenanceItems] =
     await Promise.all([
       prisma.machineCategory.findMany({
+        where: PUBLIC_CATEGORY_WHERE,
         select: { slug: true, updatedAt: true },
       }),
-      prisma.machine.findMany({ select: { slug: true, updatedAt: true } }),
+      prisma.machine.findMany({
+        where: PUBLIC_MACHINE_WHERE,
+        select: { slug: true, updatedAt: true },
+      }),
       prisma.maintenanceCategory.findMany({
         select: { slug: true, updatedAt: true },
       }),

@@ -57,6 +57,7 @@ export default async function EditCategoryPage({ params }: Props) {
         <CategoryForm
           mode="edit"
           categoryId={category.id}
+          canPublish={session.user.role === 'SUPER_ADMIN'}
           defaultValues={{
             nameAr: category.nameAr,
             nameEn: category.nameEn,
@@ -64,6 +65,7 @@ export default async function EditCategoryPage({ params }: Props) {
             descriptionAr: category.descriptionAr,
             descriptionEn: category.descriptionEn,
             image: category.image ?? '',
+            isPublished: category.isPublished,
           }}
         />
         <DeleteCategoryButton

@@ -46,6 +46,7 @@ export default async function NewMachinePage() {
           mode="create"
           categories={categories}
           machines={machines}
+          canPublish={session.user.role === 'SUPER_ADMIN'}
         />
       </Container>
     </main>

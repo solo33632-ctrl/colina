@@ -137,6 +137,13 @@ export async function createMachine(
           specsAr: parsed.data.specsAr ?? '',
           specsEn: parsed.data.specsEn ?? '',
           datasheetUrl: parsed.data.datasheetUrl || null,
+          // Stage 4e: an editor's new machine is always a draft. The value in
+          // the payload is ignored, not rejected, so a crafted call cannot
+          // publish. A full admin keeps the form's switch (default publish).
+          isPublished:
+            session.user.role === 'EDITOR'
+              ? false
+              : (parsed.data.isPublished ?? true),
           // `featured` is deliberately not written. The column stays in the
           // schema untouched, and omitting it leaves whatever is stored there
           // exactly as it was, so a create takes the column's default and an
@@ -239,9 +246,13 @@ export async function updateMachine(
           specsAr: true,
           specsEn: true,
           datasheetUrl: true,
+          isPublished: true,
           category: { select: { slug: true } },
           images: { select: { url: true }, orderBy: { position: 'asc' } },
           relatedMachines: { select: { id: true } },
+          // Stage 4e: a machine going to draft must also disappear from the
+          // related strip on the machines that point at it.
+          relatedTo: { select: { slug: true } },
         },
       });
       if (!existing) {
@@ -279,6 +290,14 @@ export async function updateMachine(
           specsAr: parsed.data.specsAr ?? '',
           specsEn: parsed.data.specsEn ?? '',
           datasheetUrl: parsed.data.datasheetUrl || null,
+          // Stage 4e: an editor's save always lands in draft, even when the
+          // stored row was published — the item goes back for review. A full
+          // admin keeps whatever the form says, or the current value when the
+          // field is omitted from a non-form call.
+          isPublished:
+            session.user.role === 'EDITOR'
+              ? false
+              : (parsed.data.isPublished ?? existing.isPublished),
           // `featured` is deliberately not written. The column stays in the
           // schema untouched, and omitting it leaves whatever is stored there
           // exactly as it was, so a create takes the column's default and an
@@ -332,6 +351,7 @@ export async function updateMachine(
         row,
         previousSlug: existing.slug,
         previousCategorySlug: existing.category.slug,
+        relatedSlugs: existing.relatedTo.map((machine) => machine.slug),
       };
     });
     if (outcome.status === 'not_found') {
@@ -363,7 +383,12 @@ export async function updateMachine(
     // whenever the flag could have changed. Doing it unconditionally is
     // correct and cheap: the alternative (comparing old vs new) would only
     // save one cache purge on an infrequent edit.
-    revalidateWebPaths(['/', ...detailPaths, ...categoryPaths]);
+    revalidateWebPaths([
+      '/',
+      ...detailPaths,
+      ...categoryPaths,
+      ...outcome.relatedSlugs.map((slug) => `/machines/${slug}`),
+    ]);
     return { ok: true, slug: updated.slug };
   } catch (error) {
     if (isUniqueViolation(error)) {

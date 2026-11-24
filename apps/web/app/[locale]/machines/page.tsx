@@ -8,6 +8,10 @@ import { MachineSummaryCard } from '@/components/machine-summary-card';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { Link } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
+import {
+  PUBLIC_CATEGORY_WHERE,
+  PUBLIC_MACHINE_WHERE,
+} from '@/lib/public-content';
 import { localeAlternates } from '@/lib/seo';
 
 // The grid is filtered by the `?category=` query, which makes this page
@@ -66,6 +70,7 @@ export default async function MachinesPage({ params, searchParams }: Props) {
   // Every category, so the chip row is a complete way into the catalogue and
   // not just the categories that happen to hold a machine right now.
   const categories = await prisma.machineCategory.findMany({
+    where: PUBLIC_CATEGORY_WHERE,
     orderBy: { createdAt: 'asc' },
   });
 
@@ -83,7 +88,16 @@ export default async function MachinesPage({ params, searchParams }: Props) {
     // Pagination lands in a later stage. The filter is already a plain
     // `where` object, so adding `skip`/`take` here is a two-line change and
     // the chips need no rework.
-    where: activeSlug ? { category: { slug: activeSlug } } : undefined,
+    //
+    // Stage 4e: a draft machine — or a published machine in a draft category —
+    // never appears in the catalogue, and the category chip is filtered by the
+    // same predicate so the chip row cannot advertise an empty draft.
+    where: {
+      ...PUBLIC_MACHINE_WHERE,
+      ...(activeSlug
+        ? { category: { isPublished: true, slug: activeSlug } }
+        : {}),
+    },
     orderBy: [{ createdAt: 'asc' }],
     include: {
       category: true,

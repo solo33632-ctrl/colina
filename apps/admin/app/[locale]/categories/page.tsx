@@ -8,6 +8,10 @@ import { AdminThumb } from '@/components/admin-thumb';
 import { DeleteCategoryButton } from '@/components/delete-category-button';
 import { ListEmptyState } from '@/components/list-empty-state';
 import { ListFilters } from '@/components/list-filters';
+import {
+  EditorOriginBadge,
+  PublishStatusBadge,
+} from '@/components/publish-status-badge';
 import { SaveBanner } from '@/components/save-banner';
 import { sectionMetadata } from '@/lib/metadata';
 import { guardPage } from '@/lib/page-guard';
@@ -21,8 +25,12 @@ export async function generateMetadata({
   return sectionMetadata(locale, 'Categories', 'heading');
 }
 
+// Stage 4e: the one extra list filter — an unpublished row created by an
+// EDITOR, exactly as the brief defines "Awaiting review".
+const AWAITING_REVIEW = 'awaiting-review';
+
 type Props = {
-  searchParams: Promise<{ q?: string; saved?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; saved?: string }>;
 };
 
 export default async function CategoriesPage({ searchParams }: Props) {
@@ -30,9 +38,10 @@ export default async function CategoriesPage({ searchParams }: Props) {
   const locale = await getLocale();
   const t = await getTranslations('Categories');
   const common = await getTranslations('Common');
-  const { q, saved } = await searchParams;
+  const { q, status: statusParam, saved } = await searchParams;
   const query = (q ?? '').trim();
-  const isFiltered = query.length > 0;
+  const awaitingReview = statusParam === AWAITING_REVIEW;
+  const isFiltered = query.length > 0 || awaitingReview;
 
   const categories = await prisma.machineCategory.findMany({
     where: {
@@ -41,7 +50,11 @@ export default async function CategoriesPage({ searchParams }: Props) {
       ...(session.user.role === 'EDITOR'
         ? { createdById: session.user.id }
         : {}),
-      ...(isFiltered
+      // Stage 4e: draft-only rows from editors, filtered in SQL.
+      ...(awaitingReview
+        ? { isPublished: false, createdBy: { role: 'EDITOR' as const } }
+        : {}),
+      ...(isFiltered && query.length > 0
         ? {
             OR: [
               { nameEn: { contains: query, mode: 'insensitive' as const } },
@@ -51,7 +64,10 @@ export default async function CategoriesPage({ searchParams }: Props) {
         : {}),
     },
     orderBy: { createdAt: 'asc' },
-    include: { _count: { select: { machines: true } } },
+    include: {
+      _count: { select: { machines: true } },
+      createdBy: { select: { role: true } },
+    },
   });
   type CategoryRow = (typeof categories)[number];
 
@@ -82,6 +98,21 @@ export default async function CategoriesPage({ searchParams }: Props) {
       header: t('heading'),
       className: 'hidden md:table-cell text-stone-600',
       render: (row) => t('machineCount', { count: row._count.machines }),
+    },
+    {
+      key: 'status',
+      header: t('list.status'),
+      className: 'whitespace-nowrap',
+      render: (row) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <PublishStatusBadge published={row.isPublished}>
+            {row.isPublished ? common('published') : common('draft')}
+          </PublishStatusBadge>
+          {row.createdBy?.role === 'EDITOR' ? (
+            <EditorOriginBadge>{common('createdByEditor')}</EditorOriginBadge>
+          ) : null}
+        </div>
+      ),
     },
     {
       key: 'actions',
@@ -122,7 +153,27 @@ export default async function CategoriesPage({ searchParams }: Props) {
           query={query}
           filtered={isFiltered && categories.length > 0}
           clearHref="/categories"
-        />
+        >
+          <div>
+            <label
+              htmlFor="category-status-filter"
+              className="mb-1 block text-sm font-medium text-stone-700"
+            >
+              {common('filterByStatus')}
+            </label>
+            <select
+              id="category-status-filter"
+              name="status"
+              defaultValue={awaitingReview ? AWAITING_REVIEW : ''}
+              className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
+            >
+              <option value="">{common('all')}</option>
+              <option value={AWAITING_REVIEW}>
+                {t('list.awaitingReview')}
+              </option>
+            </select>
+          </div>
+        </ListFilters>
         {saved ? <SaveBanner message={common('saved')} /> : null}
         {categories.length === 0 ? (
           <ListEmptyState

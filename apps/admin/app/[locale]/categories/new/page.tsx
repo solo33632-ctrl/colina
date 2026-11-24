@@ -16,7 +16,7 @@ export async function generateMetadata({
 }
 
 export default async function NewCategoryPage() {
-  await guardPage('categories:write');
+  const session = await guardPage('categories:write');
   const [nav, t] = await Promise.all([
     getTranslations('Nav'),
     getTranslations('Categories'),
@@ -30,7 +30,10 @@ export default async function NewCategoryPage() {
           sectionLabel={nav('categories')}
           current={t('form.createTitle')}
         />
-        <CategoryForm mode="create" />
+        <CategoryForm
+          mode="create"
+          canPublish={session.user.role === 'SUPER_ADMIN'}
+        />
       </Container>
     </main>
   );

@@ -18,6 +18,7 @@ import {
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { PartnersStrip } from '@/components/partners-strip';
 import { WhyUsSection } from '@/components/why-us-section';
+import { PUBLIC_CATEGORY_WHERE } from '@/lib/public-content';
 import { routing } from '@/i18n/routing';
 import { getMaintenanceLines } from '@/lib/maintenance';
 import { localeAlternates, serializeJsonLd } from '@/lib/seo';
@@ -58,6 +59,7 @@ export default async function HomePage({ params }: Props) {
     // One extra row beyond the six the section prints, so the component can
     // tell whether a "View all" link is needed without a second query.
     prisma.machineCategory.findMany({
+      where: PUBLIC_CATEGORY_WHERE,
       orderBy: { createdAt: 'asc' },
       take: HOME_CATEGORY_LIMIT + 1,
     }),

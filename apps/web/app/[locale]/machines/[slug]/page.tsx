@@ -12,6 +12,7 @@ import { PageViewTracker } from '@/components/page-view-tracker';
 import { QuoteRequestPanel } from '@/components/quote-request-panel';
 import { RelatedMachines } from '@/components/related-machines';
 import { routing } from '@/i18n/routing';
+import { PUBLIC_MACHINE_WHERE } from '@/lib/public-content';
 import {
   absoluteImageUrl,
   buildOpenGraph,
@@ -31,6 +32,7 @@ type Props = {
 
 export async function generateStaticParams() {
   const machines = await prisma.machine.findMany({
+    where: PUBLIC_MACHINE_WHERE,
     select: { slug: true },
   });
   return machines.map((machine) => ({ slug: machine.slug }));
@@ -41,8 +43,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!hasLocale(routing.locales, locale)) {
     notFound();
   }
-  const machine = await prisma.machine.findUnique({
-    where: { slug },
+  const machine = await prisma.machine.findFirst({
+    where: { slug, ...PUBLIC_MACHINE_WHERE },
     include: { images: { orderBy: { position: 'asc' } } },
   });
   if (!machine) {
@@ -85,12 +87,15 @@ export default async function MachineDetailPage({ params }: Props) {
 
   const t = await getTranslations('MachinePage');
   const nav = await getTranslations('Nav');
-  const machine = await prisma.machine.findUnique({
-    where: { slug },
+  const machine = await prisma.machine.findFirst({
+    where: { slug, ...PUBLIC_MACHINE_WHERE },
     include: {
       category: true,
       images: { orderBy: { position: 'asc' } },
+      // Stage 4e: a curated relation to a draft machine must not leak it onto
+      // a public page.
       relatedMachines: {
+        where: PUBLIC_MACHINE_WHERE,
         include: {
           // Same reason as the category grid: the shared card prints the
           // machine's category as a label above its name.
@@ -142,7 +147,11 @@ export default async function MachineDetailPage({ params }: Props) {
     curated.length > 0
       ? curated.slice(0, RELATED_LIMIT)
       : await prisma.machine.findMany({
-          where: { categoryId: machine.categoryId, id: { not: machine.id } },
+          where: {
+            ...PUBLIC_MACHINE_WHERE,
+            categoryId: machine.categoryId,
+            id: { not: machine.id },
+          },
           orderBy: { createdAt: 'asc' },
           include: { images: { orderBy: { position: 'asc' }, take: 1 } },
           take: RELATED_LIMIT,

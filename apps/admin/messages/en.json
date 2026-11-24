@@ -87,6 +87,10 @@
       "forbidden": "Your account does not have access to this page."
     },
     "sectionBasic": "Basic info",
+    "visibility": "Visibility",
+    "published": "Published",
+    "draft": "Draft",
+    "createdByEditor": "Created by editor",
     "sectionArabic": "Arabic content",
     "sectionEnglish": "English content",
     "sectionFiles": "Images & files",
@@ -196,7 +200,15 @@
       "descriptionAr": "Description (Arabic)",
       "image": "Image (optional)",
       "submitCreate": "Create category",
-      "submitEdit": "Save changes"
+      "submitEdit": "Save changes",
+      "publish": "Published on the public site",
+      "publishHelp": "Unpublished categories are hidden from the public site, and so are their machines.",
+      "editorDraftNote": "This category is a draft. An administrator must publish it before it appears on the public site. New categories are saved as drafts.",
+      "editorPublishedNote": "This category is published. Saving changes returns it to draft for administrator review."
+    },
+    "list": {
+      "status": "Status",
+      "awaitingReview": "Awaiting review"
     },
     "validation": {
       "nameAr": "Arabic name must be at least 2 characters.",
@@ -279,7 +291,15 @@
       "relatedLegend": "Related machines",
       "noRelated": "No other machines exist yet.",
       "submitCreate": "Create machine",
-      "submitEdit": "Save changes"
+      "submitEdit": "Save changes",
+      "publish": "Published on the public site",
+      "publishHelp": "Unpublished machines are hidden from the public site.",
+      "editorDraftNote": "This machine is a draft. An administrator must publish it before it appears on the public site. New machines are saved as drafts.",
+      "editorPublishedNote": "This machine is published. Saving changes returns it to draft for administrator review."
+    },
+    "list": {
+      "status": "Status",
+      "awaitingReview": "Awaiting review"
     },
     "validation": {
       "nameAr": "Arabic name must be at least 2 characters.",

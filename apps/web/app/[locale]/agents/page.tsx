@@ -8,7 +8,7 @@ import { PageViewTracker } from '@/components/page-view-tracker';
 import { getPathname } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
 import { getAgents } from '@/lib/agents';
-import { localeAlternates } from '@/lib/seo';
+import { buildPageMetadata } from '@/lib/seo';
 
 // Interim freshness: revalidate DB-driven content hourly (see agent.md).
 export const revalidate = 3600;
@@ -23,11 +23,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     notFound();
   }
   const t = await getTranslations({ locale, namespace: 'AgentsPage' });
-  return {
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  return buildPageMetadata({
+    locale,
+    href: '/agents',
     title: t('heading'),
     description: t('subheading'),
-    alternates: await localeAlternates('/agents', locale),
-  };
+    siteName: site('name'),
+  });
 }
 
 // The public agents directory: every admin-recorded agent, grouped into

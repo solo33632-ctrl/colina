@@ -1,19 +1,20 @@
 import type { MetadataRoute } from 'next';
 import { getBaseUrl } from '@/lib/seo';
 
-// robots.txt (Next file convention). Allows everything under apps/web —
-// no public route is index-excluded. The admin panel is a separate
-// deployment that already sends noindex on every route.
+// robots.txt (Next file convention). Public pages stay crawlable; the API
+// endpoints are form/page-view plumbing, not documents, so they are excluded.
+// The admin panel is a separate deployment that disallows everything and
+// sends `X-Robots-Tag: noindex, nofollow` on every response.
 export default function robots(): MetadataRoute.Robots {
   const base = getBaseUrl();
   return {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: [],
+      disallow: ['/api'],
     },
-    // Without a configured site URL there is no honest sitemap location;
-    // omit the line instead of pointing crawlers at a guessed domain.
-    ...(base ? { sitemap: `${base}/sitemap.xml` } : {}),
+    // The base URL always exists (development fallback / production build
+    // failure), so the sitemap line is always honest.
+    sitemap: `${base}/sitemap.xml`,
   };
 }

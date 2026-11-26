@@ -6,16 +6,16 @@ import { prisma } from '@colina/db';
 import { Container } from '@colina/ui';
 import { Breadcrumb } from '@/components/breadcrumb';
 import { ImageWithFallback } from '@/components/image-with-fallback';
+import { JsonLd } from '@/components/json-ld';
 import { MachineSummaryCard } from '@/components/machine-summary-card';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { Reveal } from '@/components/reveal';
 import { routing } from '@/i18n/routing';
 import { PUBLIC_CATEGORY_WHERE } from '@/lib/public-content';
 import {
-  buildOpenGraph,
-  buildTwitter,
-  defaultShareImageUrl,
-  localeAlternates,
+  buildBreadcrumbList,
+  buildPageMetadata,
+  localizedValue,
   shareImageUrl,
 } from '@/lib/seo';
 
@@ -52,27 +52,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!category) {
     return {};
   }
-  const name = locale === 'ar' ? category.nameAr : category.nameEn;
-  const description =
-    locale === 'ar' ? category.descriptionAr : category.descriptionEn;
+  const name = localizedValue(locale, category.nameAr, category.nameEn);
   const site = await getTranslations({ locale, namespace: 'Site' });
-  const defaultImage = defaultShareImageUrl();
-  const image = shareImageUrl(category.image) ?? defaultImage;
-  const isDefaultImage = Boolean(image) && image === defaultImage;
-  return {
+  const description =
+    localizedValue(locale, category.descriptionAr, category.descriptionEn) ||
+    site('tagline');
+  const imageUrl = shareImageUrl(category.image);
+  return buildPageMetadata({
+    locale,
+    href: `/categories/${slug}`,
     title: name,
     description,
-    alternates: await localeAlternates(`/categories/${slug}`, locale),
-    openGraph: buildOpenGraph({
-      locale,
-      siteName: site('name'),
-      imageUrl: image,
-      imageAlt: name,
-      imageWidth: isDefaultImage ? 1200 : undefined,
-      imageHeight: isDefaultImage ? 630 : undefined,
-    }),
-    twitter: buildTwitter(image),
-  };
+    siteName: site('name'),
+    ...(imageUrl ? { image: { url: imageUrl, alt: name } } : {}),
+  });
 }
 
 export default async function CategoryDetailPage({ params }: Props) {
@@ -123,9 +116,16 @@ export default async function CategoryDetailPage({ params }: Props) {
     />
   );
 
+  const breadcrumbJsonLd = await buildBreadcrumbList(locale, [
+    { name: nav('home'), href: '/' },
+    { name: t('categoriesCrumb'), href: '/categories' },
+    { name, href: `/categories/${slug}` },
+  ]);
+
   return (
     <main id="main-content" tabIndex={-1} className="outline-none">
       <PageViewTracker path={`/categories/${slug}`} locale={locale} />
+      <JsonLd data={breadcrumbJsonLd} />
 
       {/* The category photo, shown whole, under a neutral scrim, with the
           category name centred over it and the breadcrumb beneath.
@@ -165,7 +165,7 @@ export default async function CategoryDetailPage({ params }: Props) {
             <ImageWithFallback
               id="category-hero-photo"
               src={category.image}
-              alt=""
+              alt={name}
               fit="contain"
               loading="eager"
               fetchPriority="high"

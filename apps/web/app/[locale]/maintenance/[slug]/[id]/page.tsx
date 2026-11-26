@@ -14,7 +14,7 @@ import {
   getMaintenanceItem,
   getRelatedMaintenanceItems,
 } from '@/lib/maintenance';
-import { localeAlternates } from '@/lib/seo';
+import { buildPageMetadata, localizedValue } from '@/lib/seo';
 
 // Interim freshness: revalidate DB-driven content hourly (see agent.md).
 export const revalidate = 3600;
@@ -44,17 +44,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!item || !item.category) {
     return {};
   }
-  const description = locale === 'ar' ? item.descriptionAr : item.descriptionEn;
-  const lineDescription =
-    locale === 'ar' ? item.category.descriptionAr : item.category.descriptionEn;
-  return {
-    title: locale === 'ar' ? item.nameAr : item.nameEn,
-    // The machine's own copy when it has any; otherwise the line's, which is
-    // still about the work this page shows. Omitted entirely when neither
-    // exists rather than repeating the title as a description.
-    description: description ?? lineDescription ?? undefined,
-    alternates: await localeAlternates(`/maintenance/${slug}/${id}`, locale),
-  };
+  const name = localizedValue(locale, item.nameAr, item.nameEn);
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  // The machine's own copy when it has any; otherwise the line's, which is
+  // still about the work this page shows; then the real site tagline. Never
+  // repeat the title as its own description.
+  const description =
+    localizedValue(locale, item.descriptionAr, item.descriptionEn) ||
+    localizedValue(
+      locale,
+      item.category.descriptionAr,
+      item.category.descriptionEn
+    ) ||
+    site('tagline');
+  return buildPageMetadata({
+    locale,
+    href: `/maintenance/${slug}/${id}`,
+    title: name,
+    description,
+    siteName: site('name'),
+  });
 }
 
 export default async function MaintenanceMachinePage({ params }: Props) {

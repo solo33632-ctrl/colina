@@ -6,6 +6,7 @@ import { prisma } from '@colina/db';
 import { Button, Container } from '@colina/ui';
 import { Breadcrumb } from '@/components/breadcrumb';
 import { Link } from '@/i18n/navigation';
+import { JsonLd } from '@/components/json-ld';
 import { MachineGallery } from '@/components/machine-gallery';
 import { MobileQuoteBar } from '@/components/mobile-quote-bar';
 import { PageViewTracker } from '@/components/page-view-tracker';
@@ -15,11 +16,10 @@ import { routing } from '@/i18n/routing';
 import { PUBLIC_MACHINE_WHERE } from '@/lib/public-content';
 import {
   absoluteImageUrl,
-  buildOpenGraph,
-  buildTwitter,
-  defaultShareImageUrl,
+  buildBreadcrumbList,
+  buildPageMetadata,
   localeAlternates,
-  serializeJsonLd,
+  localizedValue,
   shareImageUrl,
 } from '@/lib/seo';
 
@@ -50,30 +50,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!machine) {
     return {};
   }
-  const name = locale === 'ar' ? machine.nameAr : machine.nameEn;
-  const description =
-    locale === 'ar' ? machine.shortDescriptionAr : machine.shortDescriptionEn;
+  const name = localizedValue(locale, machine.nameAr, machine.nameEn);
+  const shortDescription = localizedValue(
+    locale,
+    machine.shortDescriptionAr,
+    machine.shortDescriptionEn
+  );
+  const longDescription = localizedValue(
+    locale,
+    machine.descriptionAr,
+    machine.descriptionEn
+  );
   const site = await getTranslations({ locale, namespace: 'Site' });
-  const defaultImage = defaultShareImageUrl();
-  const image =
-    machine.images
-      .map((photo) => shareImageUrl(photo.url))
-      .find((url) => url !== undefined) ?? defaultImage;
-  const isDefaultImage = Boolean(image) && image === defaultImage;
-  return {
+  const description = shortDescription || longDescription || site('tagline');
+  const imageUrl = machine.images
+    .map((photo) => shareImageUrl(photo.url))
+    .find((url) => url !== undefined);
+  return buildPageMetadata({
+    locale,
+    href: `/machines/${slug}`,
     title: name,
     description,
-    alternates: await localeAlternates(`/machines/${slug}`, locale),
-    openGraph: buildOpenGraph({
-      locale,
-      siteName: site('name'),
-      imageUrl: image,
-      imageAlt: name,
-      imageWidth: isDefaultImage ? 1200 : undefined,
-      imageHeight: isDefaultImage ? 630 : undefined,
-    }),
-    twitter: buildTwitter(image),
-  };
+    siteName: site('name'),
+    ...(imageUrl ? { image: { url: imageUrl, alt: name } } : {}),
+  });
 }
 
 export default async function MachineDetailPage({ params }: Props) {
@@ -87,6 +87,7 @@ export default async function MachineDetailPage({ params }: Props) {
 
   const t = await getTranslations('MachinePage');
   const nav = await getTranslations('Nav');
+  const site = await getTranslations('Site');
   const machine = await prisma.machine.findFirst({
     where: { slug, ...PUBLIC_MACHINE_WHERE },
     include: {
@@ -110,18 +111,27 @@ export default async function MachineDetailPage({ params }: Props) {
     notFound();
   }
 
-  const name = locale === 'ar' ? machine.nameAr : machine.nameEn;
-  const shortDescription =
-    locale === 'ar' ? machine.shortDescriptionAr : machine.shortDescriptionEn;
-  const description =
-    locale === 'ar' ? machine.descriptionAr : machine.descriptionEn;
+  const name = localizedValue(locale, machine.nameAr, machine.nameEn);
+  const shortDescription = localizedValue(
+    locale,
+    machine.shortDescriptionAr,
+    machine.shortDescriptionEn
+  );
+  const description = localizedValue(
+    locale,
+    machine.descriptionAr,
+    machine.descriptionEn
+  );
   const specs = locale === 'ar' ? machine.specsAr : machine.specsEn;
   // The long-form fields are optional: a machine saved with these blank
   // renders no section for them at all (see the admin schema).
   const hasDescription = description.trim().length > 0;
   const hasSpecs = specs.trim().length > 0;
-  const categoryName =
-    locale === 'ar' ? machine.category.nameAr : machine.category.nameEn;
+  const categoryName = localizedValue(
+    locale,
+    machine.category.nameAr,
+    machine.category.nameEn
+  );
 
   // What the admin reads as "machine / model" on the resulting lead: the
   // localized name plus the stable slug, so the lead names the machine and
@@ -162,18 +172,29 @@ export default async function MachineDetailPage({ params }: Props) {
   // require valid Offer data — inventing prices would be spam, so the
   // markup stays offer-less (valid schema.org, no rich-result claim).
   const alternates = await localeAlternates(`/machines/${slug}`, locale);
-  const canonical = alternates?.canonical;
   const firstImage = absoluteImageUrl(machine.images[0]?.url ?? null);
-  const productJsonLd = serializeJsonLd({
+  const productJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name,
-    description: shortDescription,
+    description: shortDescription || description,
     ...(firstImage ? { image: firstImage } : {}),
     category: categoryName,
-    brand: { '@type': 'Brand', name: 'Colina' },
-    ...(canonical ? { url: canonical } : {}),
-  });
+    // The manufacturer's real brand name comes from the site messages; no
+    // machine-specific brand field exists, and nothing is invented for it.
+    ...(site('name')
+      ? { brand: { '@type': 'Brand', name: site('name') } }
+      : {}),
+    url: alternates.canonical,
+  };
+  const breadcrumbJsonLd = await buildBreadcrumbList(locale, [
+    { name: nav('home'), href: '/' },
+    {
+      name: categoryName,
+      href: `/categories/${machine.category.slug}`,
+    },
+    { name, href: `/machines/${slug}` },
+  ]);
 
   return (
     // The marker is inert HTML — nothing selects on it. It exists only so
@@ -187,10 +208,8 @@ export default async function MachineDetailPage({ params }: Props) {
       className="outline-none"
     >
       <PageViewTracker path={`/machines/${slug}`} locale={locale} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: productJsonLd }}
-      />
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={breadcrumbJsonLd} />
       <Container className="py-16">
         <Breadcrumb
           label={t('breadcrumbLabel')}

@@ -14,11 +14,9 @@ import { SiteHeader } from '@/components/site-header';
 import { WhatsappButton } from '@/components/whatsapp-button';
 import { routing } from '@/i18n/routing';
 import {
-  buildOpenGraph,
-  buildTwitter,
+  buildPageMetadata,
   defaultShareImageUrl,
   getMetadataBase,
-  localeAlternates,
 } from '@/lib/seo';
 import { getSiteSettings } from '@/lib/site-settings';
 import { buildWhatsappUrl } from '@/lib/whatsapp';
@@ -76,21 +74,21 @@ export async function generateMetadata({
   }
   const t = await getTranslations({ locale, namespace: 'Metadata' });
   const site = await getTranslations({ locale, namespace: 'Site' });
-  const shareImage = defaultShareImageUrl();
   return {
     metadataBase: getMetadataBase(),
-    title: t('title'),
-    description: t('description'),
-    alternates: await localeAlternates('/', locale),
-    openGraph: buildOpenGraph({
+    ...(await buildPageMetadata({
       locale,
+      href: '/',
+      title: t('title'),
+      description: t('description'),
       siteName: site('name'),
-      imageUrl: shareImage,
-      imageAlt: `${site('name')} — ${site('tagline')}`,
-      imageWidth: 1200,
-      imageHeight: 630,
-    }),
-    twitter: buildTwitter(shareImage),
+      image: {
+        url: defaultShareImageUrl(),
+        alt: `${site('name')} — ${site('tagline')}`,
+        width: 1200,
+        height: 630,
+      },
+    })),
   };
 }
 

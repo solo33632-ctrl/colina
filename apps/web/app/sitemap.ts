@@ -41,16 +41,15 @@ async function alternatesFor(
 
 // Sitemap covering every static route plus every category/machine detail
 // page, in both locales, with per-URL hreflang alternates (next-intl's
-// documented sitemap pattern). DB-driven: runs at build time.
+// documented sitemap pattern). DB-driven: runs at build time and refreshes
+// hourly so a newly published item does not wait for the next deploy.
 // lastModified: content timestamps where they exist, build time for
 // static copy. changeFrequency: weekly for entry points that aggregate
 // changing content, monthly for the rest.
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Sitemap entries require absolute URLs. A missing site URL yields an
-  // empty sitemap rather than a fabricated example.com domain.
-  const base = getBaseUrl();
-  if (!base) return [];
+export const revalidate = 3600;
 
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const base = getBaseUrl();
   const now = new Date();
   const [categories, machines, maintenanceLines, maintenanceItems] =
     await Promise.all([

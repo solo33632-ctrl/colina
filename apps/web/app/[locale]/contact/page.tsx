@@ -7,7 +7,7 @@ import { ContactForm } from '@/components/contact-form';
 import { ContactInfo } from '@/components/contact-info';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { routing } from '@/i18n/routing';
-import { localeAlternates } from '@/lib/seo';
+import { buildPageMetadata } from '@/lib/seo';
 import { getSiteSettings } from '@/lib/site-settings';
 import { buildWhatsappUrl } from '@/lib/whatsapp';
 
@@ -26,11 +26,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     notFound();
   }
   const t = await getTranslations({ locale, namespace: 'ContactPage' });
-  return {
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  return buildPageMetadata({
+    locale,
+    href: '/contact',
     title: t('heading'),
     description: t('subheading'),
-    alternates: await localeAlternates('/contact', locale),
-  };
+    siteName: site('name'),
+  });
 }
 
 export default async function ContactPage({ params }: Props) {

@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { Card, Container } from '@colina/ui';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { routing } from '@/i18n/routing';
-import { localeAlternates } from '@/lib/seo';
+import { buildPageMetadata } from '@/lib/seo';
 
 // Placeholder draft only — must be reviewed by a lawyer before go-live.
 // No DB read, so no `revalidate` needed.
@@ -31,11 +31,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     notFound();
   }
   const t = await getTranslations({ locale, namespace: 'PrivacyPage' });
-  return {
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  return buildPageMetadata({
+    locale,
+    href: '/privacy',
     title: t('heading'),
     description: t('draftText'),
-    alternates: await localeAlternates('/privacy', locale),
-  };
+    siteName: site('name'),
+  });
 }
 
 export default async function PrivacyPage({ params }: Props) {

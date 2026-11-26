@@ -121,7 +121,7 @@ export function CategoryCard({
           <div className="absolute inset-0 overflow-hidden p-2">
             <ImageWithFallback
               src={category.image}
-              alt=""
+              alt={name}
               fit="contain"
               loading={priority ? 'eager' : 'lazy'}
               fetchPriority={priority ? 'high' : undefined}

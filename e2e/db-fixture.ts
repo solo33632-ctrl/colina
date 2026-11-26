@@ -183,6 +183,8 @@ export type CategoryFixture = {
   descriptionEn?: string;
   descriptionAr?: string;
   image?: string;
+  /** Stage 4e/SEO: a draft is created only for tests that need invisibility. */
+  isPublished?: boolean;
 };
 
 /** Creates a category, optionally with a photo and a description. */
@@ -196,6 +198,7 @@ export function createCategory(fixture: CategoryFixture) {
         descriptionEn: ${JSON.stringify(fixture.descriptionEn ?? '')},
         descriptionAr: ${JSON.stringify(fixture.descriptionAr ?? '')},
         image: ${JSON.stringify(fixture.image ?? null)},
+        isPublished: ${fixture.isPublished ?? true},
       },
     });
   `);
@@ -236,6 +239,8 @@ export type MachineFixture = {
   shortDescriptionAr: string;
   categorySlug: string;
   imageUrl?: string;
+  /** Stage 4e/SEO: a draft is created only for tests that need invisibility. */
+  isPublished?: boolean;
   /**
    * Several photos, in display order. Takes precedence over `imageUrl`, which
    * stays for the single-photo case the card specs use.
@@ -265,6 +270,7 @@ export function createMachine(fixture: MachineFixture) {
         specsEn: '',
         specsAr: '',
         categoryId: category.id,
+        isPublished: ${fixture.isPublished ?? true},
         images: {
           create: ${JSON.stringify(rows)},
         },

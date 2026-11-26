@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { Card, Container } from '@colina/ui';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { routing } from '@/i18n/routing';
-import { localeAlternates } from '@/lib/seo';
+import { buildPageMetadata } from '@/lib/seo';
 
 // Static placeholder copy — no DB read, so no `revalidate` needed.
 // Real copy arrives with Phase 0 content.
@@ -19,11 +19,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     notFound();
   }
   const t = await getTranslations({ locale, namespace: 'AboutPage' });
-  return {
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  return buildPageMetadata({
+    locale,
+    href: '/about',
     title: t('heading'),
     description: t('intro1'),
-    alternates: await localeAlternates('/about', locale),
-  };
+    siteName: site('name'),
+  });
 }
 
 export default async function AboutPage({ params }: Props) {

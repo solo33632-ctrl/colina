@@ -6,7 +6,7 @@ import { prisma } from '@colina/db';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { PartnersStrip } from '@/components/partners-strip';
 import { routing } from '@/i18n/routing';
-import { localeAlternates } from '@/lib/seo';
+import { buildPageMetadata } from '@/lib/seo';
 
 // Interim freshness: revalidate DB-driven content hourly (see agent.md).
 export const revalidate = 3600;
@@ -21,11 +21,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     notFound();
   }
   const t = await getTranslations({ locale, namespace: 'PartnersPage' });
-  return {
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  return buildPageMetadata({
+    locale,
+    href: '/partners',
     title: t('heading'),
     description: t('subheading'),
-    alternates: await localeAlternates('/partners', locale),
-  };
+    siteName: site('name'),
+  });
 }
 
 export default async function PartnersPage({ params }: Props) {

@@ -106,7 +106,7 @@ export function MachineSummaryCard({
         {machine.images?.[0]?.url ? (
           <ImageWithFallback
             src={machine.images[0].url}
-            alt=""
+            alt={name}
             fit="contain"
             loading={priority ? 'eager' : 'lazy'}
             fetchPriority={priority ? 'high' : undefined}

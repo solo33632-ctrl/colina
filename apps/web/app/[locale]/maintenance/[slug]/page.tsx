@@ -9,7 +9,7 @@ import { MaintenanceMachineCard } from '@/components/maintenance-machine-card';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { routing } from '@/i18n/routing';
 import { getMaintenanceLine } from '@/lib/maintenance';
-import { localeAlternates } from '@/lib/seo';
+import { buildPageMetadata, localizedValue } from '@/lib/seo';
 
 // Interim freshness: revalidate DB-driven content hourly (see agent.md).
 export const revalidate = 3600;
@@ -36,12 +36,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!line) {
     return {};
   }
-  return {
-    title: locale === 'ar' ? line.nameAr : line.nameEn,
-    description:
-      (locale === 'ar' ? line.descriptionAr : line.descriptionEn) ?? undefined,
-    alternates: await localeAlternates(`/maintenance/${slug}`, locale),
-  };
+  const name = localizedValue(locale, line.nameAr, line.nameEn);
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  const description =
+    localizedValue(locale, line.descriptionAr, line.descriptionEn) ||
+    site('tagline');
+  return buildPageMetadata({
+    locale,
+    href: `/maintenance/${slug}`,
+    title: name,
+    description,
+    siteName: site('name'),
+  });
 }
 
 export default async function MaintenanceLinePage({ params }: Props) {

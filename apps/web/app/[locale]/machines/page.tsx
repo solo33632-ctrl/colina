@@ -12,7 +12,7 @@ import {
   PUBLIC_CATEGORY_WHERE,
   PUBLIC_MACHINE_WHERE,
 } from '@/lib/public-content';
-import { localeAlternates } from '@/lib/seo';
+import { buildPageMetadata } from '@/lib/seo';
 
 // The grid is filtered by the `?category=` query, which makes this page
 // request-dependent, so the hourly window below does not apply to it the way
@@ -25,17 +25,29 @@ type Props = {
   searchParams: Promise<{ category?: string | string[] }>;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) {
     return {};
   }
   const t = await getTranslations({ locale, namespace: 'Machines' });
-  return {
+  const site = await getTranslations({ locale, namespace: 'Site' });
+  // Filtered views are the same page with a query string. They are useful to
+  // a visitor but duplicate the clean catalogue for a crawler, so they stay
+  // out of the index while pointing their canonical at the unfiltered URL.
+  const query = await searchParams;
+  const isFiltered = Object.keys(query).length > 0;
+  return buildPageMetadata({
+    locale,
+    href: '/machines',
     title: t('heading'),
     description: t('subheading'),
-    alternates: await localeAlternates('/machines', locale),
-  };
+    siteName: site('name'),
+    ...(isFiltered ? { robots: { index: false, follow: true } } : {}),
+  });
 }
 
 /**

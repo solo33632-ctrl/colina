@@ -99,7 +99,7 @@ async function measureCard(card: Locator) {
     const reveal = el.querySelector('[data-testid="category-card-reveal"]')!;
     const view = el.querySelector('[data-testid="category-card-view"]')!;
     const text = reveal.querySelector('p')!;
-    const name = el.querySelector('h3')!;
+    const name = el.querySelector('h2, h3')!;
     const overlay = el.querySelector('[data-testid="category-card-overlay"]')!;
     const background = getComputedStyle(overlay).backgroundColor;
     const alpha = background.match(/rgba\(0,\s*0,\s*0,\s*([\d.]+)\)/);

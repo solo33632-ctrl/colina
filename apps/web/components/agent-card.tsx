@@ -7,7 +7,7 @@ import type { AgentContact } from '@/lib/agents';
 // phone/email values, so a contact inside an agent card behaves and reads
 // exactly like one on the contact page.
 const valueLinkClasses =
-  'rounded font-medium text-stone-900 underline-offset-4 hover:text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600';
+  'inline-flex min-h-6 items-center rounded font-medium text-stone-900 underline-offset-4 hover:text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600';
 
 type AgentCardProps = {
   agent: AgentContact;

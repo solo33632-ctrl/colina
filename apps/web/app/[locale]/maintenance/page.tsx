@@ -86,6 +86,7 @@ export default async function MaintenanceIndexPage({ params }: Props) {
                   locale={locale}
                   hoverText={t('hoverText')}
                   viewLabel={t('viewLabel')}
+                  headingLevel="h2"
                 />
               </li>
             ))}

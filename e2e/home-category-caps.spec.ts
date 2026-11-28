@@ -110,7 +110,7 @@ async function expectNoCounts(cards: Locator) {
   for (let index = 0; index < count; index += 1) {
     const card = cards.nth(index);
     const label = await card.getAttribute('aria-label');
-    const heading = ((await card.locator('h3').textContent()) ?? '').trim();
+    const heading = ((await card.locator('h2, h3').textContent()) ?? '').trim();
     expect(label).toBe(heading);
 
     const text = ((await card.textContent()) ?? '').trim();

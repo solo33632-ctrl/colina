@@ -31,6 +31,13 @@ export type CategoryCardProps = {
   /** The outlined pill's label, "View" / "عرض". */
   viewLabel: string;
   /**
+   * Heading level for the tile name. The default `h3` is right under a section
+   * heading; a list page whose cards sit directly under its `h1` passes `h2`
+   * so the outline never skips a level. The element and classes are identical
+   * either way, so the tile looks exactly the same.
+   */
+  headingLevel?: 'h2' | 'h3';
+  /**
    * Marks the one tile whose photo is this page's LCP image. It is fetched
    * eagerly at high priority; every other tile stays lazy. Omitted on pages
    * whose largest paint is text, where eager loading would only add bytes.
@@ -99,9 +106,11 @@ export function CategoryCard({
   href,
   hoverText,
   viewLabel,
+  headingLevel = 'h3',
   priority = false,
 }: CategoryCardProps) {
   const name = locale === 'ar' ? category.nameAr : category.nameEn;
+  const Heading = headingLevel;
 
   return (
     <Link
@@ -155,9 +164,9 @@ export function CategoryCard({
 
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
         <div className="relative flex max-w-[80%] flex-col items-center motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out [@media(hover:hover)]:motion-safe:group-hover:-translate-y-5 motion-safe:group-focus-visible:-translate-y-5">
-          <h3 className="line-clamp-2 text-balance font-medium text-lg leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] sm:text-xl">
+          <Heading className="line-clamp-2 text-balance font-medium text-lg leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] sm:text-xl">
             {name}
-          </h3>
+          </Heading>
           {/* The reveal, out of flow under the name block. Absolute so the
               resting tile is laid out exactly as before; `w-60 max-w-full`
               keeps it inside the narrowest tile while staying readable on a

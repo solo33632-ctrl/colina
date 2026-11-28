@@ -175,6 +175,7 @@ export default async function MachinesPage({ params, searchParams }: Props) {
                 <MachineSummaryCard
                   machine={machine}
                   locale={locale}
+                  headingLevel="h2"
                   labels={{
                     viewDetails: card('viewDetails'),
                     featured: card('featured'),

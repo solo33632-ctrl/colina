@@ -279,7 +279,7 @@ test.describe('catalog browsing flow', () => {
 async function expectSquareTileWithCenteredName(tile: Locator) {
   const shape = await tile.evaluate((el) => {
     const rect = el.getBoundingClientRect();
-    const name = el.querySelector('h3')!;
+    const name = el.querySelector('h2, h3')!;
     const nameRect = name.getBoundingClientRect();
     const style = getComputedStyle(name);
 
@@ -439,8 +439,8 @@ test.describe('category tiles: full-bleed photo, dark overlay, centred white nam
         for (const tile of await tiles.all()) {
           const name = await tile.getAttribute('aria-label');
           expect(name).toBeTruthy();
-          await expect(tile.locator('h3')).toBeVisible();
-          await expect(tile.locator('h3')).toHaveText(name!);
+          await expect(tile.locator('h2')).toBeVisible();
+          await expect(tile.locator('h2')).toHaveText(name!);
           // The only icon is the reveal arrow, photo or not.
           expect(await tile.locator('svg').count()).toBe(1);
           await expectSquareTileWithCenteredName(tile);

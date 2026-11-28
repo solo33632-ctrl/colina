@@ -74,6 +74,7 @@ export default async function CategoriesPage({ params }: Props) {
                   locale={locale}
                   hoverText={t('hoverText')}
                   viewLabel={t('viewLabel')}
+                  headingLevel="h2"
                 />
               </li>
             ))}

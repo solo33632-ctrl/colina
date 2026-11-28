@@ -201,7 +201,7 @@ export default async function CategoryDetailPage({ params }: Props) {
             <h1 className="max-w-4xl text-balance text-3xl font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] sm:text-5xl">
               {name}
             </h1>
-            <div className="absolute inset-x-0 top-full mt-3 px-4 [&_a]:underline [&_a:hover]:underline-offset-2 [&_ol]:justify-center [&_ol]:text-white/80 [&_span[aria-current]]:text-white">
+            <div className="absolute inset-x-0 top-full mt-3 px-4 [&_a]:text-white [&_a]:underline [&_a:hover]:text-white [&_a:hover]:underline-offset-2 [&_ol]:justify-center [&_ol]:text-white/80 [&_span[aria-current]]:text-white">
               {breadcrumb}
             </div>
           </div>

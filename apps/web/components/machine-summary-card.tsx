@@ -40,6 +40,13 @@ export type MachineSummaryCardProps = {
   locale: 'ar' | 'en';
   labels: MachineCardLabels;
   /**
+   * Heading level for the machine name. The default `h3` is right under a
+   * section heading; the catalogue list, whose cards sit directly under its
+   * `h1`, passes `h2` so the outline never skips a level. The element and
+   * classes are identical either way, so the card looks exactly the same.
+   */
+  headingLevel?: 'h2' | 'h3';
+  /**
    * Marks the one card whose photo is the page's LCP image. Everything else
    * stays lazy; pages whose largest paint is text leave this off.
    */
@@ -78,9 +85,11 @@ export function MachineSummaryCard({
   machine,
   locale,
   labels,
+  headingLevel = 'h3',
   priority = false,
 }: MachineSummaryCardProps) {
   const name = locale === 'ar' ? machine.nameAr : machine.nameEn;
+  const Heading = headingLevel;
   const shortDescription = (
     locale === 'ar' ? machine.shortDescriptionAr : machine.shortDescriptionEn
   ).trim();
@@ -139,9 +148,9 @@ export function MachineSummaryCard({
             {categoryName}
           </p>
         ) : null}
-        <h3 className="mt-1 line-clamp-2 font-semibold leading-snug text-stone-900">
+        <Heading className="mt-1 line-clamp-2 font-semibold leading-snug text-stone-900">
           {name}
-        </h3>
+        </Heading>
         {shortDescription ? (
           <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-stone-600">
             {shortDescription}

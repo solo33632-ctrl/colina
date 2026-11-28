@@ -40,7 +40,7 @@ export function Breadcrumb({ items, label }: BreadcrumbProps) {
               {item.href && !isLast ? (
                 <Link
                   href={item.href as never}
-                  className="font-medium text-brand-700 hover:text-brand-800"
+                  className="inline-flex min-h-6 items-center font-medium text-brand-700 hover:text-brand-800"
                 >
                   {item.label}
                 </Link>
